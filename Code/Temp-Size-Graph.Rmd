@@ -1,0 +1,20 @@
+---
+title: "Temp-Size-Graphs"
+author: "Noah Krebs"
+date: "2023-10-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+```{r}
+temp-data <- read.csv("temp.experiment.csv", header = TRUE)
+```
+
