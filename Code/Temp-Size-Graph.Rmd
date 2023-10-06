@@ -15,6 +15,39 @@ library(tidyverse)
 ```
 
 ```{r}
-temp-data <- read.csv("temp.experiment.csv", header = TRUE)
+temp.data <- read.csv("../data/temp-experiment.csv", header = TRUE)
+temp.data1 <- read.csv("../data/temp-experiment-size2.csv", header = TRUE)
+temp.dataa2 <- read.csv("../data/temp-experiment-size-3.csv", header = TRUE)
+```
+
+```{r}
+temp.data1 %>%
+ggplot(mapping = aes(x = Temperature, y = SL_mm)) + 
+  geom_boxplot()
+```
+
+```{r}
+temp.data1 %>%
+ggplot(mapping = aes(x = Temperature, y = SL_11212022)) + 
+  geom_boxplot()
+```
+
+```{r}
+temp.data1 %>%
+ggplot(mapping = aes(x = Temperature, y = SL_12272022)) + 
+  geom_boxplot()
+```
+
+```{r}
+date_levels <- c("SL_12212022", "SL_12272022", "SL_mm")
+temp.dataa2$Date <- factor(temp.dataa2$Date, levels = date_levels)
+
+ggplot(temp.dataa2, aes(x = Date, y = Value, color = Temperature, group = Microchip_ID)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Value", color = "Temperature") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_color_manual(values = c("Low" = "blue", "Medium" = "green", "High" = "red")) # Customize line colors
 ```
 
