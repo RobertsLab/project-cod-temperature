@@ -18,6 +18,7 @@ library(tidyverse)
 temp.data <- read.csv("../data/temp-experiment.csv", header = TRUE)
 temp.data1 <- read.csv("../data/temp-experiment-size2.csv", header = TRUE)
 temp.dataa2 <- read.csv("../data/temp-experiment-size-3.csv", header = TRUE)
+temp.data3 <- read.csv("../data/temp-experiment-size-3-reformat.csv", header = TRUE)
 ```
 
 ```{r}
@@ -38,16 +39,55 @@ ggplot(mapping = aes(x = Temperature, y = SL_12272022)) +
   geom_boxplot()
 ```
 
-```{r}
-date_levels <- c("SL_12212022", "SL_12272022", "SL_mm")
-temp.dataa2$Date <- factor(temp.dataa2$Date, levels = date_levels)
 
-ggplot(temp.dataa2, aes(x = Date, y = Value, color = Temperature, group = Microchip_ID)) +
-  geom_line() +
-  geom_point() +
-  labs(x = "Date", y = "Value", color = "Temperature") +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  scale_color_manual(values = c("Low" = "blue", "Medium" = "green", "High" = "red")) # Customize line colors
+```{r}
+
+date_levels <- c("SL_11212022", "SL_12272022", "SL_mm")
+temp.data3$Date <- factor(temp.data3$Date, levels = date_levels, ordered=TRUE)
+temp.data3$Temperature <- factor(temp.data3$Temperature, levels = c("0","5","9","16"))
+
+# overlayed figure
+p1 <- ggplot(temp.data3, aes(x = Date, y = value, color = Temperature, group = Microchip_ID)) +
+             geom_line() +
+             geom_point() +
+             labs(x = "Date", y = "Value", color = "Temperature") +
+             theme_minimal() +
+             theme(legend.position = "top") + 
+             scale_color_manual(values = c("darkblue","royalblue1","orangered1","darkred"))
+
+p1
+```
+```{r}
+# facet wrapped figure
+p2 <- ggplot(temp.data3, aes(x = Date, y = value, color = Temperature, group = Microchip_ID)) +
+             geom_line() +
+             geom_point() +
+             labs(x = "Date", y = "Value", color = "Temperature") +
+             # theme_minimal() +
+             theme(legend.position = "top") + 
+             scale_color_manual(values = c("darkblue","royalblue1","orangered1","darkred")) + facet_wrap(~ Temperature)
+
+p2
+```
+```{r}
+# overlayed figure; boxplot
+p3 <- ggplot(temp.data3, aes(x = Date, y = value, color = Temperature)) +
+             geom_boxplot() +
+             labs(x = "Date", y = "Value", color = "Temperature") +
+             theme_minimal() +
+             theme(legend.position = "top") + 
+             scale_color_manual(values = c("darkblue","royalblue1","orangered1","darkred"))
+
+p3
+
+# facet wrapped figure; boxplot
+p4 <- ggplot(temp.data3, aes(x = Date, y = value, color = Temperature)) +
+             geom_boxplot() +
+             labs(x = "Date", y = "Value", color = "Temperature") +
+             # theme_minimal() +
+             theme(legend.position = "top") + 
+             scale_color_manual(values = c("darkblue","royalblue1","orangered1","darkred")) + facet_wrap(~ Temperature)
+
+p4
 ```
 
