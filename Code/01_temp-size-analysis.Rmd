@@ -15,6 +15,8 @@ library(infer)
 library(broom)
 ```
 
+I'm doing this analysis under the assumption that all three of the SL columns (SL_11212022, SL_12272022, and SL_mm) are measuring some consistent size/length value over three measurement dates. Similarly, I'm assuming the the columns WWT_11212022, WWT_12272022, and WholeBodyWW_g are measurements of body weight (maybe whole body wet weight?) on the same three measurments dates. 
+
 # Data Munging
 ```{r}
 # read in the data
@@ -30,91 +32,33 @@ head(codTempData_plus)
 
 
 # Reformatted data with single column for size values and single column for measurement values (and additional column indicating measurement date), enabling grouping by size/weight measurement date
+# Not I renamed the final size and weight measurments to include the date 02/08/2023 -- this is just so that the measurement date column can have a consistent option despite final measurments happening between the days of 02/08/2023 and 02/10/2023.
 
-codTempData_reformat <- read.csv("../data/temp-experiment-size-3-reformat.csv")
-head(codTempData_reformat)
-
-codTempData_reformatSize <- codTempData_plus %>%
-  rename(WWT_WholeBodyWW_g=WholeBodyWW_g) %>%
+codTempData_reformat <- codTempData_plus %>%
+  rename(WWT_02082023=WholeBodyWW_g) %>%
+  rename(SL_02082023=SL_mm) %>%
   pivot_longer(
-    cols = starts_with("SL"),
-    names_to = "measurementDate",
-    values_to = "size_mm"
+    cols = c("SL_11212022", "SL_12272022", "SL_02082023", "WWT_11212022", "WWT_12272022", "WWT_02082023"),
+    names_to = "var",
+    values_to = "value"
+  ) %>%
+  separate(var, into = c("var", "date"), sep = "_") %>%
+  pivot_wider(
+    names_from = "var",
+    values_from = "value"
   )
+# Set the date variable to have desired chronological order
+codTempData_reformat$date <- factor(codTempData_reformat$date, levels = c("11212022", "12272022", "02082023"))
+  
+#mutate(date = relevel(as.factor(date), "11212022", "12272022", "02082023"))
   
 ```
 
-```{r}
-df = data.frame(
-  size_1 = c("stringS11","stringS12"),
-  size_2 = c("stringS21","stringS22"),
-  size_3 = c("stringS31", "stringS32"),
-  weight_1 = c("stringW11","")
-  ID = c("1111","2222")
-)
-df
-#df %>% 
-#  pivot_longer(cols = names(df)[1:2],
-#                    values_to = "newvar") %>% 
-#  select(newvar, ID)
-
-df %>%
-  pivot_longer(
-    cols = starts_with("size"),
-    names_to = "date",
-    #names_prefix = "wk",
-    values_to = "mm",
-    #values_drop_na = TRUE
-  )
-```
-
-# Basic Plots
-```{r}
-bxpltSize1 <- codTempData %>%
-  ggplot(aes(x=Temperature,
-             y=SL_11212022,
-             group=Temperature)) +
-           geom_boxplot() +
-           geom_jitter(width = 0.2,
-              height = 0.2,
-              size = 1.5) +
-           xlab("Temperature Treatment (*C)") +
-           ylab("Size (mm)") +
-           ggtitle("11/21/2022")
-
-bxpltSize2 <- codTempData %>%
-  ggplot(aes(x=Temperature,
-             y=SL_12272022,
-             group=Temperature)) +
-           geom_boxplot() +
-           geom_jitter(width = 0.2,
-              height = 0.2,
-              size = 1.5) +
-           xlab("Temperature Treatment (*C)") +
-           ylab("Size (mm)") +
-           ggtitle("12/27/2022")
-
-bxpltSize3 <- codTempData %>%
-  ggplot(aes(x=Temperature,
-             y=SL_mm,
-             group=Temperature)) +
-           geom_boxplot() +
-           geom_jitter(width = 0.2,
-              height = 0.2,
-              size = 1.5) +
-           xlab("Temperature Treatment (*C)") +
-           ylab("Size (mm)") +
-           ggtitle("02/08/2022 - 02/10/2022")
-
-bxpltSize1
-bxpltSize2
-bxpltSize3
-```
-
+# Plots
 ```{r}
 codTempData_reformat %>%
   ggplot(aes(x=Temperature,
-             y=value,
+             y=SL,
              group=Temperature)) +
   geom_boxplot() +
   geom_jitter(width = 0.2,
@@ -122,9 +66,22 @@ codTempData_reformat %>%
               size = 1.5) +
   xlab("Temperature Treatment (*C)") +
   ylab("Size (mm)") +
-  facet_wrap(~Date)
+  facet_wrap(~date)
+
+codTempData_reformat %>%
+  ggplot(aes(x=Temperature,
+             y=WWT,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Weight (g)") +
+  facet_wrap(~date)
 ```
 
+# Size/Weight Change
 ```{r}
 codTempData_plus %>%
   ggplot(aes(x=Temperature,
@@ -139,16 +96,16 @@ codTempData_plus %>%
 
 codTempData_plus %>%
   ggplot(aes(x=Temperature,
-             y=sizeChange_mm,
+             y=weightChange_g,
              group=Temperature)) +
   geom_boxplot() +
   geom_jitter(width = 0.2,
               height = 0.2,
               size = 1.5) +
   xlab("Temperature Treatment (*C)") +
-  ylab("Size Change (mm)")
+  ylab("Weight Change (g)")
 ```
-
+Looking at these plots visually, there seems to be a difference in change in both size and weight over time among the treatment temperatures. Let's test this statistically
 
 # Check Assumptions
 ```{r}
@@ -195,7 +152,7 @@ tidySizeANOVA
 r_squared <- tidySizeANOVA$sumsq[1]/(tidySizeANOVA$sumsq[1]+tidySizeANOVA$sumsq[2])
 r_squared
 ```
-p=1.79e-18 << 0.05, so there is a significant relationship between treatment (temperature) and size growth (change in size). R^2=0.422, indicating ~42% of variance in size change is explained by the temperature treatment.
+p = 1.79e-18 << 0.05, so there is a significant relationship between treatment (temperature) and size growth (change in size). R^2=0.422, indicating ~42% of variance in size change is explained by the temperature treatment.
 
 ```{r}
 # Tukey HSD
@@ -213,7 +170,9 @@ codTempData_plus %>%
   geom_jitter(width = 0.2, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C"))
+  annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C")) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Size Change (mm) from 11/21/22 to 02/08/23")
 
 ```
 
@@ -230,7 +189,7 @@ tidyWeightANOVA
 r_squared <- tidyWeightANOVA$sumsq[1]/(tidyWeightANOVA$sumsq[1]+tidyWeightANOVA$sumsq[2])
 r_squared
 ```
-p=3.73e-15 << 0.05, so there is a significant relationship between treatment (temperature) and weight change. R^2=0.362, indicating ~36% of variance in weight change is explained by the temperature treatment.
+p = 3.73e-15 << 0.05, so there is a significant relationship between treatment (temperature) and weight change. R^2=0.362, indicating ~36% of variance in weight change is explained by the temperature treatment.
 
 ```{r}
 # Tukey HSD
@@ -248,6 +207,10 @@ codTempData_plus %>%
   geom_jitter(width = 0.2, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C"))
+  annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C")) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Weight Change (g) from 11/21/22 to 02/08/23")
 
 ```
+
+For both size and weight, growth from 11/21/22 to 02/08/23 significantly differed among all temperature treatments, with the exception of the 9 degree and 16 degree treatments. For the 9 and 16 degree treatments, changes in size and weight were statistically similar.
