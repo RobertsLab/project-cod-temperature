@@ -1,6 +1,5 @@
 # project-cod-temperature
 
->
 
 ### Gene activity and genetic selection in Pacific cod reared under thermal stress
 
