@@ -1,0 +1,253 @@
+---
+title: 'Temp/Size Analysis'
+author: "Kathleen Durkin"
+date: "2023-10-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, 
+                      fig.height=3, fig.width=8,fig.align = "center")
+
+library(tidyverse)
+library(infer)
+library(broom)
+```
+
+# Data Munging
+```{r}
+# read in the data
+codTempData <- read.csv("../data/temp-experiment.csv")
+head(codTempData)
+
+# Create two new columns indicating change from Nov.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). Also, modify the Temperature variable from a numeric to a factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
+codTempData_plus <- transform(codTempData,
+                              sizeChange_mm = SL_mm - SL_11212022,
+                              weightChange_g = WholeBodyWW_g - WWT_11212022) %>%
+  mutate(codTempData, Temperature = relevel(as.factor(Temperature), "0", "5", "9", "16"))
+head(codTempData_plus)
+
+
+# Reformatted data with single column for size values and single column for measurement values (and additional column indicating measurement date), enabling grouping by size/weight measurement date
+
+codTempData_reformat <- read.csv("../data/temp-experiment-size-3-reformat.csv")
+head(codTempData_reformat)
+
+codTempData_reformatSize <- codTempData_plus %>%
+  rename(WWT_WholeBodyWW_g=WholeBodyWW_g) %>%
+  pivot_longer(
+    cols = starts_with("SL"),
+    names_to = "measurementDate",
+    values_to = "size_mm"
+  )
+  
+```
+
+```{r}
+df = data.frame(
+  size_1 = c("stringS11","stringS12"),
+  size_2 = c("stringS21","stringS22"),
+  size_3 = c("stringS31", "stringS32"),
+  weight_1 = c("stringW11","")
+  ID = c("1111","2222")
+)
+df
+#df %>% 
+#  pivot_longer(cols = names(df)[1:2],
+#                    values_to = "newvar") %>% 
+#  select(newvar, ID)
+
+df %>%
+  pivot_longer(
+    cols = starts_with("size"),
+    names_to = "date",
+    #names_prefix = "wk",
+    values_to = "mm",
+    #values_drop_na = TRUE
+  )
+```
+
+# Basic Plots
+```{r}
+bxpltSize1 <- codTempData %>%
+  ggplot(aes(x=Temperature,
+             y=SL_11212022,
+             group=Temperature)) +
+           geom_boxplot() +
+           geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+           xlab("Temperature Treatment (*C)") +
+           ylab("Size (mm)") +
+           ggtitle("11/21/2022")
+
+bxpltSize2 <- codTempData %>%
+  ggplot(aes(x=Temperature,
+             y=SL_12272022,
+             group=Temperature)) +
+           geom_boxplot() +
+           geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+           xlab("Temperature Treatment (*C)") +
+           ylab("Size (mm)") +
+           ggtitle("12/27/2022")
+
+bxpltSize3 <- codTempData %>%
+  ggplot(aes(x=Temperature,
+             y=SL_mm,
+             group=Temperature)) +
+           geom_boxplot() +
+           geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+           xlab("Temperature Treatment (*C)") +
+           ylab("Size (mm)") +
+           ggtitle("02/08/2022 - 02/10/2022")
+
+bxpltSize1
+bxpltSize2
+bxpltSize3
+```
+
+```{r}
+codTempData_reformat %>%
+  ggplot(aes(x=Temperature,
+             y=value,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Size (mm)") +
+  facet_wrap(~Date)
+```
+
+```{r}
+codTempData_plus %>%
+  ggplot(aes(x=Temperature,
+             y=sizeChange_mm,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Size Change (mm)")
+
+codTempData_plus %>%
+  ggplot(aes(x=Temperature,
+             y=sizeChange_mm,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2,
+              height = 0.2,
+              size = 1.5) +
+  xlab("Temperature Treatment (*C)") +
+  ylab("Size Change (mm)")
+```
+
+
+# Check Assumptions
+```{r}
+# Check conditions for ANOVA
+
+# Normality
+  # Not perfect, but normalish enough that I feel comfortable using ANOVA
+codTempData_plus %>%
+  ggplot(aes(sample = sizeChange_mm)) +
+  stat_qq() +
+  stat_qq_line() +
+  facet_wrap(~Temperature)
+
+codTempData_plus %>%
+  ggplot(aes(sample = weightChange_g)) +
+  stat_qq() +
+  stat_qq_line() +
+  facet_wrap(~Temperature)
+
+# Variance
+  # For both sizeChange and weightChange, the largest SD is, at most, ~2x the smallest SD which is sufficiently similar to allow usage of ANOVA (which is fairly robust against heterogeneity of variance). May want to also test using randomization to be safe.
+codTempData_plus %>%
+  group_by(Temperature) %>%
+  summarize(meanSizeChange = mean(sizeChange_mm),
+            sdSizeChange = sd(sizeChange_mm),
+            meanWeightChange = mean(weightChange_g),
+            sdWeightChange = sd(weightChange_g))
+
+# Assuming data are independent (part of experimental design)
+
+```
+
+# ANOVA
+
+## Size Change
+```{r}
+# ANOVA
+sizeANOVA <- aov(sizeChange_mm~Temperature, data=codTempData_plus)
+
+tidySizeANOVA <- tidy(sizeANOVA)
+tidySizeANOVA
+
+# Calculate R^2 (how much of the variation in the data is explained by the treatment)
+r_squared <- tidySizeANOVA$sumsq[1]/(tidySizeANOVA$sumsq[1]+tidySizeANOVA$sumsq[2])
+r_squared
+```
+p=1.79e-18 << 0.05, so there is a significant relationship between treatment (temperature) and size growth (change in size). R^2=0.422, indicating ~42% of variance in size change is explained by the temperature treatment.
+
+```{r}
+# Tukey HSD
+sizeANOVA %>%
+  TukeyHSD() %>%
+  tidy() %>% 
+  select(contrast, estimate, adj.p.value) %>% 
+  arrange(adj.p.value)
+
+codTempData_plus %>%
+  ggplot(aes(x=Temperature,
+             y=sizeChange_mm,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, 
+              height = 0.2, 
+              size = 1.5) +
+  annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C"))
+
+```
+
+
+## Weight Change
+```{r}
+# ANOVA
+weightANOVA <- aov(weightChange_g~Temperature, data=codTempData_plus)
+
+tidyWeightANOVA <- tidy(weightANOVA)
+tidyWeightANOVA
+
+# Calculate R^2 (how much of the variation in the data is explained by the treatment)
+r_squared <- tidyWeightANOVA$sumsq[1]/(tidyWeightANOVA$sumsq[1]+tidyWeightANOVA$sumsq[2])
+r_squared
+```
+p=3.73e-15 << 0.05, so there is a significant relationship between treatment (temperature) and weight change. R^2=0.362, indicating ~36% of variance in weight change is explained by the temperature treatment.
+
+```{r}
+# Tukey HSD
+weightANOVA %>%
+  TukeyHSD() %>%
+  tidy() %>% 
+  select(contrast, estimate, adj.p.value) %>% 
+  arrange(adj.p.value)
+
+codTempData_plus %>%
+  ggplot(aes(x=Temperature,
+             y=weightChange_g,
+             group=Temperature)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, 
+              height = 0.2, 
+              size = 1.5) +
+  annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C"))
+
+```
