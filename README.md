@@ -11,3 +11,8 @@ Juvenile Pacific cod will be reared in three temperatures under feeding and non-
 
 - [WGS Raw data](https://owl.fish.washington.edu/nightingales/G_macrocephalus/H202SC23041287/01.RawData/)
 
+
+
+
+### See also 
+https://github.com/laurahspencer/pcod-juveniles-2023
