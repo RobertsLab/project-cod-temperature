@@ -20,14 +20,14 @@ I'm doing this analysis under the assumption that all three of the SL columns (S
 # Data Munging
 ```{r}
 # read in the data
-codTempData <- read.csv("../data/temp-experiment.csv")
+codTempData <- read.csv("../../data/temp-experiment.csv")
 head(codTempData)
 
 # Create two new columns indicating change from Nov.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). Also, modify the Temperature variable from a numeric to an ordered factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
 codTempData_plus <- transform(codTempData,
                               # create column for change in size
                               sizeChange_mm = SL_mm - SL_11212022,
-                              # create coumn for change in weight
+                              # create column for change in weight
                               weightChange_g = WholeBodyWW_g - WWT_11212022) %>%
   # change type of Temperature variable to an ordered factor
   mutate(codTempData, Temperature = relevel(as.factor(Temperature), "0", "5", "9", "16"))
@@ -91,7 +91,7 @@ codTempData_reformat %>%
 ggsave(
     "01_sizeVtreatment-all-dates.png",
     plot = last_plot(),
-    path = "../output"
+    path = "../../output/01_temp-size-analysis"
   )
 
 # Plot weight measurements for all temperature treatments across the time of the study
@@ -110,7 +110,7 @@ codTempData_reformat %>%
 ggsave(
     "02_weightVtreatment-all-dates.png",
     plot = last_plot(),
-    path = "../output"
+    path = "../../output/01_temp-size-analysis"
   )
 ```
 
@@ -212,7 +212,7 @@ codTempData_plus %>%
   ggsave(
     "03_size-change-TukeyHSD-plot.png",
     plot = last_plot(),
-    path = "../output"
+    path = "../../output/01_temp-size-analysis"
   )
 ```
 
@@ -254,7 +254,7 @@ codTempData_plus %>%
 ggsave(
     "04_weight-change-TukeyHSD-plot.png",
     plot = last_plot(),
-    path = "../output"
+    path = "../../output/01_temp-size-analysis"
   )
 
 ```
