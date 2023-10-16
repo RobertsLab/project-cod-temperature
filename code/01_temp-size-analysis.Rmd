@@ -88,6 +88,12 @@ codTempData_reformat %>%
   ylab("Size (mm)") +
   facet_wrap(~date)
 
+ggsave(
+    "01_sizeVtreatment-all-dates.png",
+    plot = last_plot(),
+    path = "../output"
+  )
+
 # Plot weight measurements for all temperature treatments across the time of the study
 codTempData_reformat %>%
   ggplot(aes(x=Temperature,
@@ -100,6 +106,12 @@ codTempData_reformat %>%
   xlab("Temperature Treatment (*C)") +
   ylab("Weight (g)") +
   facet_wrap(~date)
+
+ggsave(
+    "02_weightVtreatment-all-dates.png",
+    plot = last_plot(),
+    path = "../output"
+  )
 ```
 
 # Size/Weight Change
@@ -195,8 +207,13 @@ codTempData_plus %>%
               size = 1.5) +
   annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C")) +
   xlab("Temperature Treatment (*C)") +
-  ylab("Size Change (mm) from 11/21/22 to 02/08/23")
+  ylab("Size Change (mm), 11/21/22 to 02/08/23")
 
+  ggsave(
+    "03_size-change-TukeyHSD-plot.png",
+    plot = last_plot(),
+    path = "../output"
+  )
 ```
 
 
@@ -232,7 +249,13 @@ codTempData_plus %>%
               size = 1.5) +
   annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C")) +
   xlab("Temperature Treatment (*C)") +
-  ylab("Weight Change (g) from 11/21/22 to 02/08/23")
+  ylab("Weight Change (g), 11/21/22 to 02/08/23")
+
+ggsave(
+    "04_weight-change-TukeyHSD-plot.png",
+    plot = last_plot(),
+    path = "../output"
+  )
 
 ```
 
