@@ -9,14 +9,10 @@ output:
 knitr::opts_chunk$set(message=FALSE, warning=FALSE, 
                       fig.height=3, fig.width=8,fig.align = "center")
 
-library(tidyverse)
-library(infer)
-library(broom)
-
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("RNASeqPower")
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("RNASeqPower")
 library(RNASeqPower)
 ```
 
