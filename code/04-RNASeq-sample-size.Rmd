@@ -1,0 +1,43 @@
+---
+title: 'RNASeq Sample Size'
+author: "Kathleen Durkin"
+date: "2023-11-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, 
+                      fig.height=3, fig.width=8,fig.align = "center")
+
+library(tidyverse)
+library(infer)
+library(broom)
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("RNASeqPower")
+library(RNASeqPower)
+```
+
+The biggest obstacle to calculating desired number of samples for the cod RNA sequencing is choosing a coefficient of variation ($\sigma$), which is a parameter we would normally need RNA Seq data to estimate. The package authors provide estimates of $\sigma$ values for several taxa, the closest to code being zebrafish. They calculate $\sigma_{90}$ values for each sample (i.e., the value such that 90% of the genes have a smaller variation). Values for the zebrafish are 0.19 and 0.26, and human samples range from 0.32 to 0.74 with a median of 0.43 -- the suggested default values in the edgeR user guide of 0.1 and 0.4 for inbred animal and human studies, in the case where no replicates are available. (Hart et al. 2013). We'll calculate necessary sample size for a range of coefficient of variation values.
+
+We will also use Hart et al.'s recommended depth of 20.
+
+The third important parameter is "effect," or the minimum change in expression between groups that we want/will be able to detect. We'll test a range of values for detectable expression, to see what our options are.
+
+For the final two parameters, significance level (alpha) and power, we'll use the standard values 0.05 and 0.9.
+```{r}
+rnapower(depth=20, cv=c(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4), effect=c(1.25, 1.5, 1.75, 2), alpha=0.05, power=0.9)
+```
+This output table shows the sample size needed for a given detectable expression and coefficient of variation. For example, if we assume cod will have a coefficient of variation similar to the zebrafish of 0.2 and we want to detect a 25% change in expression (expression=1.25), we would need a sample size of 38.
+
+
+We can also try changing depth to see how that would affect necessary sample size
+```{r}
+rnapower(depth=100, cv=c(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4), effect=c(1.25, 1.5, 1.75, 2), alpha=0.05, power=0.9)
+```
+
+Citations:
+Hart SN, Therneau TM, Zhang Y, Poland GA, Kocher JP. Calculating sample size estimates for RNA sequencing data. J Comput Biol. 2013 Dec;20(12):970-8. doi: 10.1089/cmb.2012.0283. Epub 2013 Aug 20. PMID: 23961961; PMCID: PMC3842884.
