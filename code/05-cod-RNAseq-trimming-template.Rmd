@@ -54,13 +54,13 @@ echo "#### Assign Variables ####"
 echo ""
 
 echo "# Data directories"
-echo 'export deep_dive_dir=/home/shared/8TB_HDD_02/shedurkin/deep-dive'
-echo 'export output_dir_top=${deep_dive_dir}/F-Pmea/output/08-Pmea-sRNAseq-trimming'
-echo 'export raw_fastqc_dir=${deep_dive_dir}/F-Pmea/output/08-Pmea-sRNAseq-trimming/raw-fastqc'
-echo 'export raw_reads_dir=${deep_dive_dir}/F-Pmea/data/08-Pmea-sRNAseq-trimming/raw-reads'
+echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
+echo 'export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming-template'
+echo 'export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/raw-fastqc'
+echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming-template/raw-reads'
 echo 'export raw_reads_url="https://owl.fish.washington.edu/nightingales/P_meandrina/30-852430235/"'
-echo 'export trimmed_fastqc_dir=${deep_dive_dir}/F-Pmea/output/08-Pmea-sRNAseq-trimming/trimmed-fastqc'
-echo 'export trimmed_reads_dir=${deep_dive_dir}/F-Pmea/output/08-Pmea-sRNAseq-trimming/trimmed-reads'
+echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-fastqc'
+echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-reads'
 echo ""
 
 echo "# Paths to programs"
@@ -78,7 +78,7 @@ echo "export R2_fastq_pattern='*_R2_*.fastq.gz'"
 echo ""
 
 echo "# Set number of CPUs to use"
-echo 'export threads=40'
+echo 'export threads=20'
 echo ""
 
 echo "# Set maximum read length"
@@ -91,9 +91,9 @@ echo 'export trimmed_checksums=trimmed_fastq_checksums.md5'
 echo 'export NEB_adapters_fasta=NEB-adapters.fasta'
 echo ""
 
-echo "## NEB nebnext-small-rna-library-prep-set-for-illumina adapters"
-echo 'export first_adapter="AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"'
-echo 'export second_adapter="GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT"'
+echo "## Illumina adapters"
+echo 'export first_adapter="AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"'
+echo 'export second_adapter="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"'
 echo ""
 
 echo "## Inititalize arrays"
@@ -120,8 +120,7 @@ cat .bashvars
 
 # Download raw sRNAseq reads
 
-Reads are downloaded from 
-https://owl.fish.washington.edu/nightingales/P_meandrina/30-852430235/
+Reads are downloaded from:
 
 The `--cut-dirs 3` command cuts the preceding directory structure (i.e. `nightingales/P_meandrina/30-852430235/`)
 so that we just end up with the reads.
@@ -240,7 +239,7 @@ ls -lh ${raw_fastqc_dir}
 ```
 
 # Trimming with [flexbar](https://github.com/seqan/flexbar)
-```{bash flexbar-trimming, engine='bash', eval=TRUE}
+```{bash flexbar-trimming, engine='bash', eval=FALSE}
 # Load bash variables into memory
 source .bashvars
 
@@ -279,6 +278,23 @@ done
 # --post-trim-length: Trim reads from 3' end to max length
 # --target: Sets file naming patterns
 # --zip-output GZ: Sets type of compression. GZ = gzip
+
+# --adapter-min-overlap 7: Minimum overlap between adapter and read for trimming consideration
+# --adapter-trim-end RIGHT: Trim adapters from the right (3') end
+# --adapter-trim-position TAIL: Adapters should be found at the end (tail) of the reads
+# --adapter-min-length 7: Sets the minimum length of an adapter. Adapters shorter than this length will be ignored
+# --adapter-seq AGATCGGAAGAGCACACGTCTGAACTCCAGTCA: Specifies the first Illumina adapter sequence to be trimmed
+# --adapter-seq AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT: Specifies the second Illumina adapter sequence to be trimmed
+# --qtrim-format sanger: Specifies the quality score format. In this case, it's set to Sanger format (Phred+33)
+# --qtrim-threshold 20: Sets the quality threshold for trimming (bases w/ score < 20 will be trimmed)
+# --qtrim-position BOTH: Quality trimming should be performed on both ends of the reads
+# --qtrim-final: Quality trimming should be performed as the final step in the trimming process
+# --min-read-length 50: The minimum length a read must have after trimming; reads shorter than this length will be discarded
+# --threads 20: Number of threads (CPU cores) to use for parallel processing
+# --pre-trim-left 0 and --pre-trim-right 0: Specifies the number of bases to be removed from the 5' (left) and 3' (right) ends of the reads before any adapter or quality trimming. In this case, no bases are removed.
+# --pre-trim-phred 33: Specifies the Phred quality score offset used in the input files. For Illumina data, it's typically 33.
+#--input1 and --input2: Input FASTQ files for the paired-end reads.
+#--output1 and --output2: Output files for the trimmed paired-end reads.
 
 # Run flexbar on files
 echo "Beginning flexbar trimming."
