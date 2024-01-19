@@ -1,0 +1,225 @@
+---
+title: "06-cod-RNAseq-alignment-template"
+author: "Kathleen Durkin"
+date: "2024-01-12"
+output:
+  github_document:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,        # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+Template code for aligning RNAseq data to reference transcriptome/genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html) once it's back. May be tested using other data (snow crab)
+
+
+# Create a Bash variables file
+
+This allows usage of Bash variables (e.g. paths to common directories) across R Markdown chunks.
+```{r save-bash-variables-to-rvars-file, engine='bash', eval=TRUE}
+{
+echo "#### Assign Variables ####"
+echo ""
+
+echo "# Data directories"
+echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
+echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment-template'
+echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-fastqc'
+echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-reads'
+echo 'export kallisto_output_dir=${output_dir_top}/kallisto'
+echo ""
+
+
+echo "# Input/Output files"
+echo 'export transcriptome_fasta_dir=${cod_dir}/data'
+echo 'export transcriptome_fasta_name="Gadus_macrocephalus.transcriptome.fasta"'
+echo 'export transcriptome_fasta="${transcriptome_fasta_dir}/${transcriptome_fasta_name}"'
+echo 'export genome_fasta_dir=${cod_dir}/data'
+echo 'export genome_fasta_name="Gadus_macrocephalus.genome.fasta"'
+echo 'export genome_fasta="${genome_fasta_dir}/${genome_fasta_name}"'
+
+
+
+echo "# External data URLs"
+echo 'export transcriptome_fasta_url="http://transcriptome_URL.assembly.fasta.gz"'
+echo 'export genome_fasta_url="http://genome_URL.assembly.fasta.gz"'
+echo ""
+
+
+echo "# Paths to programs"
+echo 'export kallisto=/home/shared/kallisto/kallisto'
+echo 'export trinity-abund-to-matrix=/home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl'
+echo ""
+
+
+echo "# Set number of CPUs to use"
+echo 'export threads=20'
+echo ""
+
+
+echo "# Programs associative array"
+echo "declare -A programs_array"
+echo "programs_array=("
+echo '[kallisto]="${kallisto}" \'
+echo '[trinity-abund-to-matrix]="${trinity-abund-to-matrix}" \'
+echo ")"
+} > .bashvars
+
+cat .bashvars
+```
+
+
+# Align to reference transcriptome (Kallisto pseudoalignment)
+
+
+## Retrieving the reference transcriptome
+
+```{r download-transcriptome-fasta, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+wget \
+--directory-prefix ${transcriptome_fasta_dir} \
+--recursive \
+--no-check-certificate \
+--continue \
+--no-host-directories \
+--no-directories \
+--no-parent \
+--quiet \
+--execute robots=off \
+--accept "${transcriptome_fasta_name}.gz,md5checksums.txt" ${transcriptome_fasta_url}
+
+ls -lh "${transcriptome_fasta_dir}"
+```
+
+
+## Verify transcriptome FastA MD5 checksum
+
+```{r verify-transcriptome-fasta-checksum, engine='bash', eval=FALSE}
+# Load bash variables into memory
+source .bashvars
+
+cd "${transcriptome_fasta_dir}"
+
+# Checksums file contains other files, so this just looks for the sRNAseq files.
+grep "${transcriptome_fasta_name}" md5checksums.txt | md5sum --check
+```
+
+
+## Decompress FastA file
+
+Note kallisto indexing accepts gzipped fasta files, so this step is optional
+```{r decompress-FastA, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+cd "${transcriptome_fasta_dir}"
+
+gunzip --keep "${transcriptome_fasta_name}.gz"
+
+ls -lth
+```
+
+
+## Building Index
+
+```{r kallisto-indexing, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+cd "${transcriptome_fasta_dir}"
+
+${programs_array[kallisto]} index \
+--threads=${threads} \
+--index='transcripts.idx' \
+"${transcriptome_fasta_name}.fna"
+
+```
+
+
+## Sample Quantification
+
+Kallisto can run quantification on either single- or paired-end reads. The default option is paired-end, which requires the input of an even number of paired fastq files (e.g., pairA_R1.fastq, pairA_R2.fastq). 
+To use single-end mode, include the --single flag, as well as -l (--fragment-length=DOUBLE, estimated avg. fragment length) and -s (--sd=DOUBLE, estimates stand. dev. of fragment length), and an number of fastq files.
+Again, gzipped files are acceptable.
+```{r kallisto-quantification, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+${programs_array[kallisto]} quant \
+--threads=${threads} \
+--index='transcripts.idx'
+# Need to make sure the outputs are named appropriately to retain each individual sample ID
+--output-dir=${kallisto_output_dir} \
+--bootstrap-samples=100  \
+# Might need to debug running this command on all of my paired read files in sinlge code chunk (see code from trimming template)
+${trimed_reads_dir}/*_R1*.fastq.gz ${trimed_reads_dir}/*_R2*.fastq.gz
+
+```
+
+
+## Trinity Matrix with Kallisto Output
+
+```{r kallisto-trinity-matrix, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+${programs_array[trinity-abundance-to-matrix]} \
+--est_method kallisto \
+--gene_trans_map 'none' \
+--out_prefix kallisto \
+--name_sample_by_basedir ../output/kallisto/**/*.tsv
+
+
+```
+
+moving results to proper directory
+
+```{bash}
+
+mv kallisto.isoform* ../output/
+```
+
+
+
+
+
+# Align to reference genome (HiSat)
+
+## Retrieving the reference genome
+
+```{r download-genome-fasta, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+wget \
+--directory-prefix ${genome_fasta_dir} \
+--recursive \
+--no-check-certificate \
+--continue \
+--no-host-directories \
+--no-directories \
+--no-parent \
+--quiet \
+--execute robots=off \
+--accept "${genome_fasta_name}.gz,md5checksums.txt" ${genome_fasta_url}
+
+ls -lh "${genome_fasta_dir}"
+```
+
+

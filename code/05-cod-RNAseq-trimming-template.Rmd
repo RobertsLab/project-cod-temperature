@@ -45,9 +45,11 @@ Outputs:
 
 ---
 
+
+
 # Create a Bash variables file
 
-This allows usage of Bash variables across R Markdown chunks.
+This allows usage of Bash variables (e.g. paths to common directories) across R Markdown chunks.
 ```{r save-bash-variables-to-rvars-file, engine='bash', eval=TRUE}
 {
 echo "#### Assign Variables ####"
@@ -56,11 +58,11 @@ echo ""
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
 echo 'export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming-template'
-echo 'export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/raw-fastqc'
+echo 'export raw_fastqc_dir=${output_dir_top}/raw-fastqc'
 echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming-template/raw-reads'
 echo 'export raw_reads_url="https://owl.fish.washington.edu/nightingales/P_meandrina/30-852430235/"'
-echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-fastqc'
-echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-reads'
+echo 'export trimmed_fastqc_dir=${output_dir_top}/trimmed-fastqc'
+echo 'export trimmed_reads_dir=${output_dir_top}/trimmed-reads'
 echo ""
 
 echo "# Paths to programs"
@@ -122,8 +124,8 @@ cat .bashvars
 
 Reads are downloaded from:
 
-The `--cut-dirs 3` command cuts the preceding directory structure (i.e. `nightingales/P_meandrina/30-852430235/`)
-so that we just end up with the reads.
+The `--cut-dirs 3` command cuts the preceding directory structure (i.e. `nightingales/P_meandrina/30-852430235/`) so that we just end up with 
+the reads.
 
 ```{bash download-raw-reads, engine='bash', eval=TRUE}
 # Load bash variables into memory
@@ -237,6 +239,8 @@ echo ""
 ls -lh ${raw_fastqc_dir}
 
 ```
+
+# Concatenate reads (if run on multiple lanes)
 
 # Trimming with [flexbar](https://github.com/seqan/flexbar)
 ```{bash flexbar-trimming, engine='bash', eval=FALSE}
