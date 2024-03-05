@@ -1,56 +1,42 @@
----
-title: "05-cod-RNAseq-trimming"
-author: "Kathleen Durkin"
-date: "2024-03-04"
-output:
-  github_document:
-  html_document:
-    theme: cosmo
-    toc: true
-    toc_float: true
-    number_sections: true
-    code_folding: show
-    code_download: true
----
+05-cod-RNAseq-trimming
+================
+Kathleen Durkin
+2024-03-04
 
-```{r setup, include=FALSE}
-library(knitr)
-knitr::opts_chunk$set(
-  echo = TRUE,         # Display code chunks
-  eval = FALSE,        # Evaluate code chunks
-  warning = FALSE,     # Hide warnings
-  message = FALSE,     # Hide messages
-  comment = ""         # Prevents appending '##' to beginning of lines in code output
-)
-```
+Code for trimming and QCing RNAseq data, to be used on [Pacific cod
+RNAseq
+data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html),
+raw reads found
+[here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
 
-Code for trimming and QCing RNAseq data, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html), raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
-
-FastQC/MultiQC assessment of raw and [flexbar](https://github.com/seqan/flexbar)-trimmed sequences of 
+FastQC/MultiQC assessment of raw and
+[flexbar](https://github.com/seqan/flexbar)-trimmed sequences of
 
 Inputs:
 
-- RNAseq gzipped FastQs (e.g. `*.fastq.gz`)
+- RNAseq gzipped FastQs (e.g. `*.fastq.gz`)
 
 Outputs:
 
-- [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) HTML reports for raw and trimmed reads.
+- [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+  HTML reports for raw and trimmed reads.
 
-- [`MultiQC`](https://multiqc.info/) HTML summaries of [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) for raw and trimmed reads.
+- [`MultiQC`](https://multiqc.info/) HTML summaries of
+  [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+  for raw and trimmed reads.
 
 - Trimmed reads: `*flexbar_trim.25bp.fastq.gz`
 
 (info about library prep/sequencing)
 
-
----
-
-
+------------------------------------------------------------------------
 
 # Create a Bash variables file
 
-This allows usage of Bash variables (e.g. paths to common directories) across R Markdown chunks.
-```{r save-bash-variables-to-rvars-file, engine='bash', eval=TRUE}
+This allows usage of Bash variables (e.g. paths to common directories)
+across R Markdown chunks.
+
+``` bash
 {
 echo "#### Assign Variables ####"
 echo ""
@@ -113,15 +99,64 @@ echo ")"
 cat .bashvars
 ```
 
+    #### Assign Variables ####
+
+    # Data directories
+    export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature
+    export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming
+    export raw_fastqc_dir=${output_dir_top}/raw-fastqc
+    export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads
+    export raw_reads_url="https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/"
+    export trimmed_fastqc_dir=${output_dir_top}/trimmed-fastqc
+    export trimmed_reads_dir=${output_dir_top}/trimmed-reads
+
+    # Paths to programs
+    export fastqc=/home/shared/FastQC-0.12.1/fastqc
+    export multiqc=/home/sam/programs/mambaforge/bin/multiqc
+    export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar
+
+    # Set FastQ filename patterns
+    export fastq_pattern='*.fastq.gz'
+    export R1_fastq_pattern='*_R1_*.fastq.gz'
+    export R2_fastq_pattern='*_R2_*.fastq.gz'
+
+    # Set number of CPUs to use
+    export threads=20
+
+    # Input/output files
+    export fastq_checksums=input_fastq_checksums.md5
+    export trimmed_checksums=trimmed_fastq_checksums.md5
+    export NEB_adapters_fasta=NEB-adapters.fasta
+
+    ## Illumina adapters
+    export first_adapter="AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
+    export second_adapter="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+
+    ## Inititalize arrays
+    export fastq_array_R1=()
+    export fastq_array_R2=()
+    export raw_fastqs_array=()
+    export R1_names_array=()
+    export R2_names_array=()
+    export trimmed_fastqs_array=()
+
+    # Programs associative array
+    declare -A programs_array
+    programs_array=(
+    [fastqc]="${fastqc}" \
+    [multiqc]="${multiqc}" \
+    [flexbar]="${flexbar}"
+    )
 
 # Download raw sRNAseq reads
 
 Reads are downloaded from:
 
-The `--cut-dirs 3` command cuts the preceding directory structure (i.e. `nightingales/P_meandrina/30-852430235/`) so that we just end up with 
-the reads.
+The `--cut-dirs 3` command cuts the preceding directory structure
+(i.e. `nightingales/P_meandrina/30-852430235/`) so that we just end up
+with the reads.
 
-```{bash download-raw-reads, engine='bash', eval=FALSE}
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -139,10 +174,9 @@ wget \
 ls -lh "${raw_reads_dir}"
 ```
 
-
-
 ## Verify raw read checksums
-```{bash verify-raw-read-checksums, engine='bash', eval=FALSE}
+
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -152,7 +186,8 @@ md5sum checksums.md5 --check
 ```
 
 # FastQC/MultiQC on raw reads
-```{bash raw-fastqc-multiqc, engine='bash', eval=FALSE}
+
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -201,19 +236,15 @@ echo ""
 
 # View directory contents
 ls -lh ${raw_fastqc_dir}
-
 ```
 
+######## 
 
-
-########
-Not sure yet if I'm going to trim, ignore for now
-########
-
-
+Not sure yet if I’m going to trim, ignore for now \########
 
 # Create adapters FastA for use with [flexbar](https://github.com/seqan/flexbar) trimming
-```{bash create-FastA-of-adapters, engine='bash', eval=FALSE}
+
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -243,7 +274,8 @@ echo ""
 # Concatenate reads (if run on multiple lanes)
 
 # Trimming with [flexbar](https://github.com/seqan/flexbar)
-```{bash flexbar-trimming, engine='bash', eval=FALSE}
+
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -348,11 +380,11 @@ echo ""
 cat "${trimmed_reads_dir}/${trimmed_checksums}"
 
 ############ END FLEXBAR ############
-
 ```
 
 # FastQC/MultiQC on trimmed reads
-```{bash FastQC-MultiQC-trimmed-reads, engine='bash', eval=FALSE}
+
+``` bash
 # Load bash variables into memory
 source .bashvars
 
@@ -400,7 +432,6 @@ echo ""
 
 # View directory contents
 ls -lh ${trimmed_fastqc_dir}
-
 ```
 
 # Summary
