@@ -1,7 +1,7 @@
 ---
-title: "05-cod-RNAseq-trimming-template"
+title: "05-cod-RNAseq-trimming"
 author: "Kathleen Durkin"
-date: "2023-12-27"
+date: "2024-03-04"
 output:
   github_document:
   html_document:
@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-Template code for trimming and QCing RNAseq data, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html) once it's back. May be tested using other data (snow crab)
+Code for trimming and QCing RNAseq data, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html), raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
 
 FastQC/MultiQC assessment of raw and [flexbar](https://github.com/seqan/flexbar)-trimmed sequences of 
 
@@ -57,21 +57,19 @@ echo ""
 
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
-echo 'export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming-template'
+echo 'export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming'
 echo 'export raw_fastqc_dir=${output_dir_top}/raw-fastqc'
-echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming-template/raw-reads'
-echo 'export raw_reads_url="https://owl.fish.washington.edu/nightingales/P_meandrina/30-852430235/"'
+echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads'
+echo 'export raw_reads_url="https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/"'
 echo 'export trimmed_fastqc_dir=${output_dir_top}/trimmed-fastqc'
 echo 'export trimmed_reads_dir=${output_dir_top}/trimmed-reads'
 echo ""
 
 echo "# Paths to programs"
 echo 'export fastqc=/home/shared/FastQC-0.12.1/fastqc'
-echo 'export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar'
 echo 'export multiqc=/home/sam/programs/mambaforge/bin/multiqc'
+echo 'export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar'
 echo ""
-
-
 
 echo "# Set FastQ filename patterns"
 echo "export fastq_pattern='*.fastq.gz'"
@@ -81,10 +79,6 @@ echo ""
 
 echo "# Set number of CPUs to use"
 echo 'export threads=20'
-echo ""
-
-echo "# Set maximum read length"
-echo 'export max_read_length=25'
 echo ""
 
 echo "# Input/output files"
@@ -140,7 +134,7 @@ wget \
 --no-host-directories \
 --no-parent \
 --quiet \
---accept "sRNA*,checksums.md5" ${raw_reads_url}
+--accept ${fastq_pattern} ${raw_reads_url}
 
 ls -lh "${raw_reads_dir}"
 ```
@@ -148,43 +142,13 @@ ls -lh "${raw_reads_dir}"
 
 
 ## Verify raw read checksums
-```{bash verify-raw-read-checksums, engine='bash', eval=TRUE}
+```{bash verify-raw-read-checksums, engine='bash', eval=FALSE}
 # Load bash variables into memory
 source .bashvars
 
 cd "${raw_reads_dir}"
 
-# Checksums file contains other files, so this just looks for the sRNAseq files.
-grep "sRNA" checksums.md5 | md5sum --check
-```
-
-
-# Create adapters FastA for use with [flexbar](https://github.com/seqan/flexbar) trimming
-```{bash create-FastA-of-adapters, engine='bash', eval=TRUE}
-# Load bash variables into memory
-source .bashvars
-
-echo "Creating adapters FastA."
-echo ""
-adapter_count=0
-
-# Check for adapters file first
-# Then create adapters file if doesn't exist
-if [ -f "${output_dir_top}/${NEB_adapters_fasta}" ]; then
-  echo "${output_dir_top}/${NEB_adapters_fasta} already exists. Nothing to do."
-else
-  for adapter in "${first_adapter}" "${second_adapter}"
-  do
-    adapter_count=$((adapter_count + 1))
-    printf ">%s\n%s\n" "adapter_${adapter_count}" "${adapter}"
-  done >> "${output_dir_top}/${NEB_adapters_fasta}"
-fi
-
-echo ""
-echo "Adapters FastA:"
-echo ""
-cat "${output_dir_top}/${NEB_adapters_fasta}"
-echo ""
+md5sum checksums.md5 --check
 ```
 
 # FastQC/MultiQC on raw reads
@@ -195,7 +159,7 @@ source .bashvars
 ############ RUN FASTQC ############
 
 
-# Create array of trimmed FastQs
+# Create array of raw FastQs
 raw_fastqs_array=(${raw_reads_dir}/${fastq_pattern})
 
 # Pass array contents to new variable as space-delimited list
@@ -238,6 +202,39 @@ echo ""
 # View directory contents
 ls -lh ${raw_fastqc_dir}
 
+```
+
+
+
+
+
+
+# Create adapters FastA for use with [flexbar](https://github.com/seqan/flexbar) trimming
+```{bash create-FastA-of-adapters, engine='bash', eval=FALSE}
+# Load bash variables into memory
+source .bashvars
+
+echo "Creating adapters FastA."
+echo ""
+adapter_count=0
+
+# Check for adapters file first
+# Then create adapters file if doesn't exist
+if [ -f "${output_dir_top}/${NEB_adapters_fasta}" ]; then
+  echo "${output_dir_top}/${NEB_adapters_fasta} already exists. Nothing to do."
+else
+  for adapter in "${first_adapter}" "${second_adapter}"
+  do
+    adapter_count=$((adapter_count + 1))
+    printf ">%s\n%s\n" "adapter_${adapter_count}" "${adapter}"
+  done >> "${output_dir_top}/${NEB_adapters_fasta}"
+fi
+
+echo ""
+echo "Adapters FastA:"
+echo ""
+cat "${output_dir_top}/${NEB_adapters_fasta}"
+echo ""
 ```
 
 # Concatenate reads (if run on multiple lanes)

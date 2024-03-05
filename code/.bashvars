@@ -2,17 +2,17 @@
 
 # Data directories
 export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature
-export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming-template
+export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming
 export raw_fastqc_dir=${output_dir_top}/raw-fastqc
-export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming-template/raw-reads
-export raw_reads_url="https://gannet.fish.washington.edu/mewing0/Man_clam_raw/"
+export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads
+export raw_reads_url="https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/"
 export trimmed_fastqc_dir=${output_dir_top}/trimmed-fastqc
 export trimmed_reads_dir=${output_dir_top}/trimmed-reads
 
 # Paths to programs
 export fastqc=/home/shared/FastQC-0.12.1/fastqc
-export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar
 export multiqc=/home/sam/programs/mambaforge/bin/multiqc
+export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar
 
 # Set FastQ filename patterns
 export fastq_pattern='*.fastq.gz'
@@ -21,9 +21,6 @@ export R2_fastq_pattern='*_R2_*.fastq.gz'
 
 # Set number of CPUs to use
 export threads=20
-
-# Set maximum read length
-export max_read_length=25
 
 # Input/output files
 export fastq_checksums=input_fastq_checksums.md5

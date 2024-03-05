@@ -24,8 +24,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-Template code for aligning RNAseq data to reference transcriptome/genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html) once it's back. May be tested using other data (snow crab)
+Code for aligning RNAseq data to reference transcriptome/genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html). 
 
+- Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
+- Transcriptome downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/), stored [here](https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna) as a part of lab [genomic resources](https://robertslab.github.io/resources/Genomic-Resources/#gadus-macrocephalus-pacific-cod)
+
+Note: Kallisto pseudoalignment doesn't necessarily require input reads to be trimmed, provided they are of sufficient quality.
 
 # Create a Bash variables file
 
@@ -37,9 +41,11 @@ echo ""
 
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
-echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment-template'
-echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-fastqc'
-echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming-template/trimmed-reads'
+echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment'
+echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
+echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
+echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
+echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
 echo 'export kallisto_output_dir=${output_dir_top}/kallisto'
 echo ""
 
@@ -48,15 +54,11 @@ echo "# Input/Output files"
 echo 'export transcriptome_fasta_dir=${cod_dir}/data'
 echo 'export transcriptome_fasta_name="Gadus_macrocephalus.transcriptome.fasta"'
 echo 'export transcriptome_fasta="${transcriptome_fasta_dir}/${transcriptome_fasta_name}"'
-echo 'export genome_fasta_dir=${cod_dir}/data'
-echo 'export genome_fasta_name="Gadus_macrocephalus.genome.fasta"'
-echo 'export genome_fasta="${genome_fasta_dir}/${genome_fasta_name}"'
 
 
-
-echo "# External data URLs"
-echo 'export transcriptome_fasta_url="http://transcriptome_URL.assembly.fasta.gz"'
-echo 'export genome_fasta_url="http://genome_URL.assembly.fasta.gz"'
+echo "# External data URLs and checksums"
+echo 'export transcriptome_fasta_url="https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna"'
+echo 'export transcriptome_checksum="2a6c7c98982727e688f033a9b236725b"'
 echo ""
 
 
@@ -117,7 +119,8 @@ source .bashvars
 cd "${transcriptome_fasta_dir}"
 
 # Checksums file contains other files, so this just looks for the sRNAseq files.
-grep "${transcriptome_fasta_name}" md5checksums.txt | md5sum --check
+md5sum --check <<< "${transcriptome_checksum}  ${transcriptome_fasta_name}"
+
 ```
 
 
