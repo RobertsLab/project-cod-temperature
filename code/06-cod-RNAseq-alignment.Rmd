@@ -1,16 +1,21 @@
 ---
 title: "06-cod-RNAseq-alignment-template"
 author: "Kathleen Durkin"
-date: "2024-01-12"
-output:
-  github_document:
-  html_document:
+date: "2024-03-19"
+always_allow_html: true
+output: 
+  bookdown::html_document2:
     theme: cosmo
     toc: true
     toc_float: true
     number_sections: true
     code_folding: show
     code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -42,8 +47,8 @@ echo ""
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
 echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment'
-echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
-echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
+echo 'export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc'
+echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads'
 echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
 echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
 echo 'export kallisto_output_dir=${output_dir_top}/kallisto'
@@ -52,8 +57,9 @@ echo ""
 
 echo "# Input/Output files"
 echo 'export transcriptome_fasta_dir=${cod_dir}/data'
-echo 'export transcriptome_fasta_name="Gadus_macrocephalus.transcriptome.fasta"'
+echo 'export transcriptome_fasta_name="GCF_031168955.1_ASM3116895v1_rna"'
 echo 'export transcriptome_fasta="${transcriptome_fasta_dir}/${transcriptome_fasta_name}"'
+echo 'export kallisto_index_name="G_macrocephalus_kallisto_index.idx"'
 
 
 echo "# External data URLs and checksums"
@@ -64,7 +70,7 @@ echo ""
 
 echo "# Paths to programs"
 echo 'export kallisto=/home/shared/kallisto/kallisto'
-echo 'export trinity-abund-to-matrix=/home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl'
+echo 'export trinity_abund_to_matrix=/home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl'
 echo ""
 
 
@@ -77,7 +83,7 @@ echo "# Programs associative array"
 echo "declare -A programs_array"
 echo "programs_array=("
 echo '[kallisto]="${kallisto}" \'
-echo '[trinity-abund-to-matrix]="${trinity-abund-to-matrix}" \'
+echo '[trinity_abund_to_matrix]="${trinity_abund_to_matrix}" \'
 echo ")"
 } > .bashvars
 
@@ -90,7 +96,7 @@ cat .bashvars
 
 ## Retrieving the reference transcriptome
 
-```{r download-transcriptome-fasta, engine='bash', eval=TRUE}
+```{r download-transcriptome-fasta, engine='bash', eval=FALSE}
 # Load bash variables into memory
 source .bashvars
 
@@ -104,7 +110,12 @@ wget \
 --no-parent \
 --quiet \
 --execute robots=off \
---accept "${transcriptome_fasta_name}.gz,md5checksums.txt" ${transcriptome_fasta_url}
+--accept "${transcriptome_fasta_name}.fna" ${transcriptome_fasta_url}
+```
+
+```{r check-transcriptome-dir, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
 
 ls -lh "${transcriptome_fasta_dir}"
 ```
@@ -112,67 +123,111 @@ ls -lh "${transcriptome_fasta_dir}"
 
 ## Verify transcriptome FastA MD5 checksum
 
-```{r verify-transcriptome-fasta-checksum, engine='bash', eval=FALSE}
+```{r verify-transcriptome-fasta-checksum, engine='bash', eval=TRUE}
 # Load bash variables into memory
 source .bashvars
 
 cd "${transcriptome_fasta_dir}"
 
 # Checksums file contains other files, so this just looks for the sRNAseq files.
-md5sum --check <<< "${transcriptome_checksum}  ${transcriptome_fasta_name}"
+md5sum --check <<< "${transcriptome_checksum}  ${transcriptome_fasta_name}.fna"
 
-```
-
-
-## Decompress FastA file
-
-Note kallisto indexing accepts gzipped fasta files, so this step is optional
-```{r decompress-FastA, engine='bash', eval=TRUE}
-# Load bash variables into memory
-source .bashvars
-
-cd "${transcriptome_fasta_dir}"
-
-gunzip --keep "${transcriptome_fasta_name}.gz"
-
-ls -lth
 ```
 
 
 ## Building Index
 
-```{r kallisto-indexing, engine='bash', eval=TRUE}
+```{r kallisto-indexing, engine='bash', eval=FALSE}
 # Load bash variables into memory
 source .bashvars
 
-cd "${transcriptome_fasta_dir}"
+cd "${kallisto_output_dir}"
 
 ${programs_array[kallisto]} index \
 --threads=${threads} \
---index='transcripts.idx' \
-"${transcriptome_fasta_name}.fna"
+--index="${kallisto_index_name}" \
+"${transcriptome_fasta}.fna"
+```
 
+```{r check-index-file, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+ls -lh ${kallisto_output_dir}
 ```
 
 
 ## Sample Quantification
 
 Kallisto can run quantification on either single- or paired-end reads. The default option is paired-end, which requires the input of an even number of paired fastq files (e.g., pairA_R1.fastq, pairA_R2.fastq). 
-To use single-end mode, include the --single flag, as well as -l (--fragment-length=DOUBLE, estimated avg. fragment length) and -s (--sd=DOUBLE, estimates stand. dev. of fragment length), and an number of fastq files.
+To use single-end mode, include the --single flag, as well as -l (--fragment-length=DOUBLE, estimated avg. fragment length) and -s (--sd=DOUBLE, estimates stand. dev. of fragment length), and a number of fastq files.
 Again, gzipped files are acceptable.
-```{r kallisto-quantification, engine='bash', eval=TRUE}
+
+Kallisto quant is rather finicky about how you input sets of paired reads, and you can only input a single pair at a time. To circumvent, I'll create a quantification function and apply it iteratively to each pair of reads using a loop.
+
+```{r kallisto-quantification, engine='bash', eval=FALSE}
 # Load bash variables into memory
 source .bashvars
 
-${programs_array[kallisto]} quant \
---threads=${threads} \
---index='transcripts.idx'
-# Need to make sure the outputs are named appropriately to retain each individual sample ID
---output-dir=${kallisto_output_dir} \
---bootstrap-samples=100  \
-# Might need to debug running this command on all of my paired read files in sinlge code chunk (see code from trimming template)
-${trimed_reads_dir}/*_R1*.fastq.gz ${trimed_reads_dir}/*_R2*.fastq.gz
+# Function to run kallisto quant. Takes two (paired) reads as input, outputs to sample-associated directory
+run_kallisto_quant() {
+    source .bashvars  # Source .bashvars inside the function to make its variables accessible
+    local R1_fastq=${1}
+    local R2_fastq=${2}
+    
+    cd ${kallisto_output_dir}
+    sample_num=$(basename "${R1_fastq}" "_R1_001.fastq.gz")
+    mkdir kallisto_quant_${sample_num}
 
+    ${programs_array[kallisto]} quant \
+        --threads=${threads} \
+        --index="${kallisto_output_dir}/${kallisto_index_name}" \
+        --output-dir="${kallisto_output_dir}/kallisto_quant_${sample_num}" \
+        --bootstrap-samples=100 \
+        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq}
+}
+
+
+
+# Iteratively apply run_kallisto_quant on each pair of input reads
+for file_r1 in "${raw_reads_dir}"/*_R1_001.fastq.gz; do
+    # Extract the sample name from the file name
+    sample_name=$(basename "${file_r1}" "_R1_001.fastq.gz")
+
+    # Form the file names (function takes input file names, not paths)
+    file_r1_name="${sample_name}_R1_001.fastq.gz"
+    file_r2_name="${sample_name}_R2_001.fastq.gz"
+
+    # Check that the sample hasn't already been quantified
+    if [ ! -d "${kallisto_output_dir}/kallisto_quant_${sample_name}" ]; then
+    
+        # Check if the corresponding R2 file exists
+        if [ -e "${raw_reads_dir}/${file_r2}" ]; then
+            # Run kallisto quant on the file pair
+            run_kallisto_quant "${file_r1_name}" "${file_r2_name}" 
+
+            echo "Processed sample: ${sample_name}"
+        fi
+    else
+        echo "Sample already processed: ${sample_name}"
+    fi
+done
+```
+
+Check that we have the appropriate number of output folders. We should have (#rawreads/2)+1 -- one output folder for each pair of reads plus the single kallisto index file
+```{r check-kallisto-output, engine='bash', eval=TRUE}
+# Load bash variables into memory
+source .bashvars
+
+# Count number of raw read files
+cd ${raw_reads_dir}
+echo "Number of raw reads:"
+ls -1 | wc -l
+
+# Count number of kallisto output 
+cd ${kallisto_output_dir}
+echo "Number of output files/folders"
+ls -1 | wc -l
 ```
 
 
@@ -182,47 +237,14 @@ ${trimed_reads_dir}/*_R1*.fastq.gz ${trimed_reads_dir}/*_R2*.fastq.gz
 # Load bash variables into memory
 source .bashvars
 
-${programs_array[trinity-abundance-to-matrix]} \
---est_method kallisto \
+cd ${kallisto_output_dir}
+
+${programs_array[trinity_abund_to_matrix]} \
+--est_method 'kallisto' \
 --gene_trans_map 'none' \
---out_prefix kallisto \
---name_sample_by_basedir ../output/kallisto/**/*.tsv
+--out_prefix 'kallisto' \
+--name_sample_by_basedir ${kallisto_output_dir}/kallisto_quant_*/abundance.tsv
 
-
+ls -lh ${kallisto_output_dir}
 ```
-
-moving results to proper directory
-
-```{bash}
-
-mv kallisto.isoform* ../output/
-```
-
-
-
-
-
-# Align to reference genome (HiSat)
-
-## Retrieving the reference genome
-
-```{r download-genome-fasta, engine='bash', eval=TRUE}
-# Load bash variables into memory
-source .bashvars
-
-wget \
---directory-prefix ${genome_fasta_dir} \
---recursive \
---no-check-certificate \
---continue \
---no-host-directories \
---no-directories \
---no-parent \
---quiet \
---execute robots=off \
---accept "${genome_fasta_name}.gz,md5checksums.txt" ${genome_fasta_url}
-
-ls -lh "${genome_fasta_dir}"
-```
-
 
