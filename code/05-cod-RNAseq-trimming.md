@@ -25,7 +25,7 @@ Outputs:
   [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
   for raw and trimmed reads.
 
-- Trimmed reads: `*flexbar_trim.25bp.fastq.gz`
+- Trimmed reads: `*flexbar_trim.fastq.gz`
 
 (info about library prep/sequencing)
 
@@ -148,7 +148,7 @@ cat .bashvars
     [flexbar]="${flexbar}"
     )
 
-# Download raw sRNAseq reads
+# Download raw RNAseq reads
 
 Reads are downloaded from:
 
@@ -233,45 +233,58 @@ echo ""
 rm ${raw_fastqc_dir}/*.zip
 echo "FastQC zip files removed."
 echo ""
+```
 
+``` bash
 # View directory contents
 ls -lh ${raw_fastqc_dir}
 ```
 
-######## 
+    total 20M
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Oct 25 12:54 01_temp-size-analysis
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers  17M Oct 25 12:54 03-transcriptome-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 8.9K Oct 25 12:54 03-transcriptome-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2 11:00 04-RNASeq-sample-size.html
+    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2 10:58 04-RNASeq-sample-size.md
+    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2 11:00 04-RNASeq-sample-size.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  13K Mar  4 17:51 05-cod-RNAseq-trimming.md
+    -rw-r--r-- 1 shedurkin labmembers  11K Mar 22 12:15 05-cod-RNAseq-trimming.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 19 14:53 06-cod-RNAseq-alignment.html
+    -rw-r--r-- 1 shedurkin labmembers  35K Mar 19 14:43 06-cod-RNAseq-alignment.md
+    -rw-r--r-- 1 shedurkin labmembers 8.1K Mar 19 14:52 06-cod-RNAseq-alignment.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 8.0K Mar 21 15:59 07-cod-RNAseq-DESeq2.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  318 Oct 25 12:54 Rplot001.png
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 rsconnect
+    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25 12:54 Temp-Size-Graph-Box-Line.html
+    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.log
+    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25 12:54 Temp-Size-Graph-Box-Line.tex
 
-Not sure yet if I’m going to trim, ignore for now \########
+Samples 10, 13, 19, 37, 41, 48, 98, 129, 149, 57-S, 58-S had low
+quantity/quality of RNA after RNA extraction (see [Azenta RNA extraction
+QC
+report](https://github.com/RobertsLab/project-cod-temperature/blob/main/data/Sample.QC.report.of_30-943133806_240118025106.pdf))
 
-# Create adapters FastA for use with [flexbar](https://github.com/seqan/flexbar) trimming
+**Notes:** - Not enough starting material: 19, 41, 48, 98, 129, 149, -
+RIN \< 6: 10, 13, 37, 57-S, 58-S - DV200 \< 70: 19, 41, 48, 98, 129,
+149, 57-S
 
-``` bash
-# Load bash variables into memory
-source .bashvars
+RNA Integrity Number (RIN) is a measure of RNA quality ranging from 1 -
+10, with 1 representing highly degraded RNA and 10 representing intact
+RNA. Most researchers aim for RIN values of \> 8, but Azenta considers
+anything \> 6 acceptable. It is also generally assumed that RIN is
+representative of mRNA quality. It’s worth noting there is some debate
+surrounding the accuracy of RIN as a measure of RNA integrity – see
+[ScienceDirect’s summary of
+RIN](https://www.sciencedirect.com/topics/biochemistry-genetics-and-molecular-biology/rna-integrity-number)
 
-echo "Creating adapters FastA."
-echo ""
-adapter_count=0
-
-# Check for adapters file first
-# Then create adapters file if doesn't exist
-if [ -f "${output_dir_top}/${NEB_adapters_fasta}" ]; then
-  echo "${output_dir_top}/${NEB_adapters_fasta} already exists. Nothing to do."
-else
-  for adapter in "${first_adapter}" "${second_adapter}"
-  do
-    adapter_count=$((adapter_count + 1))
-    printf ">%s\n%s\n" "adapter_${adapter_count}" "${adapter}"
-  done >> "${output_dir_top}/${NEB_adapters_fasta}"
-fi
-
-echo ""
-echo "Adapters FastA:"
-echo ""
-cat "${output_dir_top}/${NEB_adapters_fasta}"
-echo ""
-```
-
-# Concatenate reads (if run on multiple lanes)
+DV200 is another measure of RNA quality that represents the percentage
+of RNA fragments of \>200 nucleotides in length. A recent study
+suggested that DV200 may be a more meaningful assessment of mRNA quality
+than RIN ([Matsubara et al 2020](https://doi.org/10.1155/2020/9349132))
+for NGS, but both are still commonly used.
 
 # Trimming with [flexbar](https://github.com/seqan/flexbar)
 
@@ -307,30 +320,14 @@ done
 
 ############ RUN FLEXBAR ############
 # Uses parameter substitution (e.g. ${R1_sample_name%%_*})to rm the _R[12]
-# Uses NEB adapter file
+# Uses built-in adapter presets (https://github.com/seqan/flexbar/wiki/Manual#adapter-removal-presets)
+# --adapter-preset TruSeq: several adapter presets for Illumina libraries are included in Flexbar
 # --adapter-pair-overlap ON: Recommended by NEB sRNA kit
 # --qtrim-threshold 25: Minimum quality
-# --qtrim-format i1.8: Sets sequencer as illumina
-# --post-trim-length: Trim reads from 3' end to max length
+# --qtrim-format i1.8: Sets sequencer as Illumina
 # --target: Sets file naming patterns
 # --zip-output GZ: Sets type of compression. GZ = gzip
-
-# --adapter-min-overlap 7: Minimum overlap between adapter and read for trimming consideration
-# --adapter-trim-end RIGHT: Trim adapters from the right (3') end
-# --adapter-trim-position TAIL: Adapters should be found at the end (tail) of the reads
-# --adapter-min-length 7: Sets the minimum length of an adapter. Adapters shorter than this length will be ignored
-# --adapter-seq AGATCGGAAGAGCACACGTCTGAACTCCAGTCA: Specifies the first Illumina adapter sequence to be trimmed
-# --adapter-seq AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT: Specifies the second Illumina adapter sequence to be trimmed
-# --qtrim-format sanger: Specifies the quality score format. In this case, it's set to Sanger format (Phred+33)
-# --qtrim-threshold 20: Sets the quality threshold for trimming (bases w/ score < 20 will be trimmed)
-# --qtrim-position BOTH: Quality trimming should be performed on both ends of the reads
-# --qtrim-final: Quality trimming should be performed as the final step in the trimming process
-# --min-read-length 50: The minimum length a read must have after trimming; reads shorter than this length will be discarded
-# --threads 20: Number of threads (CPU cores) to use for parallel processing
-# --pre-trim-left 0 and --pre-trim-right 0: Specifies the number of bases to be removed from the 5' (left) and 3' (right) ends of the reads before any adapter or quality trimming. In this case, no bases are removed.
-# --pre-trim-phred 33: Specifies the Phred quality score offset used in the input files. For Illumina data, it's typically 33.
-#--input1 and --input2: Input FASTQ files for the paired-end reads.
-#--output1 and --output2: Output files for the trimmed paired-end reads.
+#
 
 # Run flexbar on files
 echo "Beginning flexbar trimming."
@@ -346,13 +343,12 @@ do
   ${programs_array[flexbar]} \
   --reads ${fastq_array_R1[index]} \
   --reads2 ${fastq_array_R2[index]}  \
-  --adapters ${output_dir_top}/${NEB_adapters_fasta} \
+  --adapter-preset "TruSeq" \
   --adapter-pair-overlap ON \
   --qtrim-format i1.8 \
   --qtrim-threshold 25 \
-  --post-trim-length ${max_read_length} \
   --threads ${threads} \
-  --target "${trimmed_reads_dir}/${R1_sample_name%%_*}.flexbar_trim.${max_read_length}bp" \
+  --target "${trimmed_reads_dir}/${R1_sample_name%%_*}.flexbar_trim.R" \
   --zip-output GZ
         
     # Move to trimmed directory
@@ -361,8 +357,8 @@ do
 
     # Generate md5 checksums for newly trimmed files
     {
-      md5sum "${R1_sample_name%%_*}.flexbar_trim.${max_read_length}bp_1.fastq.gz"
-      md5sum "${R2_sample_name%%_*}.flexbar_trim.${max_read_length}bp_2.fastq.gz"
+      md5sum "${R1_sample_name%%_*}.flexbar_trim.R_1.fastq.gz"
+      md5sum "${R2_sample_name%%_*}.flexbar_trim.R_2.fastq.gz"
     } >> "${trimmed_checksums}"
     
     # Change back to to raw reads directory
@@ -429,9 +425,33 @@ echo ""
 rm ${trimmed_fastqc_dir}/*.zip
 echo "FastQC zip files removed."
 echo ""
+```
 
+``` bash
 # View directory contents
 ls -lh ${trimmed_fastqc_dir}
 ```
+
+    total 20M
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Oct 25 12:54 01_temp-size-analysis
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers  17M Oct 25 12:54 03-transcriptome-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 8.9K Oct 25 12:54 03-transcriptome-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2 11:00 04-RNASeq-sample-size.html
+    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2 10:58 04-RNASeq-sample-size.md
+    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2 11:00 04-RNASeq-sample-size.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  13K Mar  4 17:51 05-cod-RNAseq-trimming.md
+    -rw-r--r-- 1 shedurkin labmembers  11K Mar 22 12:15 05-cod-RNAseq-trimming.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 19 14:53 06-cod-RNAseq-alignment.html
+    -rw-r--r-- 1 shedurkin labmembers  35K Mar 19 14:43 06-cod-RNAseq-alignment.md
+    -rw-r--r-- 1 shedurkin labmembers 8.1K Mar 19 14:52 06-cod-RNAseq-alignment.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 8.0K Mar 21 15:59 07-cod-RNAseq-DESeq2.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  318 Oct 25 12:54 Rplot001.png
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 rsconnect
+    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25 12:54 Temp-Size-Graph-Box-Line.html
+    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.log
+    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25 12:54 Temp-Size-Graph-Box-Line.tex
 
 # Summary
