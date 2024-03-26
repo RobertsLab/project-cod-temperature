@@ -90,6 +90,7 @@ echo ")"
 cat .bashvars
 ```
 
+There didn't seem to be a significant difference in sequence quality following trimming, so for now I'm proceeding with the raw reads (though I'll likely eventually rerun the kallisto with trimmed)
 
 # Align to reference transcriptome (Kallisto pseudoalignment)
 
