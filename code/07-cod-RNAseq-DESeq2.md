@@ -16,26 +16,33 @@ Kathleen Durkin
     sheet</a>
   - <a href="#14-sample-metadata-munging"
     id="toc-14-sample-metadata-munging">1.4 Sample metadata munging</a>
-    - <a href="#141-final-data-reformatting"
-      id="toc-141-final-data-reformatting">1.4.1 Final data reformatting</a>
 - <a href="#2-preliminary-pca-visualization-liver-tissue"
   id="toc-2-preliminary-pca-visualization-liver-tissue">2 Preliminary PCA
   visualization (liver tissue)</a>
   - <a href="#21-deseq-object" id="toc-21-deseq-object">2.1 DESeq object</a>
   - <a href="#22-pca-visualization" id="toc-22-pca-visualization">2.2 PCA
     visualization</a>
-- <a href="#3-treatment-comparisons-liver-tissue"
-  id="toc-3-treatment-comparisons-liver-tissue">3 Treatment comparisons
-  (liver tissue)</a>
-  - <a href="#31-9c-v-16c" id="toc-31-9c-v-16c">3.1 9<em>C v. 16</em>C</a>
-  - <a href="#32-extracting-significantly-expressed-genes"
-    id="toc-32-extracting-significantly-expressed-genes">3.2 Extracting
-    significantly expressed genes</a>
-  - <a href="#33-visualization" id="toc-33-visualization">3.3
-    Visualization</a>
-    - <a href="#331-heatmap" id="toc-331-heatmap">3.3.1 Heatmap</a>
-    - <a href="#332-volcano-plot" id="toc-332-volcano-plot">3.3.2 Volcano
-      plot</a>
+- <a href="#3-liver-tissue-9c-v-16c" id="toc-3-liver-tissue-9c-v-16c">3
+  Liver tissue, 9<em>C v. 16</em>C</a>
+- <a href="#4-extracting-significantly-expressed-genes"
+  id="toc-4-extracting-significantly-expressed-genes">4 Extracting
+  significantly expressed genes</a>
+  - <a href="#41-heatmap" id="toc-41-heatmap">4.1 Heatmap</a>
+  - <a href="#42-volcano-plot" id="toc-42-volcano-plot">4.2 Volcano plot</a>
+- <a href="#5-liver-tissue-9c-v-0c" id="toc-5-liver-tissue-9c-v-0c">5
+  Liver tissue, 9<em>C v. 0</em>C</a>
+- <a href="#6-extracting-significantly-expressed-genes"
+  id="toc-6-extracting-significantly-expressed-genes">6 Extracting
+  significantly expressed genes</a>
+  - <a href="#61-heatmap" id="toc-61-heatmap">6.1 Heatmap</a>
+  - <a href="#62-volcano-plot" id="toc-62-volcano-plot">6.2 Volcano plot</a>
+- <a href="#7-liver-tissue-9c-v-5c" id="toc-7-liver-tissue-9c-v-5c">7
+  Liver tissue, 9<em>C v. 5</em>C</a>
+- <a href="#8-extracting-significantly-expressed-genes"
+  id="toc-8-extracting-significantly-expressed-genes">8 Extracting
+  significantly expressed genes</a>
+  - <a href="#81-heatmap" id="toc-81-heatmap">8.1 Heatmap</a>
+  - <a href="#82-volcano-plot" id="toc-82-volcano-plot">8.2 Volcano plot</a>
 
 Differential gene expression analysis for [Pacific cod RNAseq
 data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html).
@@ -69,7 +76,7 @@ rm(list=ls())
 
 
 # List of packages we want to install (run every time)
-load.lib<-c("DESeq2","edgeR","goseq","dplyr","GenomicFeatures","data.table","calibrate","affycoretools","data.table","vsn","tidybulk","ggplot2","cowplot","pheatmap","gplots","RColorBrewer","EnhancedVolcano","pcaExplorer","readxl","apeglm","ashr","tibble","plotly","sqldf","PCAtools","ggpubr","beepr","genefilter","ComplexHeatmap","circlize","scales", "tidyverse")
+load.lib<-c("DESeq2","edgeR","goseq","dplyr","GenomicFeatures","data.table","calibrate","affycoretools","data.table","vsn","tidybulk","ggplot2","cowplot","pheatmap","gplots","RColorBrewer","EnhancedVolcano","pcaExplorer","readxl","apeglm","ashr","tibble","plotly","sqldf","PCAtools","ggpubr","beepr","genefilter","ComplexHeatmap","circlize","scales", "tidyverse", "gridextra'")
 
 # Select only the packages that aren't currently installed (run every time)
 # install.lib <- load.lib[!load.lib %in% installed.packages()]
@@ -92,8 +99,8 @@ sapply(load.lib,require,character=TRUE)
                TRUE            TRUE            TRUE            TRUE            TRUE 
              ggpubr           beepr      genefilter  ComplexHeatmap        circlize 
                TRUE            TRUE            TRUE           FALSE            TRUE 
-             scales       tidyverse 
-               TRUE            TRUE 
+             scales       tidyverse      gridextra' 
+               TRUE            TRUE           FALSE 
 
 I found the [DESeq2
 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
@@ -298,8 +305,18 @@ cod_sample_info$temp_treatment <- factor(cod_sample_info$temp_treatment)
 cod_sample_info$tank <- factor(cod_sample_info$tank)
 cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
 
-# Remove sample 92 (for now, sample data is missing)
-cod_sample_info <- cod_sample_info[rownames(cod_sample_info) != "sample_92", ]
+# Remove bad/missing samples
+# Missing data: 92
+# MuliQC report: 149, 129
+# Pheatmap outliers:
+# BIPLOT outliers:
+cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129")),]
+cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129)))
+# coldata %>% dplyr::count(group)
+# all(colnames(cts) %in% rownames(coldata))
+# 
+# # Remove sample 92 (for now, sample data is missing)
+# cod_sample_info <- cod_sample_info[rownames(cod_sample_info) != "sample_92", ]
 head(cod_sample_info)
 ```
 
@@ -316,13 +333,13 @@ head(cod_sample_info)
 ncol(cod_counts_data)
 ```
 
-    [1] 79
+    [1] 77
 
 ``` r
 nrow(cod_sample_info)
 ```
 
-    [1] 79
+    [1] 77
 
 ``` r
 all(colnames(cod_counts_data) %in% rownames(cod_sample_info))
@@ -335,24 +352,6 @@ all(colnames(cod_counts_data) == rownames(cod_sample_info))
 ```
 
     [1] TRUE
-
-### 1.4.1 Final data reformatting
-
-``` r
-# # Remove bad samples
-# # MuliQC report: D54, N56, X44
-# # Pheatmap outliers: R53?
-# # BIPLOT outliers: R53, M43, N54, X42, T62
-# coldata <- coldata[!(row.names(coldata) %in% c('D54','N56', 'X44', 'R53', 'M43', 'N54', 'X42','T62')),]
-# cts <- as.matrix(subset(cts, select=-c(D54, N56, X44, R53, M43, N54, X42, T62)))
-# coldata %>% dplyr::count(group)
-# all(colnames(cts) %in% rownames(coldata))
-# 
-# # Reorder data by group for easy visualization in pcaexplorer
-# coldata <- coldata %>% arrange(group)
-# col.order <- rownames(coldata)
-# cts <- cts[,col.order]
-```
 
 # 2 Preliminary PCA visualization (liver tissue)
 
@@ -383,14 +382,23 @@ resultsNames(dds_L) # lists the coefficients
 plotDispEsts(dds_L)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 ## 2.2 PCA visualization
 
 ``` r
-pca_L <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE)
+# Generate PCAs
+# top 500 most variable genes
+pca_L_500<- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE)
+percentVar_L_500 <- round(100*attr(pca_L_500, "percentVar"))
 
-percentVar_L <- round(100*attr(pca_L, "percentVar")) #plot PCA of samples with all data
+# top 1000 most variable genes
+pca_L_1000 <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=1000)
+percentVar_L_1000 <- round(100*attr(pca_L_1000, "percentVar"))
+
+# all genes
+pca_L_all <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=nrow(assay(vst(dds_L))))
+percentVar_L_all <- round(100*attr(pca_L_all, "percentVar"))
 
 # Assign specific colors to each temperature treatment level
 temp_colors <- c(
@@ -399,30 +407,74 @@ temp_colors <- c(
   "9" = "green",
   "16" = "orangered") 
 
-p.L <- ggplot(pca_L, aes(PC1, PC2, color=temp_treatment)) + 
+# Plot PCAs
+p.L.500 <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment)) + 
   geom_point(size=4, alpha = 5/10) +
-  xlab(paste0("PC1: ",percentVar_L[1],"% variance")) +
-  ylab(paste0("PC2: ",percentVar_L[2],"% variance")) + 
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ",percentVar_L_500[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_500[2],"% variance")) + 
   coord_fixed() +
   scale_color_manual(values=temp_colors)+
   stat_ellipse()
 
-p.L
+p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) + 
+  geom_point(size=4, alpha = 5/10) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ",percentVar_L_1000[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_1000[2],"% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) + 
+  geom_point(size=4, alpha = 5/10) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ",percentVar_L_all[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_all[2],"% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+# View PCAs
+p.L.500
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
-ggexport(filename = "../output/07-cod-RNAseq-DESeq2/PCA_L.png",
-         plot   = p.L,
+p.L.1000
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
+
+``` r
+p.L.all
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+
+``` r
+# Export PCAs as pngs
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/PCA_L_500.png",
+         plot   = p.L.500,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/PCA_L_1000.png",
+         plot   = p.L.1000,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/PCA_L_all.png",
+         plot   = p.L.all,
          res    = 600,
          width  = 6000,
          height = 4000)
 ```
 
-# 3 Treatment comparisons (liver tissue)
-
-## 3.1 9*C v. 16*C
+# 3 Liver tissue, 9*C v. 16*C
 
 The 9\*C temperature treatment is effectively our “control,” as it
 represents the ambient temperature that wild juvenile Pacific cod would
@@ -450,7 +502,7 @@ resultsNames(dds_L.9.16) # lists the coefficients
 plotDispEsts(dds_L.9.16)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ``` r
 # Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
@@ -458,8 +510,8 @@ keep <- rowSums(DESeq2::counts(dds_L.9.16) >= 10) >= ncol(countsub_L.9.16)/3
 dds_L.9.16<- dds_L.9.16[keep,]
 
 # Generate Contrasts
-contrast_list_9_16        <- c("temp_treatment", "16", "9") # order is important: factor, treatment group, control
-res_table_L.9.16_noshrink <- results(dds_L.9.16, contrast=contrast_list_9_16, alpha = 0.05)
+contrast_list_L.9.16        <- c("temp_treatment", "16", "9") # order is important: factor, treatment group, control
+res_table_L.9.16_noshrink <- results(dds_L.9.16, contrast=contrast_list_L.9.16, alpha = 0.05)
 
 res_table_L.9.16_norm     <- lfcShrink(dds_L.9.16,
                                        coef=2,
@@ -482,7 +534,7 @@ DESeq2::plotMA(res_table_L.9.16_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
 DESeq2::plotMA(res_table_L.9.16_ashr, xlim=xlim, ylim=ylim, main="ashr")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ``` r
 # Examine results formatting
@@ -565,7 +617,7 @@ summary(res_table_L.9.16_ashr)
     [1] see 'cooksCutoff' argument of ?results
     [2] see 'independentFiltering' argument of ?results
 
-## 3.2 Extracting significantly expressed genes
+# 4 Extracting significantly expressed genes
 
 ``` r
 padj.cutoff <- 0.05
@@ -594,9 +646,7 @@ head(sig_L.9.16_norm)
     5 XR_009527854.1    197.          -1.73  0.275 -6.27 3.63e-10 0.0000000473
     6 XM_060075995.1     34.3         -0.667 0.223 -2.99 2.75e- 3 0.0198      
 
-## 3.3 Visualization
-
-### 3.3.1 Heatmap
+## 4.1 Heatmap
 
 ``` r
 # Retrieve normalized counts matrix
@@ -666,7 +716,7 @@ annotation <- infosub_L.9.16 %>%
     select(temp_treatment)
 
 # Set a color palette
-heat_colors <- brewer.pal(6, "YlOrRd")
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
 
 # Run pheatmap
 h.L.9.16 <- pheatmap(norm_sig_L.9.16, 
@@ -682,7 +732,7 @@ h.L.9.16 <- pheatmap(norm_sig_L.9.16,
                      main = "Normalized Significant Expression, Liver, 9*C and 16*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -697,7 +747,7 @@ Note the argument `scale="row"` was included, so the values plotted in
 the heat map are *Z-scores*, rather thn the normalized count value. This
 vastly improves the color visualization.
 
-### 3.3.2 Volcano plot
+## 4.2 Volcano plot
 
 ``` r
 # Generate plot
@@ -729,12 +779,644 @@ v.L.9.16 <-
 v.L.9.16
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ``` r
 # Save plot
 ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.16.png",
          plot   = v.L.9.16,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
+
+# 5 Liver tissue, 9*C v. 0*C
+
+The 9\*C temperature treatment is effectively our “control,” as it
+represents the ambient temperature that wild juvenile Pacific cod would
+experience.
+
+``` r
+# liver tissue, temperatures 9 vs. 0 
+
+# Filter data
+infosub_L.9.0 <- cod_sample_info %>% filter(tissue_type == "Liver" & (temp_treatment == "9" | temp_treatment == "0"))
+countsub_L.9.0 <- subset(cod_counts_data, select=row.names(infosub_L.9.0))
+
+# Calculate DESeq object
+dds_L.9.0 <- DESeqDataSetFromMatrix(countData = countsub_L.9.0,
+                              colData = infosub_L.9.0,
+                              design = ~ temp_treatment)
+
+dds_L.9.0 <- DESeq(dds_L.9.0)
+resultsNames(dds_L.9.0) # lists the coefficients
+```
+
+    [1] "Intercept"             "temp_treatment_9_vs_0"
+
+``` r
+plotDispEsts(dds_L.9.0)
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+``` r
+# Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
+keep <- rowSums(DESeq2::counts(dds_L.9.0) >= 10) >= ncol(countsub_L.9.0)/3
+dds_L.9.0<- dds_L.9.0[keep,]
+
+# Generate Contrasts
+contrast_list_L.9.0        <- c("temp_treatment", "0", "9") # order is important: factor, treatment group, control
+res_table_L.9.0_noshrink <- results(dds_L.9.0, contrast=contrast_list_L.9.0, alpha = 0.05)
+
+res_table_L.9.0_norm     <- lfcShrink(dds_L.9.0,
+                                       coef=2,
+                                       type="normal") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.0_apeglm   <- lfcShrink(dds_L.9.0,
+                                       coef=2, 
+                                       type="apeglm") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.0_ashr     <- lfcShrink(dds_L.9.0,
+                                       coef=2, 
+                                       type="ashr")
+```
+
+``` r
+# Generate MA plots
+par(mfrow=c(2,2), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-4,4)
+DESeq2::plotMA(res_table_L.9.0_noshrink, xlim=xlim, ylim=ylim, main="no shrink")
+DESeq2::plotMA(res_table_L.9.0_norm, xlim=xlim, ylim=ylim, main="normal")
+DESeq2::plotMA(res_table_L.9.0_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
+DESeq2::plotMA(res_table_L.9.0_ashr, xlim=xlim, ylim=ylim, main="ashr")
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+``` r
+# Examine results formatting
+res_table_L.9.0_norm %>% data.frame() %>% head()
+```
+
+                    baseMean log2FoldChange     lfcSE       stat      pvalue
+    XM_060056358.1 459.61426     -0.2346777 0.2593891 -0.9047980 0.365572396
+    XM_060046625.1 158.42879      0.5030781 0.1513942  3.3228062 0.000891168
+    XM_060048099.1  11.44087     -0.2274619 0.3410279 -0.6657177 0.505591568
+    XM_060054370.1 250.64972     -0.3355560 0.1789746 -1.8747243 0.060830666
+    XM_060067766.1  69.11384     -0.4311391 0.4183747 -1.0407972 0.297969694
+    XR_009525207.1  42.48299     -0.1658664 0.2277196 -0.7283082 0.466424970
+                          padj
+    XM_060056358.1 0.597157452
+    XM_060046625.1 0.005397345
+    XM_060048099.1 0.720159061
+    XM_060054370.1 0.170305411
+    XM_060067766.1 0.523800606
+    XR_009525207.1 0.687651498
+
+Note that the metric we want to use to identify significantly expressed
+genes is the `padj` values, **NOT** the `pvalue`. `padj` are p-values
+corrected for multiple testing (default method is the Benjamini and
+Hochberg method).
+
+``` r
+summary(res_table_L.9.0_noshrink)
+```
+
+    out of 22088 with nonzero total read count
+    adjusted p-value < 0.05
+    LFC > 0 (up)       : 2875, 13%
+    LFC < 0 (down)     : 2720, 12%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 0, 0%
+    (mean count < 5)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.0_norm)
+```
+
+    out of 22088 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 3305, 15%
+    LFC < 0 (down)     : 3368, 15%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 0, 0%
+    (mean count < 5)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.0_apeglm)
+```
+
+    out of 22088 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 3305, 15%
+    LFC < 0 (down)     : 3368, 15%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 0, 0%
+    (mean count < 5)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.0_ashr)
+```
+
+    out of 22088 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 3317, 15%
+    LFC < 0 (down)     : 3356, 15%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 0, 0%
+    (mean count < 5)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+# 6 Extracting significantly expressed genes
+
+``` r
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+# Convert results table into tibble
+res_table_L.9.0_norm_tb <- res_table_L.9.0_norm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+# subset that table to only keep the significant genes using our pre-defined thresholds:
+sig_L.9.0_norm <- res_table_L.9.0_norm_tb %>%
+        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.0_norm)
+```
+
+    # A tibble: 6 × 7
+      gene           baseMean log2FoldChange lfcSE  stat       pvalue        padj
+      <chr>             <dbl>          <dbl> <dbl> <dbl>        <dbl>       <dbl>
+    1 XM_060064090.1     18.3          0.671 0.233  2.87 0.00407      0.0195     
+    2 XM_060054692.1    143.          -0.974 0.364 -2.68 0.00735      0.0319     
+    3 XM_060064443.1     18.0         -1.01  0.224 -4.48 0.00000740   0.0000835  
+    4 XM_060058452.1    140.           0.990 0.173  5.72 0.0000000106 0.000000217
+    5 XM_060058803.1     63.8         -0.716 0.245 -2.93 0.00344      0.0170     
+    6 XM_060049697.1    300.          -0.658 0.187 -3.52 0.000427     0.00287    
+
+## 6.1 Heatmap
+
+``` r
+# Retrieve normalized counts matrix
+dds_L.9.0_norm_counts <- counts(dds_L.9.0, normalized=TRUE)
+
+# Extract normalized expression for significant genes
+norm_sig_L.9.0 <- dds_L.9.0_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.0_norm_counts) %in% sig_L.9.0_norm$gene)
+
+head(norm_sig_L.9.0)
+```
+
+                   sample_100 sample_107 sample_108 sample_109 sample_110 sample_37
+    XM_060064090.1  20.487635   29.96930   36.54226   18.96422   11.96730  16.17293
+    XM_060054692.1 153.118112   47.95088  130.84487  186.64783    0.00000 215.30209
+    XM_060064443.1   9.704669    8.99079   12.37722   11.97740   17.95096  28.30262
+    XM_060058452.1 131.552181  220.27436  374.85287  107.79661  103.71663  92.99433
+    XM_060058803.1  76.559056   47.95088   73.08452   78.85122   58.83924 100.06999
+    XM_060049697.1 265.260955  265.22831  139.09635  240.54614  408.88286 267.86410
+                   sample_38  sample_39  sample_40  sample_41  sample_47  sample_48
+    XM_060064090.1  21.42868   4.995579   2.272397   7.272364   6.254474  19.878462
+    XM_060054692.1 250.28702 205.817834 149.978234 334.528726 145.639896 178.906161
+    XM_060064443.1  25.71442  20.981430  19.315379   7.272364  33.952859   4.677285
+    XM_060058452.1  97.71479  61.945173  67.035726  93.328666  81.308163 180.075482
+    XM_060058803.1  91.71476  46.958438  53.401341  58.178909  93.817111  14.031856
+    XM_060049697.1 320.57310 281.750627 344.268219 155.143757 334.167615 230.356298
+                   sample_49 sample_50 sample_57 sample_58  sample_59 sample_60
+    XM_060064090.1  17.12118  23.41961  11.62928  26.03136   7.302958  18.49375
+    XM_060054692.1 223.23382 142.02863 204.67532 223.23862 195.093310 190.22148
+    XM_060064443.1  18.43819  58.17130  35.66312  25.24253  14.605916  31.70358
+    XM_060058452.1  76.38680 100.47770  62.02282  82.03822  44.861029  73.31453
+    XM_060058803.1  47.41249  98.96676 132.57379 115.16904  68.856462 106.99958
+    XM_060049697.1 453.71122 394.35609 476.02518 376.27145 421.485012 373.17755
+                   sample_67 sample_68 sample_69  sample_70 sample_78  sample_79
+    XM_060064090.1  15.68863  12.61119  22.11226   7.113667  16.75499  19.841256
+    XM_060054692.1 106.55192 258.19749 193.48231 183.939091  65.90296 115.740660
+    XM_060064443.1  20.26448  23.89488  19.74309  12.194857  10.05299   9.920628
+    XM_060058452.1  97.40022  80.97710 138.99137 104.672521 156.37990 112.433784
+    XM_060058803.1 160.80842  42.47979 116.08939  56.909332  39.09498  39.682512
+    XM_060049697.1 471.31249 372.36193 435.13777 361.780754 155.26291 331.789893
+                   sample_80  sample_83  sample_88 sample_90 sample_91 sample_97
+    XM_060064090.1  21.44447   8.150624  15.276898  20.56566  20.37296   7.59710
+    XM_060054692.1 148.98267  48.903741  62.380668   0.00000 110.35354 142.82548
+    XM_060064443.1  18.05850  13.584373   2.546150  10.88770  18.67521  12.15536
+    XM_060058452.1 109.47969 171.163094 323.361014 240.73920 148.55284 212.71879
+    XM_060058803.1  46.27492  10.867498   3.819225  58.06775  51.78128  16.71362
+    XM_060049697.1 180.58505 296.139321 104.392138 106.45754 343.79373 101.80114
+                    sample_98 sample_99 sample_RESUB.116 sample_RESUB.76
+    XM_060064090.1  43.357789  28.32365        38.054860        8.857764
+    XM_060054692.1   0.000000 160.13755         0.000000      224.765754
+    XM_060064443.1   4.955176   9.80434         9.012993       37.645496
+    XM_060058452.1 266.340707 167.76315       224.323382      137.295337
+    XM_060058803.1  50.790553  50.11107        36.051972       40.967157
+    XM_060049697.1  74.327639 185.19308       340.490848      560.253554
+                   sample_RESUB.94
+    XM_060064090.1        34.96565
+    XM_060054692.1        17.98233
+    XM_060064443.1        12.98724
+    XM_060058452.1       162.84001
+    XM_060058803.1        49.95092
+    XM_060049697.1       330.67512
+
+``` r
+# Annotate heatmap
+annotation <- infosub_L.9.0 %>% 
+    select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.0 <- pheatmap(norm_sig_L.9.0, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression, Liver, 9*C and 0*C")
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+``` r
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.0_norm_sig.png",
+         plot   = h.L.9.0,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in
+the heat map are *Z-scores*, rather thn the normalized count value. This
+vastly improves the color visualization.
+
+## 6.2 Volcano plot
+
+``` r
+# Generate plot
+v.L.9.0 <- 
+  ggplot(res_table_L.9.0_norm_tb) +
+  # Plot all
+  geom_point(aes(x=log2FoldChange, y=-log10(padj),color="unchanged"),
+             size=.5) +
+  # Overlay all significantly upregulated in red
+  geom_point(data = sig_L.9.0_norm[sig_L.9.0_norm$log2FoldChange > 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="upregulated"), 
+             size=.5) +
+  # Overlay all significantly downregulated in blue
+  geom_point(data = sig_L.9.0_norm[sig_L.9.0_norm$log2FoldChange < 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
+             size=.5) +
+  ggtitle("Liver, 9*C and 0*C") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  scale_x_continuous(limits = c(-4,4)) +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_color_manual(values = c("unchanged" = "darkgrey", "upregulated" = "red", "downregulated" = "blue"),
+                     labels = c("unchanged" = "Unchanged", "upregulated" = "Upregulated", "downregulated" = "Downregulated"),
+                     name = NULL) +
+  theme(legend.position = "top",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))
+
+v.L.9.0
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+``` r
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.0.png",
+         plot   = v.L.9.0,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
+
+# 7 Liver tissue, 9*C v. 5*C
+
+The 9\*C temperature treatment is effectively our “control,” as it
+represents the ambient temperature that wild juvenile Pacific cod would
+experience.
+
+``` r
+# liver tissue, temperatures 9 vs. 5 
+
+# Filter data
+infosub_L.9.5 <- cod_sample_info %>% filter(tissue_type == "Liver" & (temp_treatment == "9" | temp_treatment == "5"))
+countsub_L.9.5 <- subset(cod_counts_data, select=row.names(infosub_L.9.5))
+
+# Calculate DESeq object
+dds_L.9.5 <- DESeqDataSetFromMatrix(countData = countsub_L.9.5,
+                              colData = infosub_L.9.5,
+                              design = ~ temp_treatment)
+
+dds_L.9.5 <- DESeq(dds_L.9.5)
+resultsNames(dds_L.9.5) # lists the coefficients
+```
+
+    [1] "Intercept"             "temp_treatment_9_vs_5"
+
+``` r
+plotDispEsts(dds_L.9.5)
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+
+``` r
+# Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
+keep <- rowSums(DESeq2::counts(dds_L.9.5) >= 10) >= ncol(countsub_L.9.5)/3
+dds_L.9.5<- dds_L.9.5[keep,]
+
+# Generate Contrasts
+contrast_list_L.9.5        <- c("temp_treatment", "5", "9") # order is important: factor, treatment group, control
+res_table_L.9.5_noshrink <- results(dds_L.9.5, contrast=contrast_list_L.9.5, alpha = 0.05)
+
+res_table_L.9.5_norm     <- lfcShrink(dds_L.9.5,
+                                       coef=2,
+                                       type="normal") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.5_apeglm   <- lfcShrink(dds_L.9.5,
+                                       coef=2, 
+                                       type="apeglm") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.5_ashr     <- lfcShrink(dds_L.9.5,
+                                       coef=2, 
+                                       type="ashr")
+```
+
+``` r
+# Generate MA plots
+par(mfrow=c(2,2), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-4,4)
+DESeq2::plotMA(res_table_L.9.5_noshrink, xlim=xlim, ylim=ylim, main="no shrink")
+DESeq2::plotMA(res_table_L.9.5_norm, xlim=xlim, ylim=ylim, main="normal")
+DESeq2::plotMA(res_table_L.9.5_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
+DESeq2::plotMA(res_table_L.9.5_ashr, xlim=xlim, ylim=ylim, main="ashr")
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+
+``` r
+# Examine results formatting
+res_table_L.9.5_norm %>% data.frame() %>% head()
+```
+
+                    baseMean log2FoldChange     lfcSE       stat    pvalue
+    XM_060056358.1 392.34547     -0.1829443 0.2366647 -0.7731208 0.4394509
+    XM_060046625.1 144.47824      0.3258005 0.1627711  2.0008236 0.0454114
+    XM_060048099.1  10.54619     -0.3194739 0.2773243 -1.1452560 0.2521031
+    XM_060054370.1 202.47002     -0.1720018 0.1722277 -0.9984104 0.3180804
+    XM_060067766.1  49.00323     -0.1674018 0.2619637 -0.6399723 0.5221906
+    XR_009525207.1  31.54552      0.2075414 0.2532834  0.8189104 0.4128375
+                        padj
+    XM_060056358.1 0.7927288
+    XM_060046625.1 0.2524482
+    XM_060048099.1 0.6310484
+    XM_060054370.1 0.6984451
+    XM_060067766.1 0.8452025
+    XR_009525207.1 0.7739639
+
+Note that the metric we want to use to identify significantly expressed
+genes is the `padj` values, **NOT** the `pvalue`. `padj` are p-values
+corrected for multiple testing (default method is the Benjamini and
+Hochberg method).
+
+``` r
+summary(res_table_L.9.5_noshrink)
+```
+
+    out of 21853 with nonzero total read count
+    adjusted p-value < 0.05
+    LFC > 0 (up)       : 769, 3.5%
+    LFC < 0 (down)     : 771, 3.5%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 0, 0%
+    (mean count < 4)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.5_norm)
+```
+
+    out of 21853 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 1127, 5.2%
+    LFC < 0 (down)     : 1045, 4.8%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 848, 3.9%
+    (mean count < 9)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.5_apeglm)
+```
+
+    out of 21853 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 1127, 5.2%
+    LFC < 0 (down)     : 1045, 4.8%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 848, 3.9%
+    (mean count < 9)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+``` r
+summary(res_table_L.9.5_ashr)
+```
+
+    out of 21853 with nonzero total read count
+    adjusted p-value < 0.1
+    LFC > 0 (up)       : 1129, 5.2%
+    LFC < 0 (down)     : 1043, 4.8%
+    outliers [1]       : 0, 0%
+    low counts [2]     : 848, 3.9%
+    (mean count < 9)
+    [1] see 'cooksCutoff' argument of ?results
+    [2] see 'independentFiltering' argument of ?results
+
+# 8 Extracting significantly expressed genes
+
+``` r
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+# Convert results table into tibble
+res_table_L.9.5_norm_tb <- res_table_L.9.5_norm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+# subset that table to only keep the significant genes using our pre-defined thresholds:
+sig_L.9.5_norm <- res_table_L.9.5_norm_tb %>%
+        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.5_norm)
+```
+
+    # A tibble: 6 × 7
+      gene           baseMean log2FoldChange lfcSE  stat        pvalue       padj
+      <chr>             <dbl>          <dbl> <dbl> <dbl>         <dbl>      <dbl>
+    1 XM_060064443.1     13.6         -0.748 0.186 -4.02 0.0000577     0.00251   
+    2 XM_060049697.1    262.          -0.685 0.178 -3.86 0.000113      0.00410   
+    3 XM_060061635.1    263.          -0.902 0.155 -5.81 0.00000000614 0.00000201
+    4 XM_060047037.1     15.4         -1.01  0.211 -4.80 0.00000162    0.000162  
+    5 XM_060062002.1     53.0         -0.640 0.209 -3.06 0.00218       0.0349    
+    6 XM_060065125.1     51.0         -0.969 0.286 -3.41 0.000655      0.0151    
+
+## 8.1 Heatmap
+
+``` r
+# Retrieve normalized counts matrix
+dds_L.9.5_norm_counts <- counts(dds_L.9.5, normalized=TRUE)
+
+# Extract normalized expression for significant genes
+norm_sig_L.9.5 <- dds_L.9.5_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.5_norm_counts) %in% sig_L.9.5_norm$gene)
+
+head(norm_sig_L.9.5)
+```
+
+                   sample_100 sample_107 sample_108 sample_109 sample_110
+    XM_060064443.1   8.249286   7.721225   11.09134   10.19661  14.950188
+    XM_060049697.1 225.480495 227.776125  124.64549  204.78195 340.532070
+    XM_060061635.1 193.399937 203.325581  142.60289  198.83393 185.216223
+    XM_060047037.1   5.499524   7.721225   14.78845   10.19661   6.644528
+    XM_060062002.1  54.078655  63.056667   20.07004   27.19096  49.833961
+    XM_060065125.1  19.248335  11.581837   39.61191    0.00000  10.797358
+                   sample_117 sample_118 sample_119 sample_120 sample_121
+    XM_060064443.1  15.490478   21.21026   32.65003   12.93020   17.17762
+    XM_060049697.1 403.372058  310.37676  441.96990  488.26915  231.44585
+    XM_060061635.1 444.886540  464.50462  433.21013  408.84075  254.95207
+    XM_060047037.1   6.196191   38.88547   38.22442   13.54593   18.98579
+    XM_060062002.1 136.316210   55.14667  120.24767   43.10068   65.99823
+    XM_060065125.1  88.605537  142.81573  125.02572  125.60770   34.35524
+                   sample_127 sample_128 sample_131 sample_137 sample_138
+    XM_060064443.1   25.33473   12.18661   23.28795   15.30839   8.292138
+    XM_060049697.1  293.23605  292.47875  276.86780  247.12121 304.045060
+    XM_060061635.1  702.90405  257.44223  411.42038  297.42021 207.303450
+    XM_060047037.1   25.33473   16.75659   21.99417   19.68222  13.820230
+    XM_060062002.1   72.23094   73.11969   37.51947   80.91579  77.393288
+    XM_060065125.1  138.53247  134.05276   41.40079   17.49531  30.404506
+                   sample_139 sample_140 sample_147 sample_148 sample_150
+    XM_060064443.1   25.01899   7.826255   12.15291   13.05888   13.11172
+    XM_060049697.1  423.53580 417.922024  281.25303  222.46743  227.81621
+    XM_060061635.1  319.88569 247.309662  177.08524  258.84575  267.69771
+    XM_060047037.1   26.80606  28.174518   13.88904   18.18916   18.02862
+    XM_060062002.1   60.76041  53.218535   38.19486   59.69776   44.25207
+    XM_060065125.1    0.00000  59.479539   81.59810   28.91610  120.19081
+                    sample_78  sample_79  sample_80  sample_83  sample_88
+    XM_060064443.1   8.698523   8.461142  15.706005  11.595515   2.234536
+    XM_060049697.1 134.343859 282.978209 157.060045 252.782231  91.615962
+    XM_060061635.1 193.300517 167.342595 197.306682 206.400170 140.775747
+    XM_060047037.1  13.531036   8.461142   8.834628   4.638206  11.172678
+    XM_060062002.1   2.899508  44.185966  49.081264  20.871927  23.462625
+    XM_060065125.1  23.196062  37.605078  50.062889   0.000000  14.524482
+                    sample_90 sample_91 sample_97 sample_98  sample_99
+    XM_060064443.1   9.558107  15.97295 10.748104  4.457378   8.719963
+    XM_060049697.1  93.457051 294.04746 90.015368 66.860677 164.710412
+    XM_060061635.1 130.627469 206.92229 94.045907 85.804535 214.123536
+    XM_060047037.1  23.364263  10.16460 14.778643  5.571723   4.844424
+    XM_060062002.1  31.860358  57.35741 20.152694 30.087304  57.164202
+    XM_060065125.1  21.240239  53.00115  1.343513 46.802474  33.910967
+                   sample_RESUB.116 sample_RESUB.156 sample_RESUB.94
+    XM_060064443.1         7.648954         25.51541       11.015730
+    XM_060049697.1       288.960483        460.97844      280.477439
+    XM_060061635.1       272.812692        480.54026      210.146238
+    XM_060047037.1         2.549651         29.76798        8.473639
+    XM_060062002.1        62.041516         56.98442       61.857562
+    XM_060065125.1         0.000000        119.07192       33.894555
+
+``` r
+# Annotate heatmap
+annotation <- infosub_L.9.5 %>% 
+    select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.5 <- pheatmap(norm_sig_L.9.5, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression, Liver, 9*C and 5*C")
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+
+``` r
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.5_norm_sig.png",
+         plot   = h.L.9.5,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in
+the heat map are *Z-scores*, rather thn the normalized count value. This
+vastly improves the color visualization.
+
+## 8.2 Volcano plot
+
+``` r
+# Generate plot
+v.L.9.5 <- 
+  ggplot(res_table_L.9.5_norm_tb) +
+  # Plot all
+  geom_point(aes(x=log2FoldChange, y=-log10(padj),color="unchanged"),
+             size=.5) +
+  # Overlay all significantly upregulated in red
+  geom_point(data = sig_L.9.5_norm[sig_L.9.5_norm$log2FoldChange > 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="upregulated"), 
+             size=.5) +
+  # Overlay all significantly downregulated in blue
+  geom_point(data = sig_L.9.5_norm[sig_L.9.5_norm$log2FoldChange < 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
+             size=.5) +
+  ggtitle("Liver, 9*C and 0*C") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  scale_x_continuous(limits = c(-4,4)) +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_color_manual(values = c("unchanged" = "darkgrey", "upregulated" = "red", "downregulated" = "blue"),
+                     labels = c("unchanged" = "Unchanged", "upregulated" = "Upregulated", "downregulated" = "Downregulated"),
+                     name = NULL) +
+  theme(legend.position = "top",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))
+
+v.L.9.5
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+
+``` r
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.5.png",
+         plot   = v.L.9.0,
          res    = 600,
          width  = 6000,
          height = 4000)
