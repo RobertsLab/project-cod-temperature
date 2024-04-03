@@ -11,9 +11,9 @@ Kathleen Durkin
     data</a>
   - <a href="#12-count-data-munging" id="toc-12-count-data-munging">1.2
     Count data munging</a>
-  - <a href="#13-import-sample-metadata-sheet"
-    id="toc-13-import-sample-metadata-sheet">1.3 Import sample metadata
-    sheet</a>
+  - <a href="#13-import-sample-metadata-sheets"
+    id="toc-13-import-sample-metadata-sheets">1.3 Import sample metadata
+    sheets</a>
   - <a href="#14-sample-metadata-munging"
     id="toc-14-sample-metadata-munging">1.4 Sample metadata munging</a>
 - <a href="#2-preliminary-pca-visualization-liver-tissue"
@@ -157,6 +157,8 @@ colnames(cod_counts_data) <- sub("kallisto_quant_", "sample_", colnames(cod_coun
 # Reorder the coumns into alphabetical order (to make it easier to create an associated metadata spreadsheet)
 cod_counts_data <- cod_counts_data[, order(colnames(cod_counts_data))]
 
+cod_sample_names <- names(cod_counts_data)
+
 head(cod_counts_data)
 ```
 
@@ -266,11 +268,37 @@ head(cod_counts_data)
     XM_060048099.1              16              20
     XM_060047738.1               0               0
 
-## 1.3 Import sample metadata sheet
+``` r
+cod_sample_names
+```
+
+     [1] "sample_1"         "sample_10"        "sample_100"       "sample_107"      
+     [5] "sample_108"       "sample_109"       "sample_11"        "sample_110"      
+     [9] "sample_117"       "sample_118"       "sample_119"       "sample_12"       
+    [13] "sample_120"       "sample_121"       "sample_127"       "sample_128"      
+    [17] "sample_129"       "sample_13"        "sample_131"       "sample_137"      
+    [21] "sample_138"       "sample_139"       "sample_140"       "sample_147"      
+    [25] "sample_148"       "sample_149"       "sample_150"       "sample_18"       
+    [29] "sample_19"        "sample_19-G"      "sample_19-S"      "sample_2"        
+    [33] "sample_20"        "sample_20-G"      "sample_20-S"      "sample_21"       
+    [37] "sample_28"        "sample_29"        "sample_3"         "sample_30"       
+    [41] "sample_31"        "sample_37"        "sample_38"        "sample_39"       
+    [45] "sample_4"         "sample_40"        "sample_41"        "sample_47"       
+    [49] "sample_48"        "sample_49"        "sample_5"         "sample_50"       
+    [53] "sample_57"        "sample_57-G"      "sample_57-S"      "sample_58"       
+    [57] "sample_58-G"      "sample_58-S"      "sample_59"        "sample_60"       
+    [61] "sample_67"        "sample_68"        "sample_69"        "sample_70"       
+    [65] "sample_78"        "sample_79"        "sample_80"        "sample_83"       
+    [69] "sample_88"        "sample_90"        "sample_91"        "sample_97"       
+    [73] "sample_98"        "sample_99"        "sample_RESUB-116" "sample_RESUB-156"
+    [77] "sample_RESUB-36"  "sample_RESUB-76"  "sample_RESUB-94" 
+
+## 1.3 Import sample metadata sheets
 
 ``` r
-# Read in the csv as a data frame
+# Read in the csv file as a data frame
 cod_sample_info_OG <- read.csv("~/project-cod-temperature/data/DESeq2_Sample_Information.csv")
+cod_experiment_alldata_OG <- read.csv("~/project-cod-temperature/data/temp-experiment.csv")
 head(cod_sample_info_OG)
 ```
 
@@ -282,22 +310,104 @@ head(cod_sample_info_OG)
     5  sample_108           108   16              9       Liver
     6  sample_109           109   16              9       Liver
 
-## 1.4 Sample metadata munging
+``` r
+head(cod_experiment_alldata_OG)
+```
+
+      Microchip.ID SL_11212022 WWT_11212022 Tank Temperature SL_12272022
+    1          620          93         8.53    1          16         101
+    2         1164          88         7.06    1          16          96
+    3         1476         102        10.70    1          16         108
+    4         9387          87         7.83    1          16          95
+    5         9407         100        11.51    1          16         117
+    6         9415          92         8.68    1          16         100
+      WWT_12272022 MortDate DissectionDate SL_mm WholeBodyWW_g TOTAL_Liver_WW_mg
+    1        11.12                  2/8/23   119         16.15            0.4945
+    2         8.64                  2/8/23   105         10.89            0.1997
+    3        12.25                  2/8/23   110         12.97            0.1715
+    4        10.16                  2/8/23   116         15.40            0.3625
+    5        14.98                  2/8/23   127         17.98            0.3482
+    6        10.96                  2/8/23   114         14.02            0.2343
+      LiverforLipids_WW_mg MuscleWWforLipids_mg GeneticSamplingCount
+    1               0.1546               0.3495                    8
+    2               0.1091               0.3328                    5
+    3               0.1107               0.3834                    4
+    4               0.1681               0.3262                    6
+    5               0.1210               0.3434                    2
+    6               0.1342               0.2776                    9
+      DissectionComments
+    1                   
+    2                   
+    3                   
+    4                   
+    5                   
+    6                   
 
 ``` r
+# Rename the "GeneticSamplingCount" column of the experimental data to "sample_number"
+cod_experiment_alldata <- cod_experiment_alldata_OG
+names(cod_experiment_alldata)[names(cod_experiment_alldata) == "GeneticSamplingCount"] <- "sample_number"
+
+# Calculate length difference and weight difference (end-beginning)
+cod_experiment_alldata$SL_diff_mm <- cod_experiment_alldata$SL_mm - cod_experiment_alldata$SL_11212022
+cod_experiment_alldata$WWT_diff_g <- cod_experiment_alldata$WholeBodyWW_g - cod_experiment_alldata$WWT_11212022
+
+# Merge the two data frames to get experimental data for all of our RNAseq'd samples.
+# This should include all rows from cod_sample_info_OG and matching rows from cod_experiment_alldata based on the shared sample_number column. Sample number duplicates (e.g. from different tissue types) should be retained.
+cod_sample_info <- merge(cod_sample_info_OG, cod_experiment_alldata, by = "sample_number", all.x = TRUE)
+
+# Reorder the data frame into alphabetical order by the sample names, so that the rows are in the same order as our count matrix columns
+cod_sample_info <- cod_sample_info[order(cod_sample_info$sample_name), ]
+
 # Again, we need to reformat so that the data in the first column becomes the row names
-cod_sample_info <- cod_sample_info_OG %>% 
-  column_to_rownames(var = "sample_name")
+rownames(cod_sample_info) <- cod_sample_info$sample_name
+
+# Remove duplicate columns (artifact of merging data frames with multiple shared columns and of maing sample_name the rownames instead of a variable)
+cod_sample_info <- subset(cod_sample_info, select=-Temperature)
+cod_sample_info <- subset(cod_sample_info, select=-Tank)
+cod_sample_info <- subset(cod_sample_info, select=-sample_name)
+
+
 head(cod_sample_info)
 ```
 
-               sample_number tank temp_treatment tissue_type
-    sample_1               1    1             16       Liver
-    sample_10             10    2             16       Liver
-    sample_100           100   15              9       Liver
-    sample_107           107   16              9       Liver
-    sample_108           108   16              9       Liver
-    sample_109           109   16              9       Liver
+               sample_number tank temp_treatment tissue_type Microchip.ID
+    sample_1               1    1             16       Liver         9443
+    sample_10             10    2             16       Liver         9518
+    sample_100           100   15              9       Liver         9483
+    sample_107           107   16              9       Liver         4236
+    sample_108           108   16              9       Liver         9416
+    sample_109           109   16              9       Liver         9481
+               SL_11212022 WWT_11212022 SL_12272022 WWT_12272022 MortDate
+    sample_1            99        10.54         108        12.94         
+    sample_10           95         9.45         105        12.67         
+    sample_100          70         4.54          78         5.23         
+    sample_107          94         9.15         104        11.44         
+    sample_108          81         6.26          91         7.87         
+    sample_109          89         7.77          95         9.49         
+               DissectionDate SL_mm WholeBodyWW_g TOTAL_Liver_WW_mg
+    sample_1           2/8/23   114         14.39            0.0896
+    sample_10          2/8/23   120         16.22            0.3854
+    sample_100         2/9/23    93          8.33            0.2558
+    sample_107         2/9/23   119         16.41            0.5612
+    sample_108         2/9/23   106         11.67            0.3650
+    sample_109         2/9/23   116         11.45            0.3088
+               LiverforLipids_WW_mg MuscleWWforLipids_mg DissectionComments
+    sample_1                 0.0704               0.3899      lipid inserts
+    sample_10                0.1285               0.2967                   
+    sample_100               0.1143               0.3483                   
+    sample_107               0.1503               0.3322                   
+    sample_108               0.1125               0.3612                   
+    sample_109               0.1090               0.3062                   
+               SL_diff_mm WWT_diff_g
+    sample_1           15       3.85
+    sample_10          25       6.77
+    sample_100         23       3.79
+    sample_107         25       7.26
+    sample_108         25       5.41
+    sample_109         27       3.68
+
+## 1.4 Sample metadata munging
 
 ``` r
 # Factor variables
@@ -312,23 +422,7 @@ cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
 # BIPLOT outliers:
 cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129")),]
 cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129)))
-# coldata %>% dplyr::count(group)
-# all(colnames(cts) %in% rownames(coldata))
-# 
-# # Remove sample 92 (for now, sample data is missing)
-# cod_sample_info <- cod_sample_info[rownames(cod_sample_info) != "sample_92", ]
-head(cod_sample_info)
-```
 
-               sample_number tank temp_treatment tissue_type
-    sample_1               1    1             16       Liver
-    sample_10             10    2             16       Liver
-    sample_100           100   15              9       Liver
-    sample_107           107   16              9       Liver
-    sample_108           108   16              9       Liver
-    sample_109           109   16              9       Liver
-
-``` r
 # Check that the column names of our count data match the row names of our sample info sheet
 ncol(cod_counts_data)
 ```
@@ -391,14 +485,23 @@ plotDispEsts(dds_L)
 # top 500 most variable genes
 pca_L_500<- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE)
 percentVar_L_500 <- round(100*attr(pca_L_500, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_500 <- subset(pca_L_500, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_500 <- merge(pca_L_500, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # top 1000 most variable genes
 pca_L_1000 <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=1000)
 percentVar_L_1000 <- round(100*attr(pca_L_1000, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_1000 <- subset(pca_L_1000, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_1000 <- merge(pca_L_1000, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # all genes
 pca_L_all <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=nrow(assay(vst(dds_L))))
 percentVar_L_all <- round(100*attr(pca_L_all, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_all <- subset(pca_L_all, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_all <- merge(pca_L_all, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # Assign specific colors to each temperature treatment level
 temp_colors <- c(
@@ -417,6 +520,26 @@ p.L.500 <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment)) +
   scale_color_manual(values=temp_colors)+
   stat_ellipse()
 
+p.L.500.SLdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.500.WWTdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
 p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) + 
   geom_point(size=4, alpha = 5/10) +
   ggtitle("Liver, top 1000 most variable genes") +
@@ -424,6 +547,26 @@ p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) +
   ylab(paste0("PC2: ",percentVar_L_1000[2],"% variance")) + 
   coord_fixed() +
   scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.1000.SLdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.1000.WWTdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
   stat_ellipse()
 
 p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) + 
@@ -435,6 +578,26 @@ p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) +
   scale_color_manual(values=temp_colors)+
   stat_ellipse()
 
+p.L.all.SLdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.all.WWTdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
 # View PCAs
 p.L.500
 ```
@@ -442,16 +605,52 @@ p.L.500
 ![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
-p.L.1000
+p.L.500.SLdiff
 ```
 
 ![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
 ``` r
-p.L.all
+p.L.500.WWTdiff
 ```
 
 ![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+
+``` r
+p.L.1000
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-4.png)<!-- -->
+
+``` r
+p.L.1000.SLdiff
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-5.png)<!-- -->
+
+``` r
+p.L.1000.WWTdiff
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-6.png)<!-- -->
+
+``` r
+p.L.all
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-7.png)<!-- -->
+
+``` r
+p.L.all.SLdiff
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-8.png)<!-- -->
+
+``` r
+p.L.all.WWTdiff
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-9.png)<!-- -->
 
 ``` r
 # Export PCAs as pngs

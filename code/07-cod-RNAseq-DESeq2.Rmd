@@ -4,6 +4,11 @@ author: "Kathleen Durkin"
 date: "2024-03-19"
 always_allow_html: true
 output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -11,11 +16,6 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -98,25 +98,51 @@ colnames(cod_counts_data) <- sub("kallisto_quant_", "sample_", colnames(cod_coun
 # Reorder the coumns into alphabetical order (to make it easier to create an associated metadata spreadsheet)
 cod_counts_data <- cod_counts_data[, order(colnames(cod_counts_data))]
 
+cod_sample_names <- names(cod_counts_data)
+
 head(cod_counts_data)
+cod_sample_names
 ```
 
-## Import sample metadata sheet
+## Import sample metadata sheets
 
 ```{r}
-# Read in the csv as a data frame
+# Read in the csv file as a data frame
 cod_sample_info_OG <- read.csv("~/project-cod-temperature/data/DESeq2_Sample_Information.csv")
+cod_experiment_alldata_OG <- read.csv("~/project-cod-temperature/data/temp-experiment.csv")
 head(cod_sample_info_OG)
+head(cod_experiment_alldata_OG)
+
+# Rename the "GeneticSamplingCount" column of the experimental data to "sample_number"
+cod_experiment_alldata <- cod_experiment_alldata_OG
+names(cod_experiment_alldata)[names(cod_experiment_alldata) == "GeneticSamplingCount"] <- "sample_number"
+
+# Calculate length difference and weight difference (end-beginning)
+cod_experiment_alldata$SL_diff_mm <- cod_experiment_alldata$SL_mm - cod_experiment_alldata$SL_11212022
+cod_experiment_alldata$WWT_diff_g <- cod_experiment_alldata$WholeBodyWW_g - cod_experiment_alldata$WWT_11212022
+
+# Merge the two data frames to get experimental data for all of our RNAseq'd samples.
+# This should include all rows from cod_sample_info_OG and matching rows from cod_experiment_alldata based on the shared sample_number column. Sample number duplicates (e.g. from different tissue types) should be retained.
+cod_sample_info <- merge(cod_sample_info_OG, cod_experiment_alldata, by = "sample_number", all.x = TRUE)
+
+# Reorder the data frame into alphabetical order by the sample names, so that the rows are in the same order as our count matrix columns
+cod_sample_info <- cod_sample_info[order(cod_sample_info$sample_name), ]
+
+# Again, we need to reformat so that the data in the first column becomes the row names
+rownames(cod_sample_info) <- cod_sample_info$sample_name
+
+# Remove duplicate columns (artifact of merging data frames with multiple shared columns and of maing sample_name the rownames instead of a variable)
+cod_sample_info <- subset(cod_sample_info, select=-Temperature)
+cod_sample_info <- subset(cod_sample_info, select=-Tank)
+cod_sample_info <- subset(cod_sample_info, select=-sample_name)
+
+
+head(cod_sample_info)
 ```
 
 ## Sample metadata munging
 
 ```{r}
-# Again, we need to reformat so that the data in the first column becomes the row names
-cod_sample_info <- cod_sample_info_OG %>% 
-  column_to_rownames(var = "sample_name")
-head(cod_sample_info)
-
 # Factor variables
 cod_sample_info$temp_treatment <- factor(cod_sample_info$temp_treatment)
 cod_sample_info$tank <- factor(cod_sample_info$tank)
@@ -129,12 +155,6 @@ cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
 # BIPLOT outliers:
 cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129")),]
 cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129)))
-# coldata %>% dplyr::count(group)
-# all(colnames(cts) %in% rownames(coldata))
-# 
-# # Remove sample 92 (for now, sample data is missing)
-# cod_sample_info <- cod_sample_info[rownames(cod_sample_info) != "sample_92", ]
-head(cod_sample_info)
 
 # Check that the column names of our count data match the row names of our sample info sheet
 ncol(cod_counts_data)
@@ -177,14 +197,23 @@ plotDispEsts(dds_L)
 # top 500 most variable genes
 pca_L_500<- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE)
 percentVar_L_500 <- round(100*attr(pca_L_500, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_500 <- subset(pca_L_500, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_500 <- merge(pca_L_500, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # top 1000 most variable genes
 pca_L_1000 <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=1000)
 percentVar_L_1000 <- round(100*attr(pca_L_1000, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_1000 <- subset(pca_L_1000, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_1000 <- merge(pca_L_1000, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # all genes
 pca_L_all <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=nrow(assay(vst(dds_L))))
 percentVar_L_all <- round(100*attr(pca_L_all, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_all <- subset(pca_L_all, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_all <- merge(pca_L_all, cod_sample_info, by.x = "name", by.y = "row.names")
 
 # Assign specific colors to each temperature treatment level
 temp_colors <- c(
@@ -203,6 +232,26 @@ p.L.500 <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment)) +
   scale_color_manual(values=temp_colors)+
   stat_ellipse()
 
+p.L.500.SLdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.500.WWTdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
 p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) + 
   geom_point(size=4, alpha = 5/10) +
   ggtitle("Liver, top 1000 most variable genes") +
@@ -210,6 +259,26 @@ p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) +
   ylab(paste0("PC2: ",percentVar_L_1000[2],"% variance")) + 
   coord_fixed() +
   scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.1000.SLdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.1000.WWTdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
   stat_ellipse()
 
 p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) + 
@@ -221,10 +290,36 @@ p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) +
   scale_color_manual(values=temp_colors)+
   stat_ellipse()
 
+p.L.all.SLdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.all.WWTdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
 # View PCAs
 p.L.500
+p.L.500.SLdiff
+p.L.500.WWTdiff
 p.L.1000
+p.L.1000.SLdiff
+p.L.1000.WWTdiff
 p.L.all
+p.L.all.SLdiff
+p.L.all.WWTdiff
 
 # Export PCAs as pngs
 ggexport(filename = "../output/07-cod-RNAseq-DESeq2/PCA_L_500.png",
