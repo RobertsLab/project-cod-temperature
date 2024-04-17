@@ -1,7 +1,8 @@
 ---
 title: "Oh What a Blast!"
 author: Steven Roberts
-date: "`r format(Sys.time(), '%d %B, %Y')`"  
+date: "`r format(Sys.time(), '%d %B, %Y')`" 
+always_allow_html: true
 output: 
   html_document:
     theme: readable
@@ -11,6 +12,11 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
 ---
 
 ```{r setup, include=FALSE}
@@ -219,11 +225,14 @@ datatable(
 annot_tab <-
   left_join(bltabl, spgo,  by = c("V3" = "Entry")) %>%
   select(V1, V3, V13, Protein.names, Organism, Gene.Ontology..biological.process., Gene.Ontology.IDs)
+
+write.table(annot_tab, file = "../output/03-transcriptome-annotation/G_macrocephalus_IDmapping_2024_04_17.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 ```
 
-
-
-
+```{bash}
+head -n 3 ../output/03-transcriptome-annotation/G_macrocephalus_IDmapping_2024_04_17.tab
+```
 
 ```{r, eval=TRUE}
 # Read dataset
@@ -254,6 +263,7 @@ ggplot(top_10_strings, aes(x = reorder(String, -Count), y = Count, fill = String
 
 
 ```
+
 ```{r go, eval=TRUE}
 
 
