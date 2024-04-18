@@ -62,8 +62,8 @@ echo 'export genome_fasta_name="GCF_031168955.1_ASM3116895v1_genomic"'
 echo 'export genome_fasta="${genome_fasta_dir}/${genome_fasta_name}"'
 echo 'export genome_gff_name="GCF_031168955.1_ASM3116895v1"'
 echo 'export genome_gff="${genome_gff_dir}/${genome_gff_name}"'
-echo 'export hisat2_exon_name="G_macrocephalus_exon.tab"'
-echo 'export hisat2_exon="${hisat2_output_dir}/${hisat_exon_name}"'
+echo 'export hisat2_exons_name="G_macrocephalus_exon.tab"'
+echo 'export hisat2_exons="${hisat2_output_dir}/${hisat_exons_name}"'
 echo 'export hisat2_splice_sites_name="G_macrocephalus_splice_sites.tab"'
 echo 'export hisat2_splice_sites="${hisat2_output_dir}/${hisat2_splice_sites_name}"'
 echo 'export hisat2_index_name="G_macrocephalus_Hisat2_index.idx"'
@@ -178,23 +178,23 @@ md5sum --check <<< "${genome_gff_checksum}  ${genome_gff_name}.fna"
 # Create Hisat2 exons tab file
 "${programs_array[hisat2_exons]}" \
 "${genome_gff}.gff" \
-> "${exons}"
+> "${hisat2_exons}"
 ```
 
 ``` {r create-splice-sites-tab-file, engine='bash'}
 # Create Hisat2 splice sites tab file
 "${programs_array[hisat2_splice_sites]}" \
 "${transcripts_gtf}" \
-> "${splice_sites}"
+> "${hisat2_splice_sites}"
 ```
 
 ```{r build-hisat2-index, engine='bash'}
 # Build Hisat2 reference index using splice sites and exons
 "${programs_array[hisat2_build]}" \
 "${genome_fasta}.fna" \
-"${genome_index_name}" \
---exon "${exons}" \
---ss "${splice_sites}" \
+"${hisat2_index_name}" \
+--exon "${hisat2_exons}" \
+--ss "${hisat2_splice_sites}" \
 -p "${threads}" \
 2> hisat2-build_stats.txt
 ```
@@ -207,81 +207,32 @@ ls -lh ${hisat2_output_dir}
 ```
 
 
+## Alignment
+```{r hisat2-alignment, engine='bash'}
+# Load bash variables into memory
+source .bashvars
+
+"${programs_array[hisat2]}" \
+-x "${hisat2_index}" \
+-1 "${fastq_list_R1}" \
+-2 "${fastq_list_R2}" \
+-S "${sample_name}".sam \
+2> "${sample_name}"-hisat2_stats.txt
+
+```
 
 
 
 ## Sample Quantification
 
-Hisat2 can run quantification on either single- or paired-end reads. The default option is paired-end, which requires the input of an even number of paired fastq files (e.g., pairA_R1.fastq, pairA_R2.fastq). 
-To use single-end mode, include the --single flag, as well as -l (--fragment-length=DOUBLE, estimated avg. fragment length) and -s (--sd=DOUBLE, estimates stand. dev. of fragment length), and a number of fastq files.
-Again, gzipped files are acceptable.
-
-Hisat2 quant is rather finicky about how you input sets of paired reads, and you can only input a single pair at a time. To circumvent, I'll create a quantification function and apply it iteratively to each pair of reads using a loop.
-
-```{r hisat2-quantification, engine='bash', eval=FALSE}
+```{r hisat2-quantification, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
-# Function to run Hisat2 quant. Takes two (paired) reads as input, outputs to sample-associated directory
-run_hisat2_quant() {
-    source .bashvars  # Source .bashvars inside the function to make its variables accessible
-    local R1_fastq=${1}
-    local R2_fastq=${2}
-    
-    cd ${hisat2_output_dir}
-    sample_num=$(basename "${R1_fastq}" "_R1_001.fastq.gz")
-    mkdir hisat2_quant_${sample_num}
 
-    ${programs_array[hisat2]} quant \
-        --threads=${threads} \
-        --index="${hisat2_output_dir}/${hisat2_index_name}" \
-        --output-dir="${hisat2_output_dir}/hisat2_quant_${sample_num}" \
-        --bootstrap-samples=100 \
-        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq}
-}
-
-
-
-# Iteratively apply run_hisat2_quant on each pair of input reads
-for file_r1 in "${raw_reads_dir}"/*_R1_001.fastq.gz; do
-    # Extract the sample name from the file name
-    sample_name=$(basename "${file_r1}" "_R1_001.fastq.gz")
-
-    # Form the file names (function takes input file names, not paths)
-    file_r1_name="${sample_name}_R1_001.fastq.gz"
-    file_r2_name="${sample_name}_R2_001.fastq.gz"
-
-    # Check that the sample hasn't already been quantified
-    if [ ! -d "${hisat2_output_dir}/hisat2_quant_${sample_name}" ]; then
-    
-        # Check if the corresponding R2 file exists
-        if [ -e "${raw_reads_dir}/${file_r2}" ]; then
-            # Run Hisat2 quant on the file pair
-            run_hisat2_quant "${file_r1_name}" "${file_r2_name}" 
-
-            echo "Processed sample: ${sample_name}"
-        fi
-    else
-        echo "Sample already processed: ${sample_name}"
-    fi
-done
 ```
 
-Check that we have the appropriate number of output folders. We should have (#rawreads/2)+1 -- one output folder for each pair of reads plus the single Hisat2 index file
-```{r check-hisat2-output, engine='bash', eval=TRUE}
-# Load bash variables into memory
-source .bashvars
 
-# Count number of raw read files
-cd ${raw_reads_dir}
-echo "Number of raw reads:"
-ls -1 | wc -l
-
-# Count number of Hisat2 output 
-cd ${hisat2_output_dir}
-echo "Number of output files/folders"
-ls -1 | wc -l
-```
 
 
 ## Trinity Matrix with Hisat2 Output
