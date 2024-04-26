@@ -1,0 +1,308 @@
+---
+title: "08-cod-RNAseq-GO-annotation"
+author: "Kathleen Durkin"
+date: "2024-04-15"
+always_allow_html: true
+output: 
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = TRUE,        # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+This code depends on the database (`G_macrocephalus_IDmapping_2024_04_17.tab`) of *G.macrocephalus* transcript IDs and associated GO terms generated in 03-transcriptome-annotation.Rmd, AND on lists of differentially expressed genes (DEGs) generated in 07-cod-RNAseq-DESeq2.Rmd.
+
+This code identifies overrepresented gene ontology (GO) terms in *G.macrocephalus* RNA sequencing data
+
+Inputs: - transcript ID/GO term database (`G_macrocephalus_IDmapping_2024_04_17.tab`) - DEGs
+
+In 03-transcriptome-annotation.Rmd we used BLAST and Uniprot/SwissProt to obtain UniProt Accession numbers for each transcript in the *G. macrocephalus* transcriptome. We then used those Accession numbers to obtain GO terms for each transcript, functionally creating a database which matches *G.macrocephalus* transcripts with associated GO terms.
+
+In 07-cod-RNAseq-DESeq2.Rmd we identified sets of significantly differentially expressed genes (DEGs) between pairs of treatments (e.g., Liver tissue for 9C vs. 16C).
+
+Now we want to use the database to identify GO terms associated with our lists of DEGs, and to evaluate which GO terms are overrepresented.
+
+https://wikis.utexas.edu/display/bioiteam/GO+Enrichment+using+goseq#:~:text=goseq%20is%20an%20R%20package,in%20our%20differentially%20expressed%20genes.
+https://bioconductor.org/packages/devel/bioc/vignettes/goseq/inst/doc/goseq.pdf
+
+
+```{r load-packages, eval=TRUE}
+# List of packages we want to install (run every time)
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(ggvenn)
+
+```
+
+```{r load-data}
+gmac_idmap <- read.csv("../output/03-transcriptome-annotation/G_macrocephalus_rna_IDmapping_2024_04_17.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+
+DEGs_L.9.0 <- read.csv("../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.0_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+DEGs_L.9.5 <- read.csv("../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.5_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+DEGs_L.9.16 <- read.csv("../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.16_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+
+kallisto_counts_matrix <- read.csv("../output/06-cod-RNAseq-alignment/kallisto/kallisto.isoform.counts.matrix", sep='\t')
+kallisto_counts_matrix[,-1] <- round(kallisto_counts_matrix[,-1], digits = 0) # round counts to integers
+```
+
+# Annotate DEGs using GO terms
+
+```{r join-DEG-GO-data}
+# All DEGs
+DEGs_GO_L.9.0 <- left_join(DEGs_L.9.0, gmac_idmap, by=c("gene" = "V1"))
+DEGs_GO_L.9.5 <- left_join(DEGs_L.9.5, gmac_idmap, by=c("gene" = "V1"))
+DEGs_GO_L.9.16 <- left_join(DEGs_L.9.16, gmac_idmap, by=c("gene" = "V1"))
+
+# Unique DEGs
+DEGs_GO_L.9.0_unique <- DEGs_GO_L.9.0 %>% distinct(gene, .keep_all = TRUE)
+DEGs_GO_L.9.5_unique <- DEGs_GO_L.9.5 %>% distinct(gene, .keep_all = TRUE)
+DEGs_GO_L.9.16_unique <- DEGs_GO_L.9.16 %>% distinct(gene, .keep_all = TRUE)
+
+# summarize counts
+print(paste("All DEGs:", nrow(DEGs_GO_L.9.0), "(9C v 0C),", nrow(DEGs_GO_L.9.5), "(9C v 5C),", nrow(DEGs_GO_L.9.16), "(9C v 16C)"))
+print(paste("Unique DEGs:", nrow(DEGs_GO_L.9.0_unique), "(9C v 0C),", nrow(DEGs_GO_L.9.5_unique), "(9C v 5C),", nrow(DEGs_GO_L.9.16_unique), "(9C v 16C)"))
+```
+
+I also want a matrix associating GO terms with all of our count data, which includes gene-level transcript counts for each sample
+```{r}
+counts_GO <- left_join(kallisto_counts_matrix, gmac_idmap, by=c("X" = "V1"))
+counts_GO <- counts_GO[, c("Gene.Ontology..biological.process.", setdiff(names(counts_GO), "Gene.Ontology..biological.process."))]
+# Reorder columns to have gene name and GO annotation next to each other
+head(counts_GO)
+```
+
+```{r}
+top_25_DEGs_L.9.0 <- head(DEGs_GO_L.9.0_unique[order(DEGs_GO_L.9.0_unique$padj), ], 25)
+top_25_DEGs_L.9.0$padj <- as.character(top_25_DEGs_L.9.0$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.0[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
+
+top_25_DEGs_L.9.5 <- head(DEGs_GO_L.9.5_unique[order(DEGs_GO_L.9.5_unique$padj), ], 25)
+top_25_DEGs_L.9.5$padj <- as.character(top_25_DEGs_L.9.5$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.5[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
+
+top_25_DEGs_L.9.16 <- head(DEGs_GO_L.9.16_unique[order(DEGs_GO_L.9.16_unique$padj), ], 25)
+top_25_DEGs_L.9.16$padj <- as.character(top_25_DEGs_L.9.16$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.16[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
+```
+
+## Venn diagram of DEG counts accross treatments
+```{r}
+# Make list
+deg_counts_unique <- list(
+  "9C v 0C" = unique(DEGs_GO_L.9.0$gene),
+  "9C v 5C" = unique(DEGs_GO_L.9.5$gene),
+  "9C v 16C" = unique(DEGs_GO_L.9.16$gene)
+)
+
+# Make venn diagrams
+ggvenn(deg_counts_unique,
+       fill_color = c("blue", "yellow", "red"))
+
+```
+
+## DEG bar plots
+
+```{r}
+# Create a data frame with extracted columns
+combined_unique_DEG_counts <- data.frame(
+  DEGs_count = c(length(unique(DEGs_GO_L.9.0$gene)), 
+                 length(unique(DEGs_GO_L.9.5$gene)), 
+                 length(unique(DEGs_GO_L.9.16$gene))),
+  treatment = factor(c("9C v 0C", "9C v 5C", "9C v 16C"), 
+                     levels=c("9C v 0C", "9C v 5C", "9C v 16C")))
+
+# Assign colors
+custom_colors <- c("9C v 0C"="blue", "9C v 5C"="yellow", "9C v 16C"="red")
+
+# Create a bar plot
+ggplot(combined_unique_DEG_counts, aes(x = treatment, y = DEGs_count, fill = treatment)) +
+  geom_col() +
+  labs(title = "Bar Plot of Unique DEGs across Treatments",
+       x = "DEGs",
+       y = "Count") +
+  scale_fill_manual(values = custom_colors) +
+  geom_text(aes(label = DEGs_count), vjust = -0.5) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
+
+## GO Enrichment Analysis
+
+v SAMPLE CODE, NONFUNCTIONAL WITH MY DATA/VARIABLES v
+```{r, eval=FALSE}
+diploid_SS_unique <- read.table("gene_tables/filtered/HISAT2_multiqc_biplot/diploid_SS_unique.txt", 
+                               header = TRUE, quote = "", sep = "\t") 
+nrow(diploid_SS_unique) # 119615
+diploid_SS_unique <- na.omit(diploid_SS_unique)
+nrow(diploid_SS_unique) # 119615
+
+
+diploid_SS_unique_bg <- read.delim("https://gannet.fish.washington.edu/panopea/NOPP-gigas-ploidy-temp/20221025-gene-backgrounds/diploid_desiccation_bg.txt", 
+                               header = TRUE, sep = "\t") 
+nrow(diploid_SS_unique_bg) # 580,794
+
+diploid_SS_unique_bg$length <- diploid_SS_unique_bg$end - diploid_SS_unique_bg$start
+
+# ID.dataframe <- read.delim("blast/_blast-GO-unfolded.tab", header = FALSE, sep = "\t")
+# ID.dataframe <- ID.dataframe[,c(2, 3)]
+# colnames(ID.dataframe) <- c("product.accession","GO.ID")
+
+# GeneID to GOID
+ID.dataframe <- diploid_SS_unique_bg[,c("GeneID","GOID")]
+GOslim.dataframe <- diploid_SS_unique_bg[,c("GOID","GOSlim")]
+
+# Get DEG and all gene list
+DEG           <- unique(diploid_SS_unique$GeneID)
+ALL           <- unique(diploid_SS_unique_bg$GeneID)
+
+# create gene length vector for all genes in background
+find_all <- as.data.frame(ALL)
+colnames(find_all) <- "GeneID"
+LENGTH.vector <- find_all %>% left_join(dplyr::distinct(diploid_SS_unique_bg, GeneID, .keep_all = T))
+LENGTH.vector <- LENGTH.vector$length
+
+# Convert the DEG and ALL data objects to vectors
+DEG.vector <- c(t(DEG))
+ALL.vector <- c(t(ALL))
+
+# Construct a new vector: 0 next to every gene that is not in our DEG list and a 1 next to every gene that is in our DEG list.
+gene.vector=as.integer(ALL.vector%in%DEG.vector)
+names(gene.vector)=ALL.vector
+
+# Weigh the gene vector by gene length
+DEG.pwf<-nullp(gene.vector, ID.dataframe, bias.data=LENGTH.vector) #weight vector by length of gene
+
+# Find enriched GO terSS
+GO.wall<-goseq(DEG.pwf, ID.dataframe, gene2cat=ID.dataframe, test.cats=c("GO:CC", "GO:BP", "GO:MF"), method="Wallenius", use_genes_without_cat=TRUE)
+GO <- GO.wall[order(GO.wall$over_represented_pvalue),]
+colnames(GO)[1] <- "GOID"
+
+# Attach GO slim terSS
+GO.slim <- left_join(GO, GOslim.dataframe, by = "GOID")
+GO.slim <- GO.slim[!duplicated(GO.slim$GOID), ] #not sure I need this step
+
+# Filtering for p < 0.05
+filtered.GO <- GO.slim %>%
+  dplyr::filter(over_represented_pvalue<0.05) %>%
+  arrange(., ontology, term, over_represented_pvalue)
+
+# Make plot object
+filtered.GO_plot <- filtered.GO %>%
+  filter(over_represented_pvalue != "NA") %>%
+  filter(numInCat >5) %>%
+  filter(ontology == "BP") %>%
+  arrange(., ontology, over_represented_pvalue)
+
+# Factor terSS so they are display in the correct order in the plot
+filtered.GO_plot$term <- factor(filtered.GO_plot$term, levels=rev(filtered.GO_plot$term))
+filtered.GO_plot$GOSlim <- factor(filtered.GO_plot$GOSlim, levels = c('cell adhesion', 'cell cycle and proliferation', 'cell organization and biogenesis', 'cell-cell signaling','transport', 'signal transduction', 'developmental processes', 'other metabolic processes', 'protein metabolism', 'RNA metabolism', 'stress response', 'death','other biological processes'), ordered = TRUE)
+
+# Assign color palettes for each GOslim category
+cell       <- brewer.pal(9, "Blues")
+develop    <- brewer.pal(9, "Purples")
+metabolism <- brewer.pal(9, "Greens")
+stress     <- brewer.pal(9, "YlOrRd")
+other      <- brewer.pal(9, "YlOrRd")
+
+# Assign colors for the plot (remove ones that aren't represented)
+plot_colors <- c(rev(cell[(9-4):9]),develop[7],rev(metabolism[(8-2):8]),stress[5:6],'gray30')
+
+# plot significantly enriched GO terSS by pvalue
+p2 <- ggplot(filtered.GO_plot, aes(x=term, y=-log10(over_represented_pvalue), fill = GOSlim)) +
+             stat_summary(geom = "bar", fun = mean, position = "dodge", color="black", size = 0.3) +
+             xlab("Biological process") +
+             ylab("Enrichment") +
+             scale_fill_manual(values = plot_colors) +
+             # scale_y_continuous(breaks = seq(0, 8, by = 2), limits = c(0,9)) +
+             # guides(colour=guide_legend(override.aes=list(size=2.5))) +
+             coord_flip()
+
+p2
+
+# plot significantly enriched GO terSS by Slim Category
+pie2  <- ggplot(filtered.GO_plot, aes(x=factor(1),y=GOSlim, fill=GOSlim)) +
+              geom_bar(width = 1, stat = "identity", show.legend = TRUE) +
+              scale_fill_manual(values = plot_colors) + labs(NULL) +
+              coord_polar("y", start=0) + my_theme
+pie2
+
+ggsave("GOterm_annotation/diploid_SS_unique/GOseq_diploid_SS_bar_BP.png",
+       plot   = p2,
+       dpi    = 600,
+       device = "png",
+       width  = 7,
+       height = 5,
+       units  = "in")
+
+ggsave("GOterm_annotation/diploid_SS_unique/GOseq_diploid_SS_pie_BP.png",
+       plot   = pie2,
+       dpi    = 1600,
+       device = "png",
+       width  = 10,
+       height = 5,
+       units  = "in")
+
+write.csv(filtered.GO_plot , file = "GOterm_annotation/diploid_SS_unique/GOseq_significant_diploid_SS_BP.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
