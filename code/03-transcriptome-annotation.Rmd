@@ -4,6 +4,11 @@ author: Steven Roberts
 date: "`r format(Sys.time(), '%d %B, %Y')`" 
 always_allow_html: true
 output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
   html_document:
     theme: readable
     highlight: zenburn
@@ -12,11 +17,6 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true
 ---
 
 ```{r setup, include=FALSE}
@@ -40,27 +40,27 @@ knitr::opts_chunk$set(
 
 
 # Getting the query fasta file
-
+Originally run using the G.macrocephalus coding sequences (CDS) genome from NCBI (stored at https://gannet.fish.washington.edu/seashell/snaps/Gadus_macrocephalus.coding.gene.V1.cds), but I want to rerun this using the NCBI G.macrocephalus *transcriptome*
 ```{r download-query, engine='bash'}
-curl https://gannet.fish.washington.edu/seashell/snaps/Gadus_macrocephalus.coding.gene.V1.cds \
+curl https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna\
 -k \
-> ../data/Gadus_macrocephalus.coding.gene.V1.cds
+> ../data/GCF_031168955.1_ASM3116895v1_rna.fna
 ```
 
 Exploring what fasta file
 
 ```{r view-query, engine='bash', eval=TRUE}
-head -3 ../data/Gadus_macrocephalus.coding.gene.V1.cds
+head -3 ../data/GCF_031168955.1_ASM3116895v1_rna.fna
 ```
 
 ```{r view2-query, engine='bash', eval=TRUE}
 echo "How many sequences are there?"
-grep -c ">" ../data/Gadus_macrocephalus.coding.gene.V1.cds
+grep -c ">" ../data/GCF_031168955.1_ASM3116895v1_rna.fna
 ```
 
 ```{r histogram, eval=TRUE}
 # Read FASTA file
-fasta_file <- "../data/Gadus_macrocephalus.coding.gene.V1.cds"  # Replace with the name of your FASTA file
+fasta_file <- "../data/GCF_031168955.1_ASM3116895v1_rna.fna"  # Replace with the name of your FASTA file
 sequences <- readDNAStringSet(fasta_file)
 
 # Calculate sequence lengths
@@ -164,9 +164,9 @@ mkdir ../blastdb
 
 ```{r blastx, engine='bash'}
 /home/shared/ncbi-blast-2.11.0+/bin/blastx \
--query ../data/Gadus_macrocephalus.coding.gene.V1.cds \
+-query ../data/GCF_031168955.1_ASM3116895v1_rna.fna \
 -db ../blastdb/uniprot_sprot_r2023_04 \
--out ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx.tab \
+-out ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx.tab \
 -evalue 1E-20 \
 -num_threads 20 \
 -max_target_seqs 1 \
@@ -174,12 +174,12 @@ mkdir ../blastdb
 ```
 
 ```{r blast-look, engine='bash', eval=TRUE}
-head -2 ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx.tab
+head -2 ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx.tab
 ```
 
 ```{r blast-look2, engine='bash', eval=TRUE}
 echo "Number of lines in output"
-wc -l ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx.tab
+wc -l ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx.tab
 ```
 
 
@@ -190,17 +190,17 @@ wc -l ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx.tab
 ## Prepping Blast table for easy join
 
 ```{r separate, engine='bash', eval=TRUE}
-tr '|' '\t' < ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx.tab \
-> ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx_sep.tab
+tr '|' '\t' < ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx.tab \
+> ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx_sep.tab
 
-head -1 ../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx_sep.tab
+head -1 ../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx_sep.tab
 
 ```
 
 ## Could do some cool stuff in R here reading in table
 
 ```{r read-data, eval=TRUE, cache=TRUE}
-bltabl <- read.csv("../output/03-transcriptome-annotation/Gm.cds-uniprot_blastx_sep.tab", sep = '\t', header = FALSE)
+bltabl <- read.csv("../output/03-transcriptome-annotation/Gm.rna-uniprot_blastx_sep.tab", sep = '\t', header = FALSE)
 
 spgo <- read.csv("https://gannet.fish.washington.edu/seashell/snaps/uniprot_table_r2023_01.tab", sep = '\t', header = TRUE)
 ```
@@ -226,12 +226,12 @@ annot_tab <-
   left_join(bltabl, spgo,  by = c("V3" = "Entry")) %>%
   select(V1, V3, V13, Protein.names, Organism, Gene.Ontology..biological.process., Gene.Ontology.IDs)
 
-write.table(annot_tab, file = "../output/03-transcriptome-annotation/G_macrocephalus_IDmapping_2024_04_17.tab", sep = "\t",
+write.table(annot_tab, file = "../output/03-transcriptome-annotation/G_macrocephalus_rna_IDmapping_2024_04_17.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
 ```
 
 ```{bash}
-head -n 3 ../output/03-transcriptome-annotation/G_macrocephalus_IDmapping_2024_04_17.tab
+head -n 3 ../output/03-transcriptome-annotation/G_macrocephalus_rna_IDmapping_2024_04_17.tab
 ```
 
 ```{r, eval=TRUE}
