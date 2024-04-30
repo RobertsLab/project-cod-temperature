@@ -29,11 +29,20 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r load-packages, eval=TRUE}
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("Rsubread")
+library(Rsubread)
+```
+
 Code for aligning RNAseq data to reference genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html). 
 
 - Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
 - Trimmed reads: 
 - Genome downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/), stored [here](https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna) as a part of lab [genomic resources](https://robertslab.github.io/resources/Genomic-Resources/#gadus-macrocephalus-pacific-cod)
+- Genome GTF downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/)
 
 # Create a Bash variables file
 
@@ -100,7 +109,7 @@ cat .bashvars
 
 ## Retrieving the reference genome and gff
 
-```{r download-genome-fasta, engine='bash', eval=FALSE}
+```{r download-genome-fasta, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -118,8 +127,8 @@ wget \
 ```
 
 
-v NOT CURRENTLY WORKING v
-```{r download-genome-gtf, engine='bash', eval=FALSE}
+v NOT CURRENTLY WORKING v, had to download locally and then upload to server for use
+```{r download-genome-gtf, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -141,7 +150,7 @@ ls -lh "${genome_fasta_dir}"
 
 ## Verify genome FastA MD5 checksum
 
-```{r verify-genome-fasta-checksum, engine='bash', eval=TRUE}
+```{r verify-genome-fasta-checksum, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -152,7 +161,7 @@ md5sum --check <<< "${genome_fasta_checksum}  ${genome_fasta_name}.fna"
 
 ```
 
-```{r verify-genome-gff-checksum, engine='bash', eval=TRUE}
+```{r verify-genome-gff-checksum, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -227,7 +236,6 @@ source .bashvars
 
 ## Sample Quantification
 
-```{r, engine='bash'}
 # Hisat2 alignments
 find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 | xargs basename -s .flexbar_trim.R_1.fastq.gz | xargs -I{} \
@@ -237,6 +245,7 @@ find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 -1 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_1.fastq.gz \
 -2 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_2.fastq.gz \
 -S ../output/06.2-cod-RNAseq-alignment-genome/{}.sam
+&> ../output/06.2-cod-RNAseq-alignment-genome/{}_hisat2.log
 
 
 
@@ -253,31 +262,37 @@ find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 ```
 
 ```{r sort-sam-files, engine='bash'}
-# # Sort SAM files, convert to BAM, and index
+# Sort SAM files, convert to BAM, and index
+
 for samfile in ../output/06.2-cod-RNAseq-alignment-genome/*.sam; do
   bamfile="${samfile%.sam}.bam"
   sorted_bamfile="${samfile%.sam}.sorted.bam"
   
-  # Convert SAM to BAM
-  /home/shared/samtools-1.12/samtools view -bS -@ 20 "$samfile" > "$bamfile"
+  # Check if the output file already exists
+  if [[ ! -e "$sorted_bamfile" ]]; then
+    # Convert SAM to BAM
+    /home/shared/samtools-1.12/samtools view -bS -@ 10 "$samfile" > "$bamfile"
   
-  # Sort BAM
-  /home/shared/samtools-1.12/samtools sort -@ 20 "$bamfile" -o "$sorted_bamfile"
+    # Sort BAM
+    /home/shared/samtools-1.12/samtools sort -@ 10 "$bamfile" -o "$sorted_bamfile"
   
-  # Index sorted BAM
-  /home/shared/samtools-1.12/samtools index -@ 20 "$sorted_bamfile"
+    # Index sorted BAM
+    /home/shared/samtools-1.12/samtools index -@ 10 "$sorted_bamfile"
+  fi
 done
 ```
 
+```{r count-output-files, engine='bash', eval=TRUE}
+# Count the number of samples for which we have sorted bam files -- I should have 79 (one for each input sample)
+find ../output/06.2-cod-RNAseq-alignment-genome -type f -name "*.sorted.bam" | wc -l
+```
 
-
-
-```{r, engine='bash'}
+```{r delete-excess-files, engine='bash'}
 # Delete unneccessary index files
 rm ../output/06.2-cod-RNAseq-alignment-genome/*.ht2
 
 # Delete unneeded SAM files
-rm ./*.sam
+rm ../output/06.2-cod-RNAseq-alignment-genome/*.sam
 
 
 # # Sort SAM files, convert to BAM, and index
@@ -298,8 +313,30 @@ rm ./*.sam
 
 ```
 
+```{r check-output-dir, engine='bash', eval=TRUE}
+# View the output files
+ls -lh ../output/06.2-cod-RNAseq-alignment-genome
+```
 
-can use feature counts to get counts file (it an R package (?) that Laura and Steven use)
+# Read Summarization
+
+Will be summarizing reads using [featureCounts](https://www.rdocumentation.org/packages/Rsubread/versions/1.22.2/topics/featureCounts) in the [Rsubread](https://bioconductor.org/packages/release/bioc/vignettes/Rsubread/inst/doc/SubreadUsersGuide.pdf) Bioconductor package
+
+
+
+```{r featureCounts, engine='bash'}
+
+/home/shared/subread-2.0.5-Linux-x86_64/bin/featureCounts \
+-p --countReadPairs \
+-T 5 \
+-t exon \
+-g gene_id \
+-a ../data/genomic.gtf \
+-o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts_matrix.txt \
+../output/06.2-cod-RNAseq-alignment-genome/*.sorted.bam \
+&> ../output/06.2-cod-RNAseq-alignment-genome/featureCounts.log
+
+```
 
 
 

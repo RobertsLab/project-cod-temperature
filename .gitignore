@@ -11,6 +11,8 @@ data/*.fasta
 output/05-cod-RNAseq-trimming/trimmed-reads
 output/06-cod-RNAseq-alignment/kallisto/*.idx
 output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_*
+output/06.2-cod-RNAseq-alignment-genome/*.bam
+output/06.2-cod-RNAseq-alignment-genome/*.bai
 =======
 .DS_Store
 reports/~$bruary_2024.docx
