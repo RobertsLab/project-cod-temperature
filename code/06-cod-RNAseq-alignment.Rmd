@@ -29,6 +29,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(ggplot2)
+library(plotly)
+```
 Code for aligning RNAseq data to reference transcriptome/genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html). 
 
 - Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
@@ -70,6 +78,7 @@ echo ""
 
 echo "# Paths to programs"
 echo 'export kallisto=/home/shared/kallisto/kallisto'
+echo 'export multiqc=/home/sam/programs/mambaforge/bin/multiqc'
 echo 'export trinity_abund_to_matrix=/home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl'
 echo ""
 
@@ -83,6 +92,7 @@ echo "# Programs associative array"
 echo "declare -A programs_array"
 echo "programs_array=("
 echo '[kallisto]="${kallisto}" \'
+echo '[multiqc]="${multiqc}" \'
 echo '[trinity_abund_to_matrix]="${trinity_abund_to_matrix}" \'
 echo ")"
 } > .bashvars
@@ -185,7 +195,8 @@ run_kallisto_quant() {
         --index="${kallisto_output_dir}/${kallisto_index_name}" \
         --output-dir="${kallisto_output_dir}/kallisto_quant_${sample_num}" \
         --bootstrap-samples=100 \
-        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq}
+        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq} \
+        &> "${kallisto_output_dir}/kallisto_quant_${sample_num}.log"
 }
 
 
@@ -215,7 +226,7 @@ for file_r1 in "${raw_reads_dir}"/*_R1_001.fastq.gz; do
 done
 ```
 
-Check that we have the appropriate number of output folders. We should have (#rawreads/2)+1 -- one output folder for each pair of reads plus the single kallisto index file
+Check that we have the appropriate number of output folders. We should have one log file for each pair of reads
 ```{r check-kallisto-output, engine='bash', eval=TRUE}
 # Load bash variables into memory
 source .bashvars
@@ -227,10 +238,68 @@ ls -1 | wc -l
 
 # Count number of kallisto output 
 cd ${kallisto_output_dir}
-echo "Number of output files/folders"
-ls -1 | wc -l
+echo "Number of output log files"
+find . -type f -name "*.log" | wc -l
 ```
 
+## MultiQC on Kallisto output logs
+
+```{r raw-fastqc-multiqc, engine='bash'}
+# Load bash variables into memory
+source .bashvars
+
+############ RUN MULTIQC ############
+echo "Beginning MultiQC on raw FastQC..."
+echo ""
+
+${programs_array[multiqc]} ${kallisto_output_dir}/*.log -o ${output_dir_top}
+
+echo ""
+echo "MultiQC on raw FastQs complete."
+echo ""
+
+############ END MULTIQC ############
+
+echo "Removing FastQC zip files."
+echo ""
+rm ${output_dir_top}/*.zip
+echo "FastQC zip files removed."
+echo ""
+
+# View directory contents
+ls -lh ${output_dir_top}
+
+```
+
+I also want to include the treatment/tank info when plotting alignment rates across samples
+```{r plot-alignment-rates, eval=TRUE}
+# Load multiqc stats
+kallisto_multiqc <- read.csv("../output/06-cod-RNAseq-alignment/multiqc_data/multiqc_kallisto.txt", sep = '\t')
+# Adjust sample name formatting (to prep for join)
+kallisto_multiqc$Sample <- gsub("_R1_001", "", kallisto_multiqc$Sample) 
+kallisto_multiqc$Sample <- paste("sample_", kallisto_multiqc$Sample, sep = "")
+# Load experimental data
+cod_sample_info_OG <- read.csv("../data/DESeq2_Sample_Information.csv")
+
+kallisto_multiqc_plustreatment <- left_join(cod_sample_info_OG, kallisto_multiqc, by = c("sample_name" = "Sample")) %>% 
+  na.omit()
+kallisto_multiqc_plustreatment <- kallisto_multiqc_plustreatment[order(kallisto_multiqc_plustreatment$sample_number),]
+
+a <- ggplot(kallisto_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_aligned, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+a
+#ggplotly(a)
+
+b <- ggplot(kallisto_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_aligned, fill=as.factor(tank))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+b
+#ggplotly(b)
+
+```
 
 ## Trinity Matrix with Kallisto Output
 
