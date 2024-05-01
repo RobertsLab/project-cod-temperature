@@ -1,0 +1,864 @@
+---
+title: "07.2.1-cod-RNAseq-DESeq2genome-exon"
+author: "Kathleen Durkin"
+date: "2024-04-30"
+always_allow_html: true
+output: 
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = TRUE,        # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+Differential gene expression analysis for [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html).
+
+-   Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
+-   Reads aligned to genome downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/)
+-   NOTE this analysis is for the featureCounts *exons* (see `06.2-cod-RNAseq-alignment-genome`)
+
+### Install and load packages
+
+```{r load_libraries, inlcude = TRUE}
+
+## clear
+rm(list=ls())
+
+## Install Rtools directly from (https://cran.r-project.org/bin/windows/Rtools/), then install these on first run:
+# install.packages("BiocManager")
+# BiocManager::install("DESeq2")
+# BiocManager::install("vsn")
+# BiocManager::install("tidybulk")
+# BiocManager::install("goseq")
+# BiocManager::install("affycoretools")
+# BiocManager::install("EnhancedVolcano")
+# BiocManager::install("pcaExplorer")
+# BiocManager::install("apeglm")
+# BiocManager::install("PCAtools")
+
+
+# List of packages we want to install (run every time)
+load.lib<-c("DESeq2","edgeR","goseq","dplyr","GenomicFeatures","data.table","calibrate","affycoretools","data.table","vsn","tidybulk","ggplot2","cowplot","pheatmap","gplots","RColorBrewer","EnhancedVolcano","pcaExplorer","readxl","apeglm","ashr","tibble","plotly","sqldf","PCAtools","ggpubr","beepr","genefilter","ComplexHeatmap","circlize","scales", "tidyverse", "gridextra'")
+
+# Select only the packages that aren't currently installed (run every time)
+# install.lib <- load.lib[!load.lib %in% installed.packages()]
+
+# And finally we install the missing packages, including their dependency.
+# for(lib in install.lib) install.packages(lib,dependencies=TRUE)
+# After the installation process completes, we load all packages.
+sapply(load.lib,require,character=TRUE)
+                        
+```
+
+I found the [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) and the [HBC DGE training workshop](https://github.com/hbctraining/DGE_workshop) super helpful in figuring out how to use the DESeq2 package!
+
+# Load data
+
+## Load count data
+
+Load in the count matrix we generated after alignment using the featureCounts. We also need to slightly reformat the count matrix to make all of the estimated counts integers, as required for DESeq2.
+
+```{r}
+# Read in counts data. This is a gene-level counts matrix generated from kallisto transcript abundances using Trinity
+cod_counts_data_OG <- read_delim("../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix_noheader.txt", delim="\t") 
+head(cod_counts_data_OG)
+```
+
+## Count data munging
+
+```{r}
+# # We need to modify this data frame so that the row names are actually row names, instead of comprising the first column
+cod_counts_data <- cod_counts_data_OG %>% 
+  column_to_rownames(var = "Geneid")
+
+# Additional formatting
+# Remove unnecessary columns 
+cod_counts_data <- subset(cod_counts_data, select = -c(Chr, Start, End, Strand, Length))
+
+# Remove the directory path and file type portions of the column names, to leave just the sample names
+colnames(cod_counts_data) <- sub("../output/06.2-cod-RNAseq-alignment-genome/", "sample_", colnames(cod_counts_data))
+colnames(cod_counts_data) <- sub(".sorted.bam", "", colnames(cod_counts_data))
+
+# Reorder the coumns into alphabetical order (to make it easier to create an associated metadata spreadsheet)
+cod_counts_data <- cod_counts_data[, order(colnames(cod_counts_data))]
+
+cod_sample_names <- names(cod_counts_data)
+
+write.table(cod_counts_data, file = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/Gmac_genome_exon_counts_formatted.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
+
+head(cod_counts_data)
+cod_sample_names
+```
+
+## Import sample metadata sheets
+
+```{r}
+# Read in the csv file as a data frame
+cod_sample_info_OG <- read.csv("~/project-cod-temperature/data/DESeq2_Sample_Information.csv")
+cod_experiment_alldata_OG <- read.csv("~/project-cod-temperature/data/temp-experiment.csv")
+head(cod_sample_info_OG)
+head(cod_experiment_alldata_OG)
+
+# Rename the "GeneticSamplingCount" column of the experimental data to "sample_number"
+cod_experiment_alldata <- cod_experiment_alldata_OG
+names(cod_experiment_alldata)[names(cod_experiment_alldata) == "GeneticSamplingCount"] <- "sample_number"
+
+# Calculate length difference and weight difference (end-beginning)
+cod_experiment_alldata$SL_diff_mm <- cod_experiment_alldata$SL_mm - cod_experiment_alldata$SL_11212022
+cod_experiment_alldata$WWT_diff_g <- cod_experiment_alldata$WholeBodyWW_g - cod_experiment_alldata$WWT_11212022
+
+# Merge the two data frames to get experimental data for all of our RNAseq'd samples.
+# This should include all rows from cod_sample_info_OG and matching rows from cod_experiment_alldata based on the shared sample_number column. Sample number duplicates (e.g. from different tissue types) should be retained.
+cod_sample_info <- merge(cod_sample_info_OG, cod_experiment_alldata, by = "sample_number", all.x = TRUE)
+
+# Reorder the data frame into alphabetical order by the sample names, so that the rows are in the same order as our count matrix columns
+cod_sample_info <- cod_sample_info[order(cod_sample_info$sample_name), ]
+
+# Again, we need to reformat so that the data in the first column becomes the row names
+rownames(cod_sample_info) <- cod_sample_info$sample_name
+
+# Remove duplicate columns (artifact of merging data frames with multiple shared columns and of maing sample_name the rownames instead of a variable)
+cod_sample_info <- subset(cod_sample_info, select=-Temperature)
+cod_sample_info <- subset(cod_sample_info, select=-Tank)
+cod_sample_info <- subset(cod_sample_info, select=-sample_name)
+
+
+head(cod_sample_info)
+```
+
+## Sample metadata munging
+
+```{r}
+# Factor variables
+cod_sample_info$temp_treatment <- factor(cod_sample_info$temp_treatment)
+cod_sample_info$tank <- factor(cod_sample_info$tank)
+cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
+
+# Remove bad/missing samples
+# Missing data: 92
+# MuliQC report: 149, 129
+# PCA outliers: 31, 41 (per Laura)
+cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129", "sample_31", "sample_41")),]
+cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129, sample_31, sample_41)))
+
+# Check that the column names of our count data match the row names of our sample info sheet
+ncol(cod_counts_data)
+nrow(cod_sample_info)
+
+all(colnames(cod_counts_data) %in% rownames(cod_sample_info))
+all(colnames(cod_counts_data) == rownames(cod_sample_info))
+```
+
+# Preliminary PCA visualization (liver tissue)
+
+## DESeq object
+
+```{r}
+# Filter data
+infosub_L <- cod_sample_info %>% filter(tissue_type == "Liver")
+countsub_L <- subset(cod_counts_data, select=row.names(infosub_L))
+
+# Calculate DESeq object
+dds_L <- DESeqDataSetFromMatrix(countData = countsub_L,
+                              colData = infosub_L,
+                              design = ~ temp_treatment) 
+
+# Run differential expression analysis 
+# (Note that this DESeq() function runs all necessary steps, including data normalization, 
+# estimating size factors, estimating dispersions, gene-wise dispersion estimates, mean-dispersion 
+# relationship, final dispersion estimates, fitting model, and testing)
+dds_L <- DESeq(dds_L)
+resultsNames(dds_L) # lists the coefficients
+```
+
+```{r}
+plotDispEsts(dds_L)
+```
+
+## PCA visualization
+
+```{r}
+# Generate PCAs
+# top 500 most variable genes
+pca_L_500<- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE)
+percentVar_L_500 <- round(100*attr(pca_L_500, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_500 <- subset(pca_L_500, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_500 <- merge(pca_L_500, cod_sample_info, by.x = "name", by.y = "row.names")
+
+# top 1000 most variable genes
+pca_L_1000 <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=1000)
+percentVar_L_1000 <- round(100*attr(pca_L_1000, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_1000 <- subset(pca_L_1000, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_1000 <- merge(pca_L_1000, cod_sample_info, by.x = "name", by.y = "row.names")
+
+# all genes
+pca_L_all <- plotPCA(vst(dds_L), intgroup = c("temp_treatment"), returnData=TRUE, ntop=nrow(assay(vst(dds_L))))
+percentVar_L_all <- round(100*attr(pca_L_all, "percentVar"))
+# merge with metadata sheet so we can plot using other features
+pca_L_all <- subset(pca_L_all, select=-temp_treatment) #remove the temp_treatment column, which will be a duplicate post-merge
+pca_L_all <- merge(pca_L_all, cod_sample_info, by.x = "name", by.y = "row.names")
+
+# Assign specific colors to each temperature treatment level
+temp_colors <- c(
+  "0" = "darkblue",
+  "5" = "royalblue1",
+  "9" = "green",
+  "16" = "orangered") 
+
+# Plot PCAs
+p.L.500 <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment)) + 
+  geom_point(size=4, alpha = 5/10) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ",percentVar_L_500[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_500[2],"% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.500.SLdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.500.WWTdiff <- ggplot(pca_L_500, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 500 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.1000 <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment)) + 
+  geom_point(size=4, alpha = 5/10) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ",percentVar_L_1000[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_1000[2],"% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.1000.SLdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.1000.WWTdiff <- ggplot(pca_L_1000, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, top 1000 most variable genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.all <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment)) + 
+  geom_point(size=4, alpha = 5/10) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ",percentVar_L_all[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar_L_all[2],"% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values=temp_colors)+
+  stat_ellipse()
+
+p.L.all.SLdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=SL_diff_mm)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+p.L.all.WWTdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=WWT_diff_g)) + 
+  geom_point(alpha = 0.5) +
+  ggtitle("Liver, all genes") +
+  xlab(paste0("PC1: ", percentVar_L_500[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar_L_500[2], "% variance")) + 
+  coord_fixed() +
+  scale_color_manual(values = temp_colors) +
+  scale_size_continuous() +  # Add this line to control the size of points
+  stat_ellipse()
+
+# View PCAs
+p.L.500
+p.L.500.SLdiff
+p.L.500.WWTdiff
+p.L.1000
+p.L.1000.SLdiff
+p.L.1000.WWTdiff
+p.L.all
+p.L.all.SLdiff
+p.L.all.WWTdiff
+
+# Export PCAs as pngs
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-PCA_L_500.png",
+         plot   = p.L.500,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-PCA_L_1000.png",
+         plot   = p.L.1000,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-PCA_L_all.png",
+         plot   = p.L.all,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
+
+# Liver tissue, 9*C v. 16*C
+
+The 9\*C temperature treatment is effectively our "control," as it represents the ambient temperature that wild juvenile Pacific cod would experience.
+
+```{r}
+# liver tissue, temperatures 9 vs. 16 
+
+# Filter data
+infosub_L.9.16 <- cod_sample_info %>% filter(tissue_type == "Liver" & (temp_treatment == "9" | temp_treatment == "16"))
+countsub_L.9.16 <- subset(cod_counts_data, select=row.names(infosub_L.9.16))
+
+# Calculate DESeq object
+dds_L.9.16 <- DESeqDataSetFromMatrix(countData = countsub_L.9.16,
+                              colData = infosub_L.9.16,
+                              design = ~ temp_treatment)
+
+dds_L.9.16 <- DESeq(dds_L.9.16)
+resultsNames(dds_L.9.16) # lists the coefficients
+```
+
+```{r}
+plotDispEsts(dds_L.9.16)
+```
+
+```{r}
+# Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
+keep <- rowSums(DESeq2::counts(dds_L.9.16) >= 10) >= ncol(countsub_L.9.16)/3
+dds_L.9.16<- dds_L.9.16[keep,]
+
+# Generate Contrasts
+contrast_list_L.9.16        <- c("temp_treatment", "16", "9") # order is important: factor, treatment group, control
+res_table_L.9.16_noshrink <- results(dds_L.9.16, contrast=contrast_list_L.9.16, alpha = 0.05)
+
+res_table_L.9.16_norm     <- lfcShrink(dds_L.9.16,
+                                       coef=2,
+                                       type="normal") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.16_apeglm   <- lfcShrink(dds_L.9.16,
+                                       coef=2, 
+                                       type="apeglm") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.16_ashr     <- lfcShrink(dds_L.9.16,
+                                       coef=2, 
+                                       type="ashr")
+```
+
+```{r}
+# Generate MA plots
+par(mfrow=c(2,2), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-4,4)
+DESeq2::plotMA(res_table_L.9.16_noshrink, xlim=xlim, ylim=ylim, main="no shrink")
+DESeq2::plotMA(res_table_L.9.16_norm, xlim=xlim, ylim=ylim, main="normal")
+DESeq2::plotMA(res_table_L.9.16_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
+DESeq2::plotMA(res_table_L.9.16_ashr, xlim=xlim, ylim=ylim, main="ashr")
+```
+
+```{r}
+# Examine results formatting
+res_table_L.9.16_norm %>% data.frame() %>% head()
+```
+
+Note that the metric we want to use to identify significantly expressed genes is the `padj` values, **NOT** the `pvalue`. `padj` are p-values corrected for multiple testing (default method is the Benjamini and Hochberg method).
+
+```{r}
+summary(res_table_L.9.16_noshrink)
+summary(res_table_L.9.16_norm)
+summary(res_table_L.9.16_apeglm)
+summary(res_table_L.9.16_ashr)
+```
+
+# Extracting significantly expressed genes
+
+```{r}
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+# Convert results table into tibble
+res_table_L.9.16_norm_tb <- res_table_L.9.16_norm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+# subset that table to only keep the significant genes using our pre-defined thresholds:
+sig_L.9.16_norm <- res_table_L.9.16_norm_tb %>%
+        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.16_norm)
+
+write.table(sig_L.9.16_norm, file = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-Gmac_DEGs_sig_L.9.16_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
+```
+
+## Heatmap
+
+```{r}
+# Retrieve normalized counts matrix
+dds_L.9.16_norm_counts <- counts(dds_L.9.16, normalized=TRUE)
+
+# Extract normalized expression for significant genes
+norm_sig_L.9.16 <- dds_L.9.16_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.16_norm_counts) %in% sig_L.9.16_norm$gene)
+
+head(norm_sig_L.9.16)
+
+# Annotate heatmap
+annotation <- infosub_L.9.16 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.16 <- pheatmap(norm_sig_L.9.16, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression, Liver, 9*C and 16*C")
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-heatmap_L.9.16_norm_sig.png",
+         plot   = h.L.9.16,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+## Volcano plot
+
+```{r}
+# Generate plot
+v.L.9.16 <- 
+  ggplot(res_table_L.9.16_norm_tb) +
+  # Plot all
+  geom_point(aes(x=log2FoldChange, y=-log10(padj),color="unchanged"),
+             size=.5) +
+  # Overlay all significantly upregulated in red
+  geom_point(data = sig_L.9.16_norm[sig_L.9.16_norm$log2FoldChange > 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="upregulated"), 
+             size=.5) +
+  # Overlay all significantly downregulated in blue
+  geom_point(data = sig_L.9.16_norm[sig_L.9.16_norm$log2FoldChange < 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
+             size=.5) +
+  ggtitle("Liver, 9*C and 16*C") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  scale_x_continuous(limits = c(-4,4)) +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_color_manual(values = c("unchanged" = "darkgrey", "upregulated" = "red", "downregulated" = "blue"),
+                     labels = c("unchanged" = "Unchanged", "upregulated" = "Upregulated", "downregulated" = "Downregulated"),
+                     name = NULL) +
+  theme(legend.position = "top",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))
+
+v.L.9.16
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-volcano_L.9.16.png",
+         plot   = v.L.9.16,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
+
+
+# Liver tissue, 9*C v. 0*C
+
+The 9\*C temperature treatment is effectively our "control," as it represents the ambient temperature that wild juvenile Pacific cod would experience.
+
+```{r}
+# liver tissue, temperatures 9 vs. 0 
+
+# Filter data
+infosub_L.9.0 <- cod_sample_info %>% filter(tissue_type == "Liver" & (temp_treatment == "9" | temp_treatment == "0"))
+countsub_L.9.0 <- subset(cod_counts_data, select=row.names(infosub_L.9.0))
+
+# Calculate DESeq object
+dds_L.9.0 <- DESeqDataSetFromMatrix(countData = countsub_L.9.0,
+                              colData = infosub_L.9.0,
+                              design = ~ temp_treatment)
+
+dds_L.9.0 <- DESeq(dds_L.9.0)
+resultsNames(dds_L.9.0) # lists the coefficients
+```
+
+```{r}
+plotDispEsts(dds_L.9.0)
+```
+
+```{r}
+# Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
+keep <- rowSums(DESeq2::counts(dds_L.9.0) >= 10) >= ncol(countsub_L.9.0)/3
+dds_L.9.0<- dds_L.9.0[keep,]
+
+# Generate Contrasts
+contrast_list_L.9.0        <- c("temp_treatment", "0", "9") # order is important: factor, treatment group, control
+res_table_L.9.0_noshrink <- results(dds_L.9.0, contrast=contrast_list_L.9.0, alpha = 0.05)
+
+res_table_L.9.0_norm     <- lfcShrink(dds_L.9.0,
+                                       coef=2,
+                                       type="normal") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.0_apeglm   <- lfcShrink(dds_L.9.0,
+                                       coef=2, 
+                                       type="apeglm") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.0_ashr     <- lfcShrink(dds_L.9.0,
+                                       coef=2, 
+                                       type="ashr")
+```
+
+```{r}
+# Generate MA plots
+par(mfrow=c(2,2), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-4,4)
+DESeq2::plotMA(res_table_L.9.0_noshrink, xlim=xlim, ylim=ylim, main="no shrink")
+DESeq2::plotMA(res_table_L.9.0_norm, xlim=xlim, ylim=ylim, main="normal")
+DESeq2::plotMA(res_table_L.9.0_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
+DESeq2::plotMA(res_table_L.9.0_ashr, xlim=xlim, ylim=ylim, main="ashr")
+```
+
+```{r}
+# Examine results formatting
+res_table_L.9.0_norm %>% data.frame() %>% head()
+```
+
+Note that the metric we want to use to identify significantly expressed genes is the `padj` values, **NOT** the `pvalue`. `padj` are p-values corrected for multiple testing (default method is the Benjamini and Hochberg method).
+
+```{r}
+summary(res_table_L.9.0_noshrink)
+summary(res_table_L.9.0_norm)
+summary(res_table_L.9.0_apeglm)
+summary(res_table_L.9.0_ashr)
+```
+
+# Extracting significantly expressed genes
+
+```{r}
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+# Convert results table into tibble
+res_table_L.9.0_norm_tb <- res_table_L.9.0_norm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+# subset that table to only keep the significant genes using our pre-defined thresholds:
+sig_L.9.0_norm <- res_table_L.9.0_norm_tb %>%
+        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.0_norm)
+
+write.table(sig_L.9.0_norm, file = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-Gmac_DEGs_sig_L.9.0_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
+```
+
+## Heatmap
+
+```{r}
+# Retrieve normalized counts matrix
+dds_L.9.0_norm_counts <- counts(dds_L.9.0, normalized=TRUE)
+
+# Extract normalized expression for significant genes
+norm_sig_L.9.0 <- dds_L.9.0_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.0_norm_counts) %in% sig_L.9.0_norm$gene)
+
+head(norm_sig_L.9.0)
+
+# Annotate heatmap
+annotation <- infosub_L.9.0 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.0 <- pheatmap(norm_sig_L.9.0, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression, Liver, 9*C and 0*C")
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-heatmap_L.9.0_norm_sig.png",
+         plot   = h.L.9.0,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+## Volcano plot
+
+```{r}
+# Generate plot
+v.L.9.0 <- 
+  ggplot(res_table_L.9.0_norm_tb) +
+  # Plot all
+  geom_point(aes(x=log2FoldChange, y=-log10(padj),color="unchanged"),
+             size=.5) +
+  # Overlay all significantly upregulated in red
+  geom_point(data = sig_L.9.0_norm[sig_L.9.0_norm$log2FoldChange > 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="upregulated"), 
+             size=.5) +
+  # Overlay all significantly downregulated in blue
+  geom_point(data = sig_L.9.0_norm[sig_L.9.0_norm$log2FoldChange < 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
+             size=.5) +
+  ggtitle("Liver, 9*C and 0*C") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  scale_x_continuous(limits = c(-4,4)) +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_color_manual(values = c("unchanged" = "darkgrey", "upregulated" = "red", "downregulated" = "blue"),
+                     labels = c("unchanged" = "Unchanged", "upregulated" = "Upregulated", "downregulated" = "Downregulated"),
+                     name = NULL) +
+  theme(legend.position = "top",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))
+
+v.L.9.0
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-volcano_L.9.0.png",
+         plot   = v.L.9.0,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
+
+
+# Liver tissue, 9*C v. 5*C
+
+The 9\*C temperature treatment is effectively our "control," as it represents the ambient temperature that wild juvenile Pacific cod would experience.
+
+```{r}
+# liver tissue, temperatures 9 vs. 5 
+
+# Filter data
+infosub_L.9.5 <- cod_sample_info %>% filter(tissue_type == "Liver" & (temp_treatment == "9" | temp_treatment == "5"))
+countsub_L.9.5 <- subset(cod_counts_data, select=row.names(infosub_L.9.5))
+
+# Calculate DESeq object
+dds_L.9.5 <- DESeqDataSetFromMatrix(countData = countsub_L.9.5,
+                              colData = infosub_L.9.5,
+                              design = ~ temp_treatment)
+
+dds_L.9.5 <- DESeq(dds_L.9.5)
+resultsNames(dds_L.9.5) # lists the coefficients
+```
+
+```{r}
+plotDispEsts(dds_L.9.5)
+```
+
+```{r}
+# Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
+keep <- rowSums(DESeq2::counts(dds_L.9.5) >= 10) >= ncol(countsub_L.9.5)/3
+dds_L.9.5<- dds_L.9.5[keep,]
+
+# Generate Contrasts
+contrast_list_L.9.5        <- c("temp_treatment", "5", "9") # order is important: factor, treatment group, control
+res_table_L.9.5_noshrink <- results(dds_L.9.5, contrast=contrast_list_L.9.5, alpha = 0.05)
+
+res_table_L.9.5_norm     <- lfcShrink(dds_L.9.5,
+                                       coef=2,
+                                       type="normal") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.5_apeglm   <- lfcShrink(dds_L.9.5,
+                                       coef=2, 
+                                       type="apeglm") # lfcThreshold = 0.585)  # a lfc threshold of 1 = 2-fold change, 0.585 = 1.5-fold change
+res_table_L.9.5_ashr     <- lfcShrink(dds_L.9.5,
+                                       coef=2, 
+                                       type="ashr")
+```
+
+```{r}
+# Generate MA plots
+par(mfrow=c(2,2), mar=c(4,4,2,1))
+xlim <- c(1,1e5); ylim <- c(-4,4)
+DESeq2::plotMA(res_table_L.9.5_noshrink, xlim=xlim, ylim=ylim, main="no shrink")
+DESeq2::plotMA(res_table_L.9.5_norm, xlim=xlim, ylim=ylim, main="normal")
+DESeq2::plotMA(res_table_L.9.5_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
+DESeq2::plotMA(res_table_L.9.5_ashr, xlim=xlim, ylim=ylim, main="ashr")
+```
+
+```{r}
+# Examine results formatting
+res_table_L.9.5_norm %>% data.frame() %>% head()
+```
+
+Note that the metric we want to use to identify significantly expressed genes is the `padj` values, **NOT** the `pvalue`. `padj` are p-values corrected for multiple testing (default method is the Benjamini and Hochberg method).
+
+```{r}
+summary(res_table_L.9.5_noshrink)
+summary(res_table_L.9.5_norm)
+summary(res_table_L.9.5_apeglm)
+summary(res_table_L.9.5_ashr)
+```
+
+# Extracting significantly expressed genes
+
+```{r}
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+# Convert results table into tibble
+res_table_L.9.5_norm_tb <- res_table_L.9.5_norm %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+# subset that table to only keep the significant genes using our pre-defined thresholds:
+sig_L.9.5_norm <- res_table_L.9.5_norm_tb %>%
+        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.5_norm)
+
+write.table(sig_L.9.5_norm, file = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-Gmac_DEGs_sig_L.9.5_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
+```
+
+## Heatmap
+
+```{r}
+# Retrieve normalized counts matrix
+dds_L.9.5_norm_counts <- counts(dds_L.9.5, normalized=TRUE)
+
+# Extract normalized expression for significant genes
+norm_sig_L.9.5 <- dds_L.9.5_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.5_norm_counts) %in% sig_L.9.5_norm$gene)
+
+head(norm_sig_L.9.5)
+
+# Annotate heatmap
+annotation <- infosub_L.9.5 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.5 <- pheatmap(norm_sig_L.9.5, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression, Liver, 9*C and 5*C")
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-heatmap_L.9.5_norm_sig.png",
+         plot   = h.L.9.5,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+## Volcano plot
+
+```{r}
+# Generate plot
+v.L.9.5 <- 
+  ggplot(res_table_L.9.5_norm_tb) +
+  # Plot all
+  geom_point(aes(x=log2FoldChange, y=-log10(padj),color="unchanged"),
+             size=.5) +
+  # Overlay all significantly upregulated in red
+  geom_point(data = sig_L.9.5_norm[sig_L.9.5_norm$log2FoldChange > 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="upregulated"), 
+             size=.5) +
+  # Overlay all significantly downregulated in blue
+  geom_point(data = sig_L.9.5_norm[sig_L.9.5_norm$log2FoldChange < 0, ], 
+             aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
+             size=.5) +
+  ggtitle("Liver, 9*C and 0*C") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  scale_x_continuous(limits = c(-4,4)) +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_color_manual(values = c("unchanged" = "darkgrey", "upregulated" = "red", "downregulated" = "blue"),
+                     labels = c("unchanged" = "Unchanged", "upregulated" = "Upregulated", "downregulated" = "Downregulated"),
+                     name = NULL) +
+  theme(legend.position = "top",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))
+
+v.L.9.5
+
+# Save plot
+ggexport(filename = "../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/exon-volcano_L.9.5.png",
+         plot   = v.L.9.0,
+         res    = 600,
+         width  = 6000,
+         height = 4000)
+```
