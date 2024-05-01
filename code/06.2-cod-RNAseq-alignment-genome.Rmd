@@ -4,6 +4,11 @@ author: "Kathleen Durkin"
 date: "2024-04-16"
 always_allow_html: true
 output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -11,11 +16,6 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -339,6 +339,11 @@ Will be summarizing reads using [featureCounts](https://www.rdocumentation.org/p
 
 ```
 
+Save a version of the featureCounts count file with no header (aka remove line 1, which contains the program and command info)
+```{r remove-header-feaTureCounts-exon, engine='bash'}
+sed '1d' ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix.txt  > ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix_noheader.txt
+```
+
 ```{r featureCounts-exon-multiqc, engine='bash'}
 
 /home/sam/programs/mambaforge/bin/multiqc \
@@ -395,6 +400,11 @@ b
 
 ```
 
+Save a version of the featureCounts count file with no header (aka remove line 1, which contains the program and command info)
+```{r remove-header-feaTureCounts-gene, engine='bash'}
+sed '1d' ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt  > ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix_noheader.txt
+```
+
 ```{r featureCounts-gene-multiqc, engine='bash'}
 
 /home/sam/programs/mambaforge/bin/multiqc \
@@ -432,4 +442,5 @@ b
 #ggplotly(b)
 
 ```
+
 
