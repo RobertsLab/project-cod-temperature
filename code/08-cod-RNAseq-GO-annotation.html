@@ -1601,7 +1601,7 @@ border-radius: 0px;
 
 <p>This code depends on the database (<code>G_macrocephalus_IDmapping_2024_04_17.tab</code>) of <em>G.macrocephalus</em> transcript IDs and associated GO terms generated in 03-transcriptome-annotation.Rmd, AND on lists of differentially expressed genes (DEGs) generated in 07-cod-RNAseq-DESeq2.Rmd.</p>
 <p>This code identifies overrepresented gene ontology (GO) terms in <em>G.macrocephalus</em> RNA sequencing data</p>
-<p>Inputs: - transcript ID/GO term database (<code>G_macrocephalus_IDmapping_2024_04_17.tab</code>) - DEGs</p>
+<p>Inputs: - transcript ID/GO term database (<code>G_macrocephalus_rna_IDmapping_2024_04_17.tab</code>) - DEGs</p>
 <p>In 03-transcriptome-annotation.Rmd we used BLAST and Uniprot/SwissProt to obtain UniProt Accession numbers for each transcript in the <em>G. macrocephalus</em> transcriptome. We then used those Accession numbers to obtain GO terms for each transcript, functionally creating a database which matches <em>G.macrocephalus</em> transcripts with associated GO terms.</p>
 <p>In 07-cod-RNAseq-DESeq2.Rmd we identified sets of significantly differentially expressed genes (DEGs) between pairs of treatments (e.g., Liver tissue for 9C vs. 16C).</p>
 <p>Now we want to use the database to identify GO terms associated with our lists of DEGs, and to evaluate which GO terms are overrepresented.</p>
@@ -1642,187 +1642,66 @@ print(paste(&quot;All DEGs:&quot;, nrow(DEGs_GO_L.9.0), &quot;(9C v 0C),&quot;, 
 <pre><code>[1] &quot;All DEGs: 5415 (9C v 0C), 1212 (9C v 5C), 3612 (9C v 16C)&quot;</code></pre>
 <pre class="r"><code>print(paste(&quot;Unique DEGs:&quot;, nrow(DEGs_GO_L.9.0_unique), &quot;(9C v 0C),&quot;, nrow(DEGs_GO_L.9.5_unique), &quot;(9C v 5C),&quot;, nrow(DEGs_GO_L.9.16_unique), &quot;(9C v 16C)&quot;))</code></pre>
 <pre><code>[1] &quot;Unique DEGs: 4674 (9C v 0C), 1091 (9C v 5C), 3007 (9C v 16C)&quot;</code></pre>
+<pre class="r"><code># Save
+write.table(DEGs_GO_L.9.0_unique, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.0_unique.tab&quot;, sep = &quot;\t&quot;, row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.5_unique, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.5_unique.tab&quot;, sep = &quot;\t&quot;, row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.16_unique, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.16_unique.tab&quot;, sep = &quot;\t&quot;, row.names = TRUE, col.names = NA)</code></pre>
 <p>I also want a matrix associating GO terms with all of our count data, which includes gene-level transcript counts for each sample</p>
 <pre class="r"><code>counts_GO &lt;- left_join(kallisto_counts_matrix, gmac_idmap, by=c(&quot;X&quot; = &quot;V1&quot;))
 counts_GO &lt;- counts_GO[, c(&quot;Gene.Ontology..biological.process.&quot;, setdiff(names(counts_GO), &quot;Gene.Ontology..biological.process.&quot;))]
-# Reorder columns to have gene name and GO annotation next to each other
-head(counts_GO)</code></pre>
-<pre><code>                                                                       Gene.Ontology..biological.process.
-1 chaperone-mediated protein complex assembly [GO:0051131]; proteasome core complex assembly [GO:0080129]
-2                                                                                                    &lt;NA&gt;
-3                                                                                                    &lt;NA&gt;
-4                                                                                                        
-5  inositol phosphate dephosphorylation [GO:0046855]; phosphatidylinositol dephosphorylation [GO:0046856]
-6                                                                                                        
-               X kallisto_quant_100 kallisto_quant_107 kallisto_quant_108
-1 XM_060056358.1                243                411                191
-2 XR_009529804.1                  0                  0                  0
-3 XM_060046625.1                164                114                407
-4 XM_060044219.1                  0                  0                  0
-5 XM_060048099.1                 20                  0                 25
-6 XM_060047738.1                  0                  0                  0
-  kallisto_quant_109 kallisto_quant_10 kallisto_quant_110 kallisto_quant_117
-1                834               155                502                468
-2                  0                 0                  0                  0
-3                148               326                245                319
-4                 28                 0                  0                  0
-5                  0                44                  8                 41
-6                  0                 0                  0                  0
-  kallisto_quant_118 kallisto_quant_119 kallisto_quant_11 kallisto_quant_120
-1                417                986               241                389
-2                  0                  0                 0                  0
-3                189                142               175                244
-4                  0                 25                 9                  0
-5                 37                 19                10                 33
-6                 20                  0                 0                  0
-  kallisto_quant_121 kallisto_quant_127 kallisto_quant_128 kallisto_quant_129
-1                676                422                252                 52
-2                  0                  0                  0                  0
-3                 80                332                 80                 17
-4                 19                  0                  0                  0
-5                  8                 24                  8                  0
-6                  0                  0                  0                  0
-  kallisto_quant_12 kallisto_quant_131 kallisto_quant_137 kallisto_quant_138
-1               149                102                386                345
-2                 0                  0                  0                  0
-3               204                146                 43                 20
-4                 0                  0                  0                  0
-5                25                 13                  0                  0
-6                 0                  0                  0                  0
-  kallisto_quant_139 kallisto_quant_13 kallisto_quant_140 kallisto_quant_147
-1                255               166                340                187
-2                  0                 0                  0                  0
-3                 61               178                 92                 49
-4                  9                 0                  0                  0
-5                  4                10                  6                  6
-6                  0                 0                  0                  0
-  kallisto_quant_148 kallisto_quant_149 kallisto_quant_150 kallisto_quant_18
-1                376               2013                608               149
-2                  0                  0                  0                 0
-3                234                374                254               156
-4                  0                  0                  0                 0
-5                 26                 17                  7                10
-6                  0                  0                  0                 0
-  kallisto_quant_19 kallisto_quant_19.G kallisto_quant_19.S kallisto_quant_1
-1               264                 573                 782              197
-2                 0                   0                   0                0
-3               117                 868                1316              262
-4                12                 196                  12                0
-5                 5                  50                  77               19
-6                 0                   0                   0                0
-  kallisto_quant_20 kallisto_quant_20.G kallisto_quant_20.S kallisto_quant_21
-1               131                 693                 311               205
-2                 0                   0                   0                 1
-3               133                 747                1394               155
-4                 0                 175                   0                 0
-5                 9                  55                  85                30
-6                 0                   0                   0                33
-  kallisto_quant_28 kallisto_quant_29 kallisto_quant_2 kallisto_quant_30
-1               259               174              291               302
-2                 0                 0                0                 0
-3               168               187              100               240
-4                 0                 0                0                 0
-5                15                12               15                21
-6                 0                 0                0                19
-  kallisto_quant_31 kallisto_quant_37 kallisto_quant_38 kallisto_quant_39
-1               387               933               714               561
-2                 0                 0                 0                 0
-3               104               142               136               131
-4                 0                 0                 0                 0
-5                17                 3                16                10
-6                 0                 0                63                 0
-  kallisto_quant_3 kallisto_quant_40 kallisto_quant_41 kallisto_quant_47
-1              218               432               369               415
-2                0                 0                 0                 0
-3              210               146                73               131
-4               10                 0                 0                10
-5               18                 0                 2                11
-6                0                 0                 0                 0
-  kallisto_quant_48 kallisto_quant_49 kallisto_quant_4 kallisto_quant_50
-1              1346               413              227               410
-2                 0                 0                0                 0
-3               129               278              163               106
-4                 0                10                0                 0
-5                 7                55               38                15
-6                 0               151                0                 0
-  kallisto_quant_57 kallisto_quant_57.G kallisto_quant_57.S kallisto_quant_58
-1               440                1466                  31               348
-2                 0                   0                   0                 0
-3               140                 800                 277               200
-4                 0                 203                   0                 0
-5                21                  27                   0                15
-6                 0                 101                   0                 0
-  kallisto_quant_58.G kallisto_quant_58.S kallisto_quant_59 kallisto_quant_5
-1                1650                 442               936              293
-2                   0                   0                 0                0
-3                 870                1041                75              288
-4                 190                  13                 0                0
-5                  77                   5                 6               29
-6                  60                   0                 0                0
-  kallisto_quant_60 kallisto_quant_67 kallisto_quant_68 kallisto_quant_69
-1               381               397               419               423
-2                 0                 0                 0                 0
-3               172               212               253               209
-4                 0                 9                 0                 0
-5                28                40                27                13
-6                 0                 0               208                 0
-  kallisto_quant_70 kallisto_quant_78 kallisto_quant_79 kallisto_quant_80
-1               362               357               239               151
-2                 0                 0                 0                 0
-3               120               161               200               151
-4                 0                 0                12                 0
-5                 6                 5                25                10
-6                 0                 0                 0                 0
-  kallisto_quant_83 kallisto_quant_88 kallisto_quant_90 kallisto_quant_91
-1               321               238               740               279
-2                 0                 0                 0                 0
-3               160                55                91               283
-4                 0                 0                 0                 0
-5                 6                 4                 8                19
-6                 0                 0                 0                 0
-  kallisto_quant_97 kallisto_quant_98 kallisto_quant_99
-1               489               626               152
-2                 0                 0                 0
-3                83                80               305
-4                 0                13                 0
-5                 0                 2                 5
-6                 0                 0                 0
-  kallisto_quant_RESUB.116 kallisto_quant_RESUB.156 kallisto_quant_RESUB.36
-1                      202                      262                     281
-2                        0                        0                       0
-3                      190                      143                      88
-4                        0                        0                       0
-5                       19                       22                       5
-6                        0                        0                       0
-  kallisto_quant_RESUB.76 kallisto_quant_RESUB.94     V3      V13
-1                     304                     173 Q6DG91 2.26e-62
-2                       0                       0   &lt;NA&gt;       NA
-3                     116                     253   &lt;NA&gt;       NA
-4                       0                       0 Q1KL12 0.00e+00
-5                      16                      20 Q9Z2C9 0.00e+00
-6                       0                       0 Q8CGI1 0.00e+00
-                                                                                                                                     Protein.names
-1                                                                                                                  Proteasome assembly chaperone 1
-2                                                                                                                                             &lt;NA&gt;
-3                                                                                                                                             &lt;NA&gt;
-4                                                                                                                         Homeobox protein Hox-A3a
-5 Myotubularin-related protein 7 (Inositol 1,3-bisphosphate phosphatase) (EC 3.1.3.-) (Phosphatidylinositol-3-phosphate phosphatase) (EC 3.1.3.64)
-6                                                                                                                                  Protein FAM193A
-                                                 Organism
-1             Danio rerio (Zebrafish) (Brachydanio rerio)
-2                                                    &lt;NA&gt;
-3                                                    &lt;NA&gt;
-4 Takifugu rubripes (Japanese pufferfish) (Fugu rubripes)
-5                                    Mus musculus (Mouse)
-6                                    Mus musculus (Mouse)
-                                                                               Gene.Ontology.IDs
-1                                     GO:0005737; GO:0005783; GO:0051131; GO:0070628; GO:0080129
-2                                                                                           &lt;NA&gt;
-3                                                                                           &lt;NA&gt;
-4                                                             GO:0000981; GO:0003677; GO:0005634
-5 GO:0004438; GO:0005737; GO:0005829; GO:0012505; GO:0016020; GO:0016312; GO:0046855; GO:0046856
-6                                                                                               </code></pre>
-<pre class="r"><code>top_25_DEGs_L.9.0 &lt;- head(DEGs_GO_L.9.0_unique[order(DEGs_GO_L.9.0_unique$padj), ], 25)
+# Reorder columns to have gene name and GO annotation next to each other</code></pre>
+<div id="keywords" class="section level3" number="1.0.1">
+<h3><span class="header-section-number">1.0.1</span> Keywords</h3>
+<p>We can get a higher-level summary of DEG function using Uniprot keywords, instead of the more specific GO terms. We need to retrieve these from the <a href="https://david.ncifcrf.gov/">NIH DAVID bioinformatics tool</a>.</p>
+<p>First, isolate lists of Uniprot Acession number from each set off significant DEGs.</p>
+<pre class="r"><code>uniprotAcessions_DEGs_L.9.0 &lt;- na.omit(DEGs_GO_L.9.0_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.0, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0.txt&quot;)
+uniprotAcessions_DEGs_L.9.5 &lt;- na.omit(DEGs_GO_L.9.5_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.5, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5.txt&quot;)
+uniprotAcessions_DEGs_L.9.16 &lt;- na.omit(DEGs_GO_L.9.16_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.16, &quot;../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16.txt&quot;)</code></pre>
+<pre class="bash"><code># We need to 1) remove the first line, 2) get rid of the row numbers, and 3) remove extra &quot; characters
+sed &#39;1d&#39; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0.txt | \
+  awk &#39;{print $2}&#39; | \
+  tr -d &#39;&quot;&#39; \
+  &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0_formatted.txt
+  
+sed &#39;1d&#39; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5.txt | \
+  awk &#39;{print $2}&#39; | \
+  tr -d &#39;&quot;&#39; \
+  &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5_formatted.txt
+  
+sed &#39;1d&#39; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16.txt | \
+  awk &#39;{print $2}&#39; | \
+  tr -d &#39;&quot;&#39; \
+  &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16_formatted.txt</code></pre>
+<p>Now we can download these formatted lists of acession numbrs and run them through DAVID to obtain lists of associated Uniprot keywords. Unfortunately I don’t think this can be done from command line though, so I’ll be using the online tool. DAVID doesn’t have <em>Gadus macrocephalus</em> as a background option, so I used the closely related <em>Gadus morhua</em> (Atlantic cod) instead.</p>
+<pre class="bash"><code>curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596214612.txt &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.0.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596785683.txt &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.5.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596890158.txt &gt; ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.16.tab</code></pre>
+<pre><code>  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 4419k    0 4419k    0     0  3363k      0 --:--:--  0:00:01 --:--:-- 3363k
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 43963    0 43963    0     0   113k      0 --:--:-- --:--:-- --:--:--  113k100 1038k    0 1038k    0     0  1573k      0 --:--:-- --:--:-- --:--:-- 1570k
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 1773k    0 1773k    0     0  2435k      0 --:--:-- --:--:-- --:--:-- 2432k100 2881k    0 2881k    0     0  3888k      0 --:--:-- --:--:-- --:--:-- 3883k</code></pre>
+<pre class="r"><code>DEGs_DAVID_L.9.0 &lt;- read.delim(&quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.0.tab&quot;, sep=&quot;\t&quot;)
+DEGs_DAVID_L.9.5 &lt;- read.delim(&quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.5.tab&quot;, sep=&quot;\t&quot;)
+DEGs_DAVID_L.9.16 &lt;- read.delim(&quot;../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.16.tab&quot;, sep=&quot;\t&quot;)</code></pre>
+<p>Now we can make datasets that include differential expression stats (e.g., <code>padj</code>) AND high-level Uniprot keywords.</p>
+<pre class="r"><code>DEGs_DAVID_GO_L.9.0 &lt;- left_join(DEGs_GO_L.9.0_unique, DEGs_DAVID_L.9.0, by=c(&quot;V3&quot; = &quot;ID&quot;))
+DEGs_DAVID_GO_L.9.5 &lt;- left_join(DEGs_GO_L.9.5_unique, DEGs_DAVID_L.9.5, by=c(&quot;V3&quot; = &quot;ID&quot;))
+DEGs_DAVID_GO_L.9.16 &lt;- left_join(DEGs_GO_L.9.16_unique, DEGs_DAVID_L.9.16, by=c(&quot;V3&quot; = &quot;ID&quot;))</code></pre>
+</div>
+<div id="view-top-degs-and-annotations" class="section level3" number="1.0.2">
+<h3><span class="header-section-number">1.0.2</span> View top DEGs and annotations</h3>
+<p>First we can look at the biological processes associated with our most significantly differentially expressed genes</p>
+<pre class="r"><code>top_25_DEGs_L.9.0 &lt;- head(DEGs_DAVID_GO_L.9.0[order(DEGs_DAVID_GO_L.9.0$padj), ], 25)
 top_25_DEGs_L.9.0$padj &lt;- as.character(top_25_DEGs_L.9.0$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.0[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Ontology..biological.process.&quot;)],
       row.names = FALSE,
@@ -1969,7 +1848,7 @@ kable(top_25_DEGs_L.9.0[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Ontol
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>top_25_DEGs_L.9.5 &lt;- head(DEGs_GO_L.9.5_unique[order(DEGs_GO_L.9.5_unique$padj), ], 25)
+<pre class="r"><code>top_25_DEGs_L.9.5 &lt;- head(DEGs_DAVID_GO_L.9.5[order(DEGs_DAVID_GO_L.9.5$padj), ], 25)
 top_25_DEGs_L.9.5$padj &lt;- as.character(top_25_DEGs_L.9.5$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.5[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Ontology..biological.process.&quot;)],
       row.names = FALSE,
@@ -2116,7 +1995,7 @@ kable(top_25_DEGs_L.9.5[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Ontol
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>top_25_DEGs_L.9.16 &lt;- head(DEGs_GO_L.9.16_unique[order(DEGs_GO_L.9.16_unique$padj), ], 25)
+<pre class="r"><code>top_25_DEGs_L.9.16 &lt;- head(DEGs_DAVID_GO_L.9.16[order(DEGs_DAVID_GO_L.9.16$padj), ], 25)
 top_25_DEGs_L.9.16$padj &lt;- as.character(top_25_DEGs_L.9.16$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.16[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Ontology..biological.process.&quot;)],
       row.names = FALSE,
@@ -2242,27 +2121,464 @@ kable(top_25_DEGs_L.9.16[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;Gene.Onto
 <td align="left">cell chemotaxis [<a href="GO:0060326" class="uri">GO:0060326</a>]; cell morphogenesis [<a href="GO:0000902" class="uri">GO:0000902</a>]; cellular response to hepatocyte growth factor stimulus [<a href="GO:0035729" class="uri">GO:0035729</a>]; epithelial cell proliferation [<a href="GO:0050673" class="uri">GO:0050673</a>]; hepatocyte growth factor receptor signaling pathway [<a href="GO:0048012" class="uri">GO:0048012</a>]; liver development [<a href="GO:0001889" class="uri">GO:0001889</a>]; myoblast proliferation [<a href="GO:0051450" class="uri">GO:0051450</a>]; negative regulation of apoptotic process [<a href="GO:0043066" class="uri">GO:0043066</a>]; negative regulation of cysteine-type endopeptidase activity involved in apoptotic process [<a href="GO:0043154" class="uri">GO:0043154</a>]; negative regulation of extrinsic apoptotic signaling pathway via death domain receptors [<a href="GO:1902042" class="uri">GO:1902042</a>]; negative regulation of hydrogen peroxide-mediated programmed cell death [<a href="GO:1901299" class="uri">GO:1901299</a>]; negative regulation of inflammatory response [<a href="GO:0050728" class="uri">GO:0050728</a>]; negative regulation of interleukin-6 production [<a href="GO:0032715" class="uri">GO:0032715</a>]; negative regulation of peptidyl-serine phosphorylation [<a href="GO:0033137" class="uri">GO:0033137</a>]; negative regulation of release of cytochrome c from mitochondria [<a href="GO:0090201" class="uri">GO:0090201</a>]; positive regulation of cell migration [<a href="GO:0030335" class="uri">GO:0030335</a>]; positive regulation of DNA biosynthetic process [<a href="GO:2000573" class="uri">GO:2000573</a>]; positive regulation of interleukin-10 production [<a href="GO:0032733" class="uri">GO:0032733</a>]; positive regulation of MAPK cascade [<a href="GO:0043410" class="uri">GO:0043410</a>]; positive regulation of peptidyl-tyrosine phosphorylation [<a href="GO:0050731" class="uri">GO:0050731</a>]; positive regulation of phosphatidylinositol 3-kinase signaling [<a href="GO:0014068" class="uri">GO:0014068</a>]; positive regulation of protein phosphorylation [<a href="GO:0001934" class="uri">GO:0001934</a>]; proteolysis [<a href="GO:0006508" class="uri">GO:0006508</a>]; regulation of branching involved in salivary gland morphogenesis by mesenchymal-epithelial signaling [<a href="GO:0060665" class="uri">GO:0060665</a>]; regulation of p38MAPK cascade [<a href="GO:1900744" class="uri">GO:1900744</a>]; regulation of tau-protein kinase activity [<a href="GO:1902947" class="uri">GO:1902947</a>]; skeletal muscle cell proliferation [<a href="GO:0014856" class="uri">GO:0014856</a>]</td>
 </tr>
 <tr class="even">
+<td align="left">XM_060060095.1</td>
+<td align="left">1.5961486946803e-19</td>
+<td align="left">cell chemotaxis [<a href="GO:0060326" class="uri">GO:0060326</a>]; cell morphogenesis [<a href="GO:0000902" class="uri">GO:0000902</a>]; cellular response to hepatocyte growth factor stimulus [<a href="GO:0035729" class="uri">GO:0035729</a>]; epithelial cell proliferation [<a href="GO:0050673" class="uri">GO:0050673</a>]; hepatocyte growth factor receptor signaling pathway [<a href="GO:0048012" class="uri">GO:0048012</a>]; liver development [<a href="GO:0001889" class="uri">GO:0001889</a>]; myoblast proliferation [<a href="GO:0051450" class="uri">GO:0051450</a>]; negative regulation of apoptotic process [<a href="GO:0043066" class="uri">GO:0043066</a>]; negative regulation of cysteine-type endopeptidase activity involved in apoptotic process [<a href="GO:0043154" class="uri">GO:0043154</a>]; negative regulation of extrinsic apoptotic signaling pathway via death domain receptors [<a href="GO:1902042" class="uri">GO:1902042</a>]; negative regulation of hydrogen peroxide-mediated programmed cell death [<a href="GO:1901299" class="uri">GO:1901299</a>]; negative regulation of inflammatory response [<a href="GO:0050728" class="uri">GO:0050728</a>]; negative regulation of interleukin-6 production [<a href="GO:0032715" class="uri">GO:0032715</a>]; negative regulation of peptidyl-serine phosphorylation [<a href="GO:0033137" class="uri">GO:0033137</a>]; negative regulation of release of cytochrome c from mitochondria [<a href="GO:0090201" class="uri">GO:0090201</a>]; positive regulation of cell migration [<a href="GO:0030335" class="uri">GO:0030335</a>]; positive regulation of DNA biosynthetic process [<a href="GO:2000573" class="uri">GO:2000573</a>]; positive regulation of interleukin-10 production [<a href="GO:0032733" class="uri">GO:0032733</a>]; positive regulation of MAPK cascade [<a href="GO:0043410" class="uri">GO:0043410</a>]; positive regulation of peptidyl-tyrosine phosphorylation [<a href="GO:0050731" class="uri">GO:0050731</a>]; positive regulation of phosphatidylinositol 3-kinase signaling [<a href="GO:0014068" class="uri">GO:0014068</a>]; positive regulation of protein phosphorylation [<a href="GO:0001934" class="uri">GO:0001934</a>]; proteolysis [<a href="GO:0006508" class="uri">GO:0006508</a>]; regulation of branching involved in salivary gland morphogenesis by mesenchymal-epithelial signaling [<a href="GO:0060665" class="uri">GO:0060665</a>]; regulation of p38MAPK cascade [<a href="GO:1900744" class="uri">GO:1900744</a>]; regulation of tau-protein kinase activity [<a href="GO:1902947" class="uri">GO:1902947</a>]; skeletal muscle cell proliferation [<a href="GO:0014856" class="uri">GO:0014856</a>]</td>
+</tr>
+<tr class="odd">
 <td align="left">XM_060043501.1</td>
 <td align="left">2.73868167705382e-19</td>
 <td align="left">angiogenesis [<a href="GO:0001525" class="uri">GO:0001525</a>]; body fluid secretion [<a href="GO:0007589" class="uri">GO:0007589</a>]; collagen fibril organization [<a href="GO:0030199" class="uri">GO:0030199</a>]; fibrinolysis [<a href="GO:0042730" class="uri">GO:0042730</a>]; membrane raft assembly [<a href="GO:0001765" class="uri">GO:0001765</a>]; mRNA transcription by RNA polymerase II [<a href="GO:0042789" class="uri">GO:0042789</a>]; negative regulation of low-density lipoprotein particle receptor catabolic process [<a href="GO:0032804" class="uri">GO:0032804</a>]; negative regulation of receptor internalization [<a href="GO:0002091" class="uri">GO:0002091</a>]; osteoclast development [<a href="GO:0036035" class="uri">GO:0036035</a>]; positive regulation of binding [<a href="GO:0051099" class="uri">GO:0051099</a>]; positive regulation of exocytosis [<a href="GO:0045921" class="uri">GO:0045921</a>]; positive regulation of fibroblast proliferation [<a href="GO:0048146" class="uri">GO:0048146</a>]; positive regulation of low-density lipoprotein particle clearance [<a href="GO:1905581" class="uri">GO:1905581</a>]; positive regulation of low-density lipoprotein particle receptor binding [<a href="GO:1905597" class="uri">GO:1905597</a>]; positive regulation of low-density lipoprotein receptor activity [<a href="GO:1905599" class="uri">GO:1905599</a>]; positive regulation of plasma membrane repair [<a href="GO:1905686" class="uri">GO:1905686</a>]; positive regulation of plasminogen activation [<a href="GO:0010756" class="uri">GO:0010756</a>]; positive regulation of protein phosphorylation [<a href="GO:0001934" class="uri">GO:0001934</a>]; positive regulation of receptor recycling [<a href="GO:0001921" class="uri">GO:0001921</a>]; positive regulation of receptor-mediated endocytosis involved in cholesterol transport [<a href="GO:1905602" class="uri">GO:1905602</a>]; positive regulation of transcription by RNA polymerase II [<a href="GO:0045944" class="uri">GO:0045944</a>]; positive regulation of vacuole organization [<a href="GO:0044090" class="uri">GO:0044090</a>]; positive regulation of vesicle fusion [<a href="GO:0031340" class="uri">GO:0031340</a>]; protein localization to plasma membrane [<a href="GO:0072659" class="uri">GO:0072659</a>]; regulation of neurogenesis [<a href="GO:0050767" class="uri">GO:0050767</a>]; vesicle budding from membrane [<a href="GO:0006900" class="uri">GO:0006900</a>]</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">XM_060064095.1</td>
 <td align="left">1.25760400894235e-18</td>
 <td align="left">microtubule cytoskeleton organization [<a href="GO:0000226" class="uri">GO:0000226</a>]; mitotic cell cycle [<a href="GO:0000278" class="uri">GO:0000278</a>]</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">XM_060057264.1</td>
 <td align="left">1.4514117835037e-18</td>
 <td align="left">NA</td>
 </tr>
+</tbody>
+</table>
+<p>While this is interesting, the GO annotations are a little dense. Let’s look at the biological processes <em>keywords</em> associated with our top 25 differentially expressed genes for each tratment comparison</p>
+<pre class="r"><code>kable(top_25_DEGs_L.9.0[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;UP_KW_BIOLOGICAL_PROCESS&quot;)],
+      row.names = FALSE,
+      caption = &quot;Top 25 DEGs for 9C v 0C (based on adjusted p-value)&quot;)  </code></pre>
+<table>
+<caption><span id="tab:unnamed-chunk-3">Table 1.2: </span>Top 25 DEGs for 9C v 0C (based on adjusted p-value)</caption>
+<colgroup>
+<col width="9%" />
+<col width="13%" />
+<col width="77%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">gene</th>
+<th align="left">padj</th>
+<th align="left">UP_KW_BIOLOGICAL_PROCESS</th>
+</tr>
+</thead>
+<tbody>
 <tr class="odd">
-<td align="left">XM_060036420.1</td>
-<td align="left">6.41686755963648e-18</td>
-<td align="left">cell division [<a href="GO:0051301" class="uri">GO:0051301</a>]; chromosome segregation [<a href="GO:0007059" class="uri">GO:0007059</a>]; negative regulation of apoptotic process [<a href="GO:0043066" class="uri">GO:0043066</a>]; negative regulation of DNA-templated transcription [<a href="GO:0045892" class="uri">GO:0045892</a>]; protein phosphorylation [<a href="GO:0006468" class="uri">GO:0006468</a>]; vasculature development [<a href="GO:0001944" class="uri">GO:0001944</a>]</td>
+<td align="left">XM_060037653.1</td>
+<td align="left">2.65059340718516e-116</td>
+<td align="left">KW-0275~Fatty acid biosynthesis,KW-0276~Fatty acid metabolism,KW-0443~Lipid metabolism,KW-0444~Lipid biosynthesis,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060049763.1</td>
+<td align="left">9.12527523202844e-94</td>
+<td align="left">KW-0443~Lipid metabolism,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060039305.1</td>
+<td align="left">4.04346656870645e-89</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060166.1</td>
+<td align="left">1.42450720228371e-85</td>
+<td align="left">KW-0278~Fertilization,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060035971.1</td>
+<td align="left">8.66449260549534e-84</td>
+<td align="left">KW-0507~mRNA processing,KW-0508~mRNA splicing,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060057750.1</td>
+<td align="left">6.38418170589001e-74</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060038917.1</td>
+<td align="left">7.42028388386766e-73</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060041837.1</td>
+<td align="left">1.67320958843222e-71</td>
+<td align="left">KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060049740.1</td>
+<td align="left">4.86364826911051e-67</td>
+<td align="left">KW-0109~Calcium transport,KW-0406~Ion transport,KW-0813~Transport,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060049939.1</td>
+<td align="left">3.45402241606145e-66</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060068071.1</td>
+<td align="left">4.61565129576928e-65</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060171.1</td>
+<td align="left">5.85829856535501e-65</td>
+<td align="left">KW-0278~Fertilization,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060056708.1</td>
+<td align="left">3.51183573584622e-64</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060045462.1</td>
+<td align="left">1.0273894884123e-63</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060036042.1</td>
+<td align="left">1.82056756959209e-62</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060061635.1</td>
+<td align="left">3.0894711535196e-59</td>
+<td align="left">KW-0324~Glycolysis,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060067933.1</td>
+<td align="left">4.53686815697762e-58</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060061319.1</td>
+<td align="left">6.08606636149451e-58</td>
+<td align="left">KW-0376~Hydrogen peroxide,KW-0893~Thyroid hormones biosynthesis,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060038697.1</td>
+<td align="left">7.49314138927052e-55</td>
+<td align="left">KW-0443~Lipid metabolism,KW-0444~Lipid biosynthesis,KW-0594~Phospholipid biosynthesis,KW-1208~Phospholipid metabolism,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060053140.1</td>
+<td align="left">6.52794022032347e-54</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060060130.1</td>
+<td align="left">2.16442886447122e-53</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060056417.1</td>
+<td align="left">3.17006572189851e-52</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060073306.1</td>
+<td align="left">1.66155359670683e-47</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060047018.1</td>
+<td align="left">9.40093229797643e-47</td>
+<td align="left">KW-0221<sub>Differentiation,KW-0804</sub>Transcription,KW-0805~Transcription regulation,</td>
+</tr>
+<tr class="odd">
+<td align="left">XR_009527059.1</td>
+<td align="left">8.79962417234868e-46</td>
+<td align="left">KW-0090~Biological rhythms,KW-0507~mRNA processing,KW-0508~mRNA splicing,KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,</td>
 </tr>
 </tbody>
 </table>
+<pre class="r"><code>kable(top_25_DEGs_L.9.5[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;UP_KW_BIOLOGICAL_PROCESS&quot;)],
+      row.names = FALSE,
+      caption = &quot;Top 25 DEGs for 9C v 5C (based on adjusted p-value)&quot;)  </code></pre>
+<table>
+<caption><span id="tab:unnamed-chunk-3">Table 1.2: </span>Top 25 DEGs for 9C v 5C (based on adjusted p-value)</caption>
+<colgroup>
+<col width="7%" />
+<col width="11%" />
+<col width="80%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">gene</th>
+<th align="left">padj</th>
+<th align="left">UP_KW_BIOLOGICAL_PROCESS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">XM_060035971.1</td>
+<td align="left">7.98182203996108e-25</td>
+<td align="left">KW-0507~mRNA processing,KW-0508~mRNA splicing,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060056708.1</td>
+<td align="left">5.51070147655825e-17</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060067933.1</td>
+<td align="left">6.63135038511177e-17</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060039305.1</td>
+<td align="left">1.06238642369342e-12</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060065470.1</td>
+<td align="left">9.82213841970945e-12</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060048079.1</td>
+<td align="left">2.86886992285965e-11</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060046801.1</td>
+<td align="left">4.88332021457905e-11</td>
+<td align="left">KW-0233~DNA recombination,KW-0391<sub>Immunity,KW-0395</sub>Inflammatory response,KW-0399~Innate immunity,KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060059453.1</td>
+<td align="left">5.85108708439188e-11</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060038917.1</td>
+<td align="left">9.71444383807465e-11</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060535.1</td>
+<td align="left">3.51689056861396e-10</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060072201.1</td>
+<td align="left">1.16398952181429e-09</td>
+<td align="left">KW-0051~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,KW-0945~Host-virus interaction,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060069281.1</td>
+<td align="left">2.71579719203814e-09</td>
+<td align="left">KW-0051~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060069936.1</td>
+<td align="left">5.2895760703378e-09</td>
+<td align="left">KW-0833~Ubl conjugation pathway,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060076970.1</td>
+<td align="left">5.66334191078665e-09</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060061009.1</td>
+<td align="left">7.70316776348483e-09</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060038661.1</td>
+<td align="left">1.03080201969747e-08</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060051342.1</td>
+<td align="left">1.03080201969747e-08</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060053374.1</td>
+<td align="left">1.47130354758428e-08</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060076665.1</td>
+<td align="left">1.55169394761084e-08</td>
+<td align="left">KW-0131~Cell cycle,KW-0132~Cell division,KW-0498~Mitosis,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060067319.1</td>
+<td align="left">2.87494723884798e-08</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060052845.1</td>
+<td align="left">2.87494723884798e-08</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060052059.1</td>
+<td align="left">2.87494723884798e-08</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060069277.1</td>
+<td align="left">2.87494723884798e-08</td>
+<td align="left">KW-0051~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060068061.1</td>
+<td align="left">3.44303976784469e-08</td>
+<td align="left">KW-0833~Ubl conjugation pathway,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060050173.1</td>
+<td align="left">4.13791667888411e-08</td>
+<td align="left"></td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>kable(top_25_DEGs_L.9.16[, c(&quot;gene&quot;, &quot;padj&quot;, &quot;UP_KW_BIOLOGICAL_PROCESS&quot;)],
+      row.names = FALSE,
+      caption = &quot;Top 25 DEGs for 9C v 16C (based on adjusted p-value)&quot;)  </code></pre>
+<table>
+<caption><span id="tab:unnamed-chunk-3">Table 1.2: </span>Top 25 DEGs for 9C v 16C (based on adjusted p-value)</caption>
+<colgroup>
+<col width="9%" />
+<col width="14%" />
+<col width="75%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">gene</th>
+<th align="left">padj</th>
+<th align="left">UP_KW_BIOLOGICAL_PROCESS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">XM_060067933.1</td>
+<td align="left">3.34339884448267e-131</td>
+<td align="left">KW-0346~Stress response,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060035618.1</td>
+<td align="left">4.56825944864665e-39</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060038070.1</td>
+<td align="left">9.4474915720096e-34</td>
+<td align="left">KW-0445~Lipid transport,KW-0813~Transport,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060055200.1</td>
+<td align="left">2.24810444952908e-33</td>
+<td align="left">KW-0130~Cell adhesion,KW-0221<sub>Differentiation,KW-0524</sub>Neurogenesis,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060074499.1</td>
+<td align="left">3.37674667521652e-33</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060044415.1</td>
+<td align="left">2.23973084206205e-28</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060059917.1</td>
+<td align="left">2.36351348255791e-27</td>
+<td align="left">KW-0131~Cell cycle,KW-0804<sub>Transcription,KW-0879</sub>Wnt signaling pathway,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060074.1</td>
+<td align="left">1.1224590459614e-25</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060060459.1</td>
+<td align="left">5.7025219583369e-24</td>
+<td align="left">KW-0834~Unfolded protein response,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060651.1</td>
+<td align="left">1.17049469107897e-23</td>
+<td align="left">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060035971.1</td>
+<td align="left">4.07619559044959e-23</td>
+<td align="left">KW-0507~mRNA processing,KW-0508~mRNA splicing,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060069449.1</td>
+<td align="left">5.6638831038487e-23</td>
+<td align="left">KW-0406~Ion transport,KW-0633~Potassium transport,KW-0813~Transport,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060071156.1</td>
+<td align="left">1.09590320360766e-22</td>
+<td align="left">KW-0276~Fatty acid metabolism,KW-0443~Lipid metabolism,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060062807.1</td>
+<td align="left">1.12188038617635e-21</td>
+<td align="left">KW-0507~mRNA processing,KW-0508~mRNA splicing,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060076847.1</td>
+<td align="left">2.19962301278613e-21</td>
+<td align="left">KW-0275~Fatty acid biosynthesis,KW-0276~Fatty acid metabolism,KW-0443~Lipid metabolism,KW-0444~Lipid biosynthesis,</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060046540.1</td>
+<td align="left">1.57081807452208e-20</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060059923.1</td>
+<td align="left">1.95439785807764e-20</td>
+<td align="left">NA</td>
+</tr>
+<tr class="even">
+<td align="left">XM_060069363.1</td>
+<td align="left">2.22712416434098e-20</td>
+<td align="left">KW-0648~Protein biosynthesis,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060058017.1</td>
+<td align="left">2.55845315056141e-20</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060059787.1</td>
+<td align="left">5.41557921560011e-20</td>
+<td align="left">KW-0153~Cholesterol metabolism,KW-0443~Lipid metabolism,KW-0753~Steroid metabolism,KW-1207~Sterol metabolism,</td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060060095.1</td>
+<td align="left">1.5961486946803e-19</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060060095.1</td>
+<td align="left">1.5961486946803e-19</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060043501.1</td>
+<td align="left">2.73868167705382e-19</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">XM_060064095.1</td>
+<td align="left">1.25760400894235e-18</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">XM_060057264.1</td>
+<td align="left">1.4514117835037e-18</td>
+<td align="left">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
 <div id="venn-diagram-of-deg-counts-accross-treatments" class="section level2" number="1.1">
 <h2><span class="header-section-number">1.1</span> Venn diagram of DEG counts accross treatments</h2>
 <pre class="r"><code># Make list
@@ -2420,7 +2736,7 @@ write.csv(filtered.GO_plot , file = &quot;GOterm_annotation/diploid_SS_unique/GO
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uIgphdXRob3I6ICJLYXRobGVlbiBEdXJraW4iCmRhdGU6ICIyMDI0LTA0LTE1IgphbHdheXNfYWxsb3dfaHRtbDogdHJ1ZQpvdXRwdXQ6IAogIGJvb2tkb3duOjpodG1sX2RvY3VtZW50MjoKICAgIHRoZW1lOiBjb3NtbwogICAgdG9jOiB0cnVlCiAgICB0b2NfZmxvYXQ6IHRydWUKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgY29kZV9mb2xkaW5nOiBzaG93CiAgICBjb2RlX2Rvd25sb2FkOiB0cnVlCiAgZ2l0aHViX2RvY3VtZW50OgogICAgdG9jOiB0cnVlCiAgICB0b2NfZGVwdGg6IDMKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgaHRtbF9wcmV2aWV3OiB0cnVlIAotLS0KCmBgYHtyIHNldHVwLCBpbmNsdWRlPUZBTFNFfQpsaWJyYXJ5KGtuaXRyKQprbml0cjo6b3B0c19jaHVuayRzZXQoCiAgZWNobyA9IFRSVUUsICAgICAgICAgIyBEaXNwbGF5IGNvZGUgY2h1bmtzCiAgZXZhbCA9IFRSVUUsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKClRoaXMgY29kZSBkZXBlbmRzIG9uIHRoZSBkYXRhYmFzZSAoYEdfbWFjcm9jZXBoYWx1c19JRG1hcHBpbmdfMjAyNF8wNF8xNy50YWJgKSBvZiAqRy5tYWNyb2NlcGhhbHVzKiB0cmFuc2NyaXB0IElEcyBhbmQgYXNzb2NpYXRlZCBHTyB0ZXJtcyBnZW5lcmF0ZWQgaW4gMDMtdHJhbnNjcmlwdG9tZS1hbm5vdGF0aW9uLlJtZCwgQU5EIG9uIGxpc3RzIG9mIGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyAoREVHcykgZ2VuZXJhdGVkIGluIDA3LWNvZC1STkFzZXEtREVTZXEyLlJtZC4KClRoaXMgY29kZSBpZGVudGlmaWVzIG92ZXJyZXByZXNlbnRlZCBnZW5lIG9udG9sb2d5IChHTykgdGVybXMgaW4gKkcubWFjcm9jZXBoYWx1cyogUk5BIHNlcXVlbmNpbmcgZGF0YQoKSW5wdXRzOiAtIHRyYW5zY3JpcHQgSUQvR08gdGVybSBkYXRhYmFzZSAoYEdfbWFjcm9jZXBoYWx1c19JRG1hcHBpbmdfMjAyNF8wNF8xNy50YWJgKSAtIERFR3MKCkluIDAzLXRyYW5zY3JpcHRvbWUtYW5ub3RhdGlvbi5SbWQgd2UgdXNlZCBCTEFTVCBhbmQgVW5pcHJvdC9Td2lzc1Byb3QgdG8gb2J0YWluIFVuaVByb3QgQWNjZXNzaW9uIG51bWJlcnMgZm9yIGVhY2ggdHJhbnNjcmlwdCBpbiB0aGUgKkcuIG1hY3JvY2VwaGFsdXMqIHRyYW5zY3JpcHRvbWUuIFdlIHRoZW4gdXNlZCB0aG9zZSBBY2Nlc3Npb24gbnVtYmVycyB0byBvYnRhaW4gR08gdGVybXMgZm9yIGVhY2ggdHJhbnNjcmlwdCwgZnVuY3Rpb25hbGx5IGNyZWF0aW5nIGEgZGF0YWJhc2Ugd2hpY2ggbWF0Y2hlcyAqRy5tYWNyb2NlcGhhbHVzKiB0cmFuc2NyaXB0cyB3aXRoIGFzc29jaWF0ZWQgR08gdGVybXMuCgpJbiAwNy1jb2QtUk5Bc2VxLURFU2VxMi5SbWQgd2UgaWRlbnRpZmllZCBzZXRzIG9mIHNpZ25pZmljYW50bHkgZGlmZmVyZW50aWFsbHkgZXhwcmVzc2VkIGdlbmVzIChERUdzKSBiZXR3ZWVuIHBhaXJzIG9mIHRyZWF0bWVudHMgKGUuZy4sIExpdmVyIHRpc3N1ZSBmb3IgOUMgdnMuIDE2QykuCgpOb3cgd2Ugd2FudCB0byB1c2UgdGhlIGRhdGFiYXNlIHRvIGlkZW50aWZ5IEdPIHRlcm1zIGFzc29jaWF0ZWQgd2l0aCBvdXIgbGlzdHMgb2YgREVHcywgYW5kIHRvIGV2YWx1YXRlIHdoaWNoIEdPIHRlcm1zIGFyZSBvdmVycmVwcmVzZW50ZWQuCgpodHRwczovL3dpa2lzLnV0ZXhhcy5lZHUvZGlzcGxheS9iaW9pdGVhbS9HTytFbnJpY2htZW50K3VzaW5nK2dvc2VxIzp+OnRleHQ9Z29zZXElMjBpcyUyMGFuJTIwUiUyMHBhY2thZ2UsaW4lMjBvdXIlMjBkaWZmZXJlbnRpYWxseSUyMGV4cHJlc3NlZCUyMGdlbmVzLgpodHRwczovL2Jpb2NvbmR1Y3Rvci5vcmcvcGFja2FnZXMvZGV2ZWwvYmlvYy92aWduZXR0ZXMvZ29zZXEvaW5zdC9kb2MvZ29zZXEucGRmCgoKYGBge3IgbG9hZC1wYWNrYWdlcywgZXZhbD1UUlVFfQojIExpc3Qgb2YgcGFja2FnZXMgd2Ugd2FudCB0byBpbnN0YWxsIChydW4gZXZlcnkgdGltZSkKbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkoZHBseXIpCmxpYnJhcnkobWFncml0dHIpCmxpYnJhcnkoa25pdHIpCmxpYnJhcnkoZ2d2ZW5uKQoKYGBgCgpgYGB7ciBsb2FkLWRhdGF9CmdtYWNfaWRtYXAgPC0gcmVhZC5jc3YoIi4uL291dHB1dC8wMy10cmFuc2NyaXB0b21lLWFubm90YXRpb24vR19tYWNyb2NlcGhhbHVzX3JuYV9JRG1hcHBpbmdfMjAyNF8wNF8xNy50YWIiLCBzZXA9J1x0JykgJT4lCiAgc3Vic2V0KHNlbGVjdD0tWCkgIyByZW1vdmUgc3VwZXJmbG91cyBjb2x1bW4gY29udGFpbmluZyByb3dJRHMKCkRFR3NfTC45LjAgPC0gcmVhZC5jc3YoIi4uL291dHB1dC8wNy1jb2QtUk5Bc2VxLURFU2VxMi9HbWFjX0RFR3Nfc2lnX0wuOS4wX25vcm0udGFiIiwgc2VwPSdcdCcpICU+JQogIHN1YnNldChzZWxlY3Q9LVgpICMgcmVtb3ZlIHN1cGVyZmxvdXMgY29sdW1uIGNvbnRhaW5pbmcgcm93SURzCkRFR3NfTC45LjUgPC0gcmVhZC5jc3YoIi4uL291dHB1dC8wNy1jb2QtUk5Bc2VxLURFU2VxMi9HbWFjX0RFR3Nfc2lnX0wuOS41X25vcm0udGFiIiwgc2VwPSdcdCcpICU+JQogIHN1YnNldChzZWxlY3Q9LVgpICMgcmVtb3ZlIHN1cGVyZmxvdXMgY29sdW1uIGNvbnRhaW5pbmcgcm93SURzCkRFR3NfTC45LjE2IDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDctY29kLVJOQXNlcS1ERVNlcTIvR21hY19ERUdzX3NpZ19MLjkuMTZfbm9ybS50YWIiLCBzZXA9J1x0JykgJT4lCiAgc3Vic2V0KHNlbGVjdD0tWCkgIyByZW1vdmUgc3VwZXJmbG91cyBjb2x1bW4gY29udGFpbmluZyByb3dJRHMKCmthbGxpc3RvX2NvdW50c19tYXRyaXggPC0gcmVhZC5jc3YoIi4uL291dHB1dC8wNi1jb2QtUk5Bc2VxLWFsaWdubWVudC9rYWxsaXN0by9rYWxsaXN0by5pc29mb3JtLmNvdW50cy5tYXRyaXgiLCBzZXA9J1x0JykKa2FsbGlzdG9fY291bnRzX21hdHJpeFssLTFdIDwtIHJvdW5kKGthbGxpc3RvX2NvdW50c19tYXRyaXhbLC0xXSwgZGlnaXRzID0gMCkgIyByb3VuZCBjb3VudHMgdG8gaW50ZWdlcnMKYGBgCgojIEFubm90YXRlIERFR3MgdXNpbmcgR08gdGVybXMKCmBgYHtyIGpvaW4tREVHLUdPLWRhdGF9CiMgQWxsIERFR3MKREVHc19HT19MLjkuMCA8LSBsZWZ0X2pvaW4oREVHc19MLjkuMCwgZ21hY19pZG1hcCwgYnk9YygiZ2VuZSIgPSAiVjEiKSkKREVHc19HT19MLjkuNSA8LSBsZWZ0X2pvaW4oREVHc19MLjkuNSwgZ21hY19pZG1hcCwgYnk9YygiZ2VuZSIgPSAiVjEiKSkKREVHc19HT19MLjkuMTYgPC0gbGVmdF9qb2luKERFR3NfTC45LjE2LCBnbWFjX2lkbWFwLCBieT1jKCJnZW5lIiA9ICJWMSIpKQoKIyBVbmlxdWUgREVHcwpERUdzX0dPX0wuOS4wX3VuaXF1ZSA8LSBERUdzX0dPX0wuOS4wICU+JSBkaXN0aW5jdChnZW5lLCAua2VlcF9hbGwgPSBUUlVFKQpERUdzX0dPX0wuOS41X3VuaXF1ZSA8LSBERUdzX0dPX0wuOS41ICU+JSBkaXN0aW5jdChnZW5lLCAua2VlcF9hbGwgPSBUUlVFKQpERUdzX0dPX0wuOS4xNl91bmlxdWUgPC0gREVHc19HT19MLjkuMTYgJT4lIGRpc3RpbmN0KGdlbmUsIC5rZWVwX2FsbCA9IFRSVUUpCgojIHN1bW1hcml6ZSBjb3VudHMKcHJpbnQocGFzdGUoIkFsbCBERUdzOiIsIG5yb3coREVHc19HT19MLjkuMCksICIoOUMgdiAwQyksIiwgbnJvdyhERUdzX0dPX0wuOS41KSwgIig5QyB2IDVDKSwiLCBucm93KERFR3NfR09fTC45LjE2KSwgIig5QyB2IDE2QykiKSkKcHJpbnQocGFzdGUoIlVuaXF1ZSBERUdzOiIsIG5yb3coREVHc19HT19MLjkuMF91bmlxdWUpLCAiKDlDIHYgMEMpLCIsIG5yb3coREVHc19HT19MLjkuNV91bmlxdWUpLCAiKDlDIHYgNUMpLCIsIG5yb3coREVHc19HT19MLjkuMTZfdW5pcXVlKSwgIig5QyB2IDE2QykiKSkKYGBgCgpJIGFsc28gd2FudCBhIG1hdHJpeCBhc3NvY2lhdGluZyBHTyB0ZXJtcyB3aXRoIGFsbCBvZiBvdXIgY291bnQgZGF0YSwgd2hpY2ggaW5jbHVkZXMgZ2VuZS1sZXZlbCB0cmFuc2NyaXB0IGNvdW50cyBmb3IgZWFjaCBzYW1wbGUKYGBge3J9CmNvdW50c19HTyA8LSBsZWZ0X2pvaW4oa2FsbGlzdG9fY291bnRzX21hdHJpeCwgZ21hY19pZG1hcCwgYnk9YygiWCIgPSAiVjEiKSkKY291bnRzX0dPIDwtIGNvdW50c19HT1ssIGMoIkdlbmUuT250b2xvZ3kuLmJpb2xvZ2ljYWwucHJvY2Vzcy4iLCBzZXRkaWZmKG5hbWVzKGNvdW50c19HTyksICJHZW5lLk9udG9sb2d5Li5iaW9sb2dpY2FsLnByb2Nlc3MuIikpXQojIFJlb3JkZXIgY29sdW1ucyB0byBoYXZlIGdlbmUgbmFtZSBhbmQgR08gYW5ub3RhdGlvbiBuZXh0IHRvIGVhY2ggb3RoZXIKaGVhZChjb3VudHNfR08pCmBgYAoKYGBge3J9CnRvcF8yNV9ERUdzX0wuOS4wIDwtIGhlYWQoREVHc19HT19MLjkuMF91bmlxdWVbb3JkZXIoREVHc19HT19MLjkuMF91bmlxdWUkcGFkaiksIF0sIDI1KQp0b3BfMjVfREVHc19MLjkuMCRwYWRqIDwtIGFzLmNoYXJhY3Rlcih0b3BfMjVfREVHc19MLjkuMCRwYWRqKSAjIHByZXZlbnRzIGthYmxlIGZyb20gYXV0by1yb3VuZGluZyBvdXIgcGFkaiB2YWx1ZXMKa2FibGUodG9wXzI1X0RFR3NfTC45LjBbLCBjKCJnZW5lIiwgInBhZGoiLCAiR2VuZS5PbnRvbG9neS4uYmlvbG9naWNhbC5wcm9jZXNzLiIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgMEMgKGJhc2VkIG9uIGFkanVzdGVkIHAtdmFsdWUpIikgIAoKdG9wXzI1X0RFR3NfTC45LjUgPC0gaGVhZChERUdzX0dPX0wuOS41X3VuaXF1ZVtvcmRlcihERUdzX0dPX0wuOS41X3VuaXF1ZSRwYWRqKSwgXSwgMjUpCnRvcF8yNV9ERUdzX0wuOS41JHBhZGogPC0gYXMuY2hhcmFjdGVyKHRvcF8yNV9ERUdzX0wuOS41JHBhZGopICMgcHJldmVudHMga2FibGUgZnJvbSBhdXRvLXJvdW5kaW5nIG91ciBwYWRqIHZhbHVlcwprYWJsZSh0b3BfMjVfREVHc19MLjkuNVssIGMoImdlbmUiLCAicGFkaiIsICJHZW5lLk9udG9sb2d5Li5iaW9sb2dpY2FsLnByb2Nlc3MuIildLAogICAgICByb3cubmFtZXMgPSBGQUxTRSwKICAgICAgY2FwdGlvbiA9ICJUb3AgMjUgREVHcyBmb3IgOUMgdiA1QyAoYmFzZWQgb24gYWRqdXN0ZWQgcC12YWx1ZSkiKSAgCgp0b3BfMjVfREVHc19MLjkuMTYgPC0gaGVhZChERUdzX0dPX0wuOS4xNl91bmlxdWVbb3JkZXIoREVHc19HT19MLjkuMTZfdW5pcXVlJHBhZGopLCBdLCAyNSkKdG9wXzI1X0RFR3NfTC45LjE2JHBhZGogPC0gYXMuY2hhcmFjdGVyKHRvcF8yNV9ERUdzX0wuOS4xNiRwYWRqKSAjIHByZXZlbnRzIGthYmxlIGZyb20gYXV0by1yb3VuZGluZyBvdXIgcGFkaiB2YWx1ZXMKa2FibGUodG9wXzI1X0RFR3NfTC45LjE2WywgYygiZ2VuZSIsICJwYWRqIiwgIkdlbmUuT250b2xvZ3kuLmJpb2xvZ2ljYWwucHJvY2Vzcy4iKV0sCiAgICAgIHJvdy5uYW1lcyA9IEZBTFNFLAogICAgICBjYXB0aW9uID0gIlRvcCAyNSBERUdzIGZvciA5QyB2IDE2QyAoYmFzZWQgb24gYWRqdXN0ZWQgcC12YWx1ZSkiKSAgCmBgYAoKIyMgVmVubiBkaWFncmFtIG9mIERFRyBjb3VudHMgYWNjcm9zcyB0cmVhdG1lbnRzCmBgYHtyfQojIE1ha2UgbGlzdApkZWdfY291bnRzX3VuaXF1ZSA8LSBsaXN0KAogICI5QyB2IDBDIiA9IHVuaXF1ZShERUdzX0dPX0wuOS4wJGdlbmUpLAogICI5QyB2IDVDIiA9IHVuaXF1ZShERUdzX0dPX0wuOS41JGdlbmUpLAogICI5QyB2IDE2QyIgPSB1bmlxdWUoREVHc19HT19MLjkuMTYkZ2VuZSkKKQoKIyBNYWtlIHZlbm4gZGlhZ3JhbXMKZ2d2ZW5uKGRlZ19jb3VudHNfdW5pcXVlLAogICAgICAgZmlsbF9jb2xvciA9IGMoImJsdWUiLCAieWVsbG93IiwgInJlZCIpKQoKYGBgCgojIyBERUcgYmFyIHBsb3RzCgpgYGB7cn0KIyBDcmVhdGUgYSBkYXRhIGZyYW1lIHdpdGggZXh0cmFjdGVkIGNvbHVtbnMKY29tYmluZWRfdW5pcXVlX0RFR19jb3VudHMgPC0gZGF0YS5mcmFtZSgKICBERUdzX2NvdW50ID0gYyhsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjAkZ2VuZSkpLCAKICAgICAgICAgICAgICAgICBsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjUkZ2VuZSkpLCAKICAgICAgICAgICAgICAgICBsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjE2JGdlbmUpKSksCiAgdHJlYXRtZW50ID0gZmFjdG9yKGMoIjlDIHYgMEMiLCAiOUMgdiA1QyIsICI5QyB2IDE2QyIpLCAKICAgICAgICAgICAgICAgICAgICAgbGV2ZWxzPWMoIjlDIHYgMEMiLCAiOUMgdiA1QyIsICI5QyB2IDE2QyIpKSkKCiMgQXNzaWduIGNvbG9ycwpjdXN0b21fY29sb3JzIDwtIGMoIjlDIHYgMEMiPSJibHVlIiwgIjlDIHYgNUMiPSJ5ZWxsb3ciLCAiOUMgdiAxNkMiPSJyZWQiKQoKIyBDcmVhdGUgYSBiYXIgcGxvdApnZ3Bsb3QoY29tYmluZWRfdW5pcXVlX0RFR19jb3VudHMsIGFlcyh4ID0gdHJlYXRtZW50LCB5ID0gREVHc19jb3VudCwgZmlsbCA9IHRyZWF0bWVudCkpICsKICBnZW9tX2NvbCgpICsKICBsYWJzKHRpdGxlID0gIkJhciBQbG90IG9mIFVuaXF1ZSBERUdzIGFjcm9zcyBUcmVhdG1lbnRzIiwKICAgICAgIHggPSAiREVHcyIsCiAgICAgICB5ID0gIkNvdW50IikgKwogIHNjYWxlX2ZpbGxfbWFudWFsKHZhbHVlcyA9IGN1c3RvbV9jb2xvcnMpICsKICBnZW9tX3RleHQoYWVzKGxhYmVsID0gREVHc19jb3VudCksIHZqdXN0ID0gLTAuNSkgKwogIHRoZW1lX21pbmltYWwoKQpgYGAKCgoKCgoKCgoKCiMjIEdPIEVucmljaG1lbnQgQW5hbHlzaXMKCnYgU0FNUExFIENPREUsIE5PTkZVTkNUSU9OQUwgV0lUSCBNWSBEQVRBL1ZBUklBQkxFUyB2CmBgYHtyLCBldmFsPUZBTFNFfQpkaXBsb2lkX1NTX3VuaXF1ZSA8LSByZWFkLnRhYmxlKCJnZW5lX3RhYmxlcy9maWx0ZXJlZC9ISVNBVDJfbXVsdGlxY19iaXBsb3QvZGlwbG9pZF9TU191bmlxdWUudHh0IiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBoZWFkZXIgPSBUUlVFLCBxdW90ZSA9ICIiLCBzZXAgPSAiXHQiKSAKbnJvdyhkaXBsb2lkX1NTX3VuaXF1ZSkgIyAxMTk2MTUKZGlwbG9pZF9TU191bmlxdWUgPC0gbmEub21pdChkaXBsb2lkX1NTX3VuaXF1ZSkKbnJvdyhkaXBsb2lkX1NTX3VuaXF1ZSkgIyAxMTk2MTUKCgpkaXBsb2lkX1NTX3VuaXF1ZV9iZyA8LSByZWFkLmRlbGltKCJodHRwczovL2dhbm5ldC5maXNoLndhc2hpbmd0b24uZWR1L3Bhbm9wZWEvTk9QUC1naWdhcy1wbG9pZHktdGVtcC8yMDIyMTAyNS1nZW5lLWJhY2tncm91bmRzL2RpcGxvaWRfZGVzaWNjYXRpb25fYmcudHh0IiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBoZWFkZXIgPSBUUlVFLCBzZXAgPSAiXHQiKSAKbnJvdyhkaXBsb2lkX1NTX3VuaXF1ZV9iZykgIyA1ODAsNzk0CgpkaXBsb2lkX1NTX3VuaXF1ZV9iZyRsZW5ndGggPC0gZGlwbG9pZF9TU191bmlxdWVfYmckZW5kIC0gZGlwbG9pZF9TU191bmlxdWVfYmckc3RhcnQKCiMgSUQuZGF0YWZyYW1lIDwtIHJlYWQuZGVsaW0oImJsYXN0L19ibGFzdC1HTy11bmZvbGRlZC50YWIiLCBoZWFkZXIgPSBGQUxTRSwgc2VwID0gIlx0IikKIyBJRC5kYXRhZnJhbWUgPC0gSUQuZGF0YWZyYW1lWyxjKDIsIDMpXQojIGNvbG5hbWVzKElELmRhdGFmcmFtZSkgPC0gYygicHJvZHVjdC5hY2Nlc3Npb24iLCJHTy5JRCIpCgojIEdlbmVJRCB0byBHT0lECklELmRhdGFmcmFtZSA8LSBkaXBsb2lkX1NTX3VuaXF1ZV9iZ1ssYygiR2VuZUlEIiwiR09JRCIpXQpHT3NsaW0uZGF0YWZyYW1lIDwtIGRpcGxvaWRfU1NfdW5pcXVlX2JnWyxjKCJHT0lEIiwiR09TbGltIildCgojIEdldCBERUcgYW5kIGFsbCBnZW5lIGxpc3QKREVHICAgICAgICAgICA8LSB1bmlxdWUoZGlwbG9pZF9TU191bmlxdWUkR2VuZUlEKQpBTEwgICAgICAgICAgIDwtIHVuaXF1ZShkaXBsb2lkX1NTX3VuaXF1ZV9iZyRHZW5lSUQpCgojIGNyZWF0ZSBnZW5lIGxlbmd0aCB2ZWN0b3IgZm9yIGFsbCBnZW5lcyBpbiBiYWNrZ3JvdW5kCmZpbmRfYWxsIDwtIGFzLmRhdGEuZnJhbWUoQUxMKQpjb2xuYW1lcyhmaW5kX2FsbCkgPC0gIkdlbmVJRCIKTEVOR1RILnZlY3RvciA8LSBmaW5kX2FsbCAlPiUgbGVmdF9qb2luKGRwbHlyOjpkaXN0aW5jdChkaXBsb2lkX1NTX3VuaXF1ZV9iZywgR2VuZUlELCAua2VlcF9hbGwgPSBUKSkKTEVOR1RILnZlY3RvciA8LSBMRU5HVEgudmVjdG9yJGxlbmd0aAoKIyBDb252ZXJ0IHRoZSBERUcgYW5kIEFMTCBkYXRhIG9iamVjdHMgdG8gdmVjdG9ycwpERUcudmVjdG9yIDwtIGModChERUcpKQpBTEwudmVjdG9yIDwtIGModChBTEwpKQoKIyBDb25zdHJ1Y3QgYSBuZXcgdmVjdG9yOiAwIG5leHQgdG8gZXZlcnkgZ2VuZSB0aGF0IGlzIG5vdCBpbiBvdXIgREVHIGxpc3QgYW5kIGEgMSBuZXh0IHRvIGV2ZXJ5IGdlbmUgdGhhdCBpcyBpbiBvdXIgREVHIGxpc3QuCmdlbmUudmVjdG9yPWFzLmludGVnZXIoQUxMLnZlY3RvciVpbiVERUcudmVjdG9yKQpuYW1lcyhnZW5lLnZlY3Rvcik9QUxMLnZlY3RvcgoKIyBXZWlnaCB0aGUgZ2VuZSB2ZWN0b3IgYnkgZ2VuZSBsZW5ndGgKREVHLnB3ZjwtbnVsbHAoZ2VuZS52ZWN0b3IsIElELmRhdGFmcmFtZSwgYmlhcy5kYXRhPUxFTkdUSC52ZWN0b3IpICN3ZWlnaHQgdmVjdG9yIGJ5IGxlbmd0aCBvZiBnZW5lCgojIEZpbmQgZW5yaWNoZWQgR08gdGVyU1MKR08ud2FsbDwtZ29zZXEoREVHLnB3ZiwgSUQuZGF0YWZyYW1lLCBnZW5lMmNhdD1JRC5kYXRhZnJhbWUsIHRlc3QuY2F0cz1jKCJHTzpDQyIsICJHTzpCUCIsICJHTzpNRiIpLCBtZXRob2Q9IldhbGxlbml1cyIsIHVzZV9nZW5lc193aXRob3V0X2NhdD1UUlVFKQpHTyA8LSBHTy53YWxsW29yZGVyKEdPLndhbGwkb3Zlcl9yZXByZXNlbnRlZF9wdmFsdWUpLF0KY29sbmFtZXMoR08pWzFdIDwtICJHT0lEIgoKIyBBdHRhY2ggR08gc2xpbSB0ZXJTUwpHTy5zbGltIDwtIGxlZnRfam9pbihHTywgR09zbGltLmRhdGFmcmFtZSwgYnkgPSAiR09JRCIpCkdPLnNsaW0gPC0gR08uc2xpbVshZHVwbGljYXRlZChHTy5zbGltJEdPSUQpLCBdICNub3Qgc3VyZSBJIG5lZWQgdGhpcyBzdGVwCgojIEZpbHRlcmluZyBmb3IgcCA8IDAuMDUKZmlsdGVyZWQuR08gPC0gR08uc2xpbSAlPiUKICBkcGx5cjo6ZmlsdGVyKG92ZXJfcmVwcmVzZW50ZWRfcHZhbHVlPDAuMDUpICU+JQogIGFycmFuZ2UoLiwgb250b2xvZ3ksIHRlcm0sIG92ZXJfcmVwcmVzZW50ZWRfcHZhbHVlKQoKIyBNYWtlIHBsb3Qgb2JqZWN0CmZpbHRlcmVkLkdPX3Bsb3QgPC0gZmlsdGVyZWQuR08gJT4lCiAgZmlsdGVyKG92ZXJfcmVwcmVzZW50ZWRfcHZhbHVlICE9ICJOQSIpICU+JQogIGZpbHRlcihudW1JbkNhdCA+NSkgJT4lCiAgZmlsdGVyKG9udG9sb2d5ID09ICJCUCIpICU+JQogIGFycmFuZ2UoLiwgb250b2xvZ3ksIG92ZXJfcmVwcmVzZW50ZWRfcHZhbHVlKQoKIyBGYWN0b3IgdGVyU1Mgc28gdGhleSBhcmUgZGlzcGxheSBpbiB0aGUgY29ycmVjdCBvcmRlciBpbiB0aGUgcGxvdApmaWx0ZXJlZC5HT19wbG90JHRlcm0gPC0gZmFjdG9yKGZpbHRlcmVkLkdPX3Bsb3QkdGVybSwgbGV2ZWxzPXJldihmaWx0ZXJlZC5HT19wbG90JHRlcm0pKQpmaWx0ZXJlZC5HT19wbG90JEdPU2xpbSA8LSBmYWN0b3IoZmlsdGVyZWQuR09fcGxvdCRHT1NsaW0sIGxldmVscyA9IGMoJ2NlbGwgYWRoZXNpb24nLCAnY2VsbCBjeWNsZSBhbmQgcHJvbGlmZXJhdGlvbicsICdjZWxsIG9yZ2FuaXphdGlvbiBhbmQgYmlvZ2VuZXNpcycsICdjZWxsLWNlbGwgc2lnbmFsaW5nJywndHJhbnNwb3J0JywgJ3NpZ25hbCB0cmFuc2R1Y3Rpb24nLCAnZGV2ZWxvcG1lbnRhbCBwcm9jZXNzZXMnLCAnb3RoZXIgbWV0YWJvbGljIHByb2Nlc3NlcycsICdwcm90ZWluIG1ldGFib2xpc20nLCAnUk5BIG1ldGFib2xpc20nLCAnc3RyZXNzIHJlc3BvbnNlJywgJ2RlYXRoJywnb3RoZXIgYmlvbG9naWNhbCBwcm9jZXNzZXMnKSwgb3JkZXJlZCA9IFRSVUUpCgojIEFzc2lnbiBjb2xvciBwYWxldHRlcyBmb3IgZWFjaCBHT3NsaW0gY2F0ZWdvcnkKY2VsbCAgICAgICA8LSBicmV3ZXIucGFsKDksICJCbHVlcyIpCmRldmVsb3AgICAgPC0gYnJld2VyLnBhbCg5LCAiUHVycGxlcyIpCm1ldGFib2xpc20gPC0gYnJld2VyLnBhbCg5LCAiR3JlZW5zIikKc3RyZXNzICAgICA8LSBicmV3ZXIucGFsKDksICJZbE9yUmQiKQpvdGhlciAgICAgIDwtIGJyZXdlci5wYWwoOSwgIllsT3JSZCIpCgojIEFzc2lnbiBjb2xvcnMgZm9yIHRoZSBwbG90IChyZW1vdmUgb25lcyB0aGF0IGFyZW4ndCByZXByZXNlbnRlZCkKcGxvdF9jb2xvcnMgPC0gYyhyZXYoY2VsbFsoOS00KTo5XSksZGV2ZWxvcFs3XSxyZXYobWV0YWJvbGlzbVsoOC0yKTo4XSksc3RyZXNzWzU6Nl0sJ2dyYXkzMCcpCgojIHBsb3Qgc2lnbmlmaWNhbnRseSBlbnJpY2hlZCBHTyB0ZXJTUyBieSBwdmFsdWUKcDIgPC0gZ2dwbG90KGZpbHRlcmVkLkdPX3Bsb3QsIGFlcyh4PXRlcm0sIHk9LWxvZzEwKG92ZXJfcmVwcmVzZW50ZWRfcHZhbHVlKSwgZmlsbCA9IEdPU2xpbSkpICsKICAgICAgICAgICAgIHN0YXRfc3VtbWFyeShnZW9tID0gImJhciIsIGZ1biA9IG1lYW4sIHBvc2l0aW9uID0gImRvZGdlIiwgY29sb3I9ImJsYWNrIiwgc2l6ZSA9IDAuMykgKwogICAgICAgICAgICAgeGxhYigiQmlvbG9naWNhbCBwcm9jZXNzIikgKwogICAgICAgICAgICAgeWxhYigiRW5yaWNobWVudCIpICsKICAgICAgICAgICAgIHNjYWxlX2ZpbGxfbWFudWFsKHZhbHVlcyA9IHBsb3RfY29sb3JzKSArCiAgICAgICAgICAgICAjIHNjYWxlX3lfY29udGludW91cyhicmVha3MgPSBzZXEoMCwgOCwgYnkgPSAyKSwgbGltaXRzID0gYygwLDkpKSArCiAgICAgICAgICAgICAjIGd1aWRlcyhjb2xvdXI9Z3VpZGVfbGVnZW5kKG92ZXJyaWRlLmFlcz1saXN0KHNpemU9Mi41KSkpICsKICAgICAgICAgICAgIGNvb3JkX2ZsaXAoKQoKcDIKCiMgcGxvdCBzaWduaWZpY2FudGx5IGVucmljaGVkIEdPIHRlclNTIGJ5IFNsaW0gQ2F0ZWdvcnkKcGllMiAgPC0gZ2dwbG90KGZpbHRlcmVkLkdPX3Bsb3QsIGFlcyh4PWZhY3RvcigxKSx5PUdPU2xpbSwgZmlsbD1HT1NsaW0pKSArCiAgICAgICAgICAgICAgZ2VvbV9iYXIod2lkdGggPSAxLCBzdGF0ID0gImlkZW50aXR5Iiwgc2hvdy5sZWdlbmQgPSBUUlVFKSArCiAgICAgICAgICAgICAgc2NhbGVfZmlsbF9tYW51YWwodmFsdWVzID0gcGxvdF9jb2xvcnMpICsgbGFicyhOVUxMKSArCiAgICAgICAgICAgICAgY29vcmRfcG9sYXIoInkiLCBzdGFydD0wKSArIG15X3RoZW1lCnBpZTIKCmdnc2F2ZSgiR090ZXJtX2Fubm90YXRpb24vZGlwbG9pZF9TU191bmlxdWUvR09zZXFfZGlwbG9pZF9TU19iYXJfQlAucG5nIiwKICAgICAgIHBsb3QgICA9IHAyLAogICAgICAgZHBpICAgID0gNjAwLAogICAgICAgZGV2aWNlID0gInBuZyIsCiAgICAgICB3aWR0aCAgPSA3LAogICAgICAgaGVpZ2h0ID0gNSwKICAgICAgIHVuaXRzICA9ICJpbiIpCgpnZ3NhdmUoIkdPdGVybV9hbm5vdGF0aW9uL2RpcGxvaWRfU1NfdW5pcXVlL0dPc2VxX2RpcGxvaWRfU1NfcGllX0JQLnBuZyIsCiAgICAgICBwbG90ICAgPSBwaWUyLAogICAgICAgZHBpICAgID0gMTYwMCwKICAgICAgIGRldmljZSA9ICJwbmciLAogICAgICAgd2lkdGggID0gMTAsCiAgICAgICBoZWlnaHQgPSA1LAogICAgICAgdW5pdHMgID0gImluIikKCndyaXRlLmNzdihmaWx0ZXJlZC5HT19wbG90ICwgZmlsZSA9ICJHT3Rlcm1fYW5ub3RhdGlvbi9kaXBsb2lkX1NTX3VuaXF1ZS9HT3NlcV9zaWduaWZpY2FudF9kaXBsb2lkX1NTX0JQLmNzdiIpCgpgYGAKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uIgphdXRob3I6ICJLYXRobGVlbiBEdXJraW4iCmRhdGU6ICIyMDI0LTA0LTE1IgphbHdheXNfYWxsb3dfaHRtbDogdHJ1ZQpvdXRwdXQ6IAogIGJvb2tkb3duOjpodG1sX2RvY3VtZW50MjoKICAgIHRoZW1lOiBjb3NtbwogICAgdG9jOiB0cnVlCiAgICB0b2NfZmxvYXQ6IHRydWUKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgY29kZV9mb2xkaW5nOiBzaG93CiAgICBjb2RlX2Rvd25sb2FkOiB0cnVlCiAgZ2l0aHViX2RvY3VtZW50OgogICAgdG9jOiB0cnVlCiAgICB0b2NfZGVwdGg6IDMKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgaHRtbF9wcmV2aWV3OiB0cnVlIAotLS0KCmBgYHtyIHNldHVwLCBpbmNsdWRlPUZBTFNFfQpsaWJyYXJ5KGtuaXRyKQprbml0cjo6b3B0c19jaHVuayRzZXQoCiAgZWNobyA9IFRSVUUsICAgICAgICAgIyBEaXNwbGF5IGNvZGUgY2h1bmtzCiAgZXZhbCA9IFRSVUUsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKClRoaXMgY29kZSBkZXBlbmRzIG9uIHRoZSBkYXRhYmFzZSAoYEdfbWFjcm9jZXBoYWx1c19JRG1hcHBpbmdfMjAyNF8wNF8xNy50YWJgKSBvZiAqRy5tYWNyb2NlcGhhbHVzKiB0cmFuc2NyaXB0IElEcyBhbmQgYXNzb2NpYXRlZCBHTyB0ZXJtcyBnZW5lcmF0ZWQgaW4gMDMtdHJhbnNjcmlwdG9tZS1hbm5vdGF0aW9uLlJtZCwgQU5EIG9uIGxpc3RzIG9mIGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyAoREVHcykgZ2VuZXJhdGVkIGluIDA3LWNvZC1STkFzZXEtREVTZXEyLlJtZC4KClRoaXMgY29kZSBpZGVudGlmaWVzIG92ZXJyZXByZXNlbnRlZCBnZW5lIG9udG9sb2d5IChHTykgdGVybXMgaW4gKkcubWFjcm9jZXBoYWx1cyogUk5BIHNlcXVlbmNpbmcgZGF0YQoKSW5wdXRzOiAtIHRyYW5zY3JpcHQgSUQvR08gdGVybSBkYXRhYmFzZSAoYEdfbWFjcm9jZXBoYWx1c19ybmFfSURtYXBwaW5nXzIwMjRfMDRfMTcudGFiYCkgLSBERUdzCgpJbiAwMy10cmFuc2NyaXB0b21lLWFubm90YXRpb24uUm1kIHdlIHVzZWQgQkxBU1QgYW5kIFVuaXByb3QvU3dpc3NQcm90IHRvIG9idGFpbiBVbmlQcm90IEFjY2Vzc2lvbiBudW1iZXJzIGZvciBlYWNoIHRyYW5zY3JpcHQgaW4gdGhlICpHLiBtYWNyb2NlcGhhbHVzKiB0cmFuc2NyaXB0b21lLiBXZSB0aGVuIHVzZWQgdGhvc2UgQWNjZXNzaW9uIG51bWJlcnMgdG8gb2J0YWluIEdPIHRlcm1zIGZvciBlYWNoIHRyYW5zY3JpcHQsIGZ1bmN0aW9uYWxseSBjcmVhdGluZyBhIGRhdGFiYXNlIHdoaWNoIG1hdGNoZXMgKkcubWFjcm9jZXBoYWx1cyogdHJhbnNjcmlwdHMgd2l0aCBhc3NvY2lhdGVkIEdPIHRlcm1zLgoKSW4gMDctY29kLVJOQXNlcS1ERVNlcTIuUm1kIHdlIGlkZW50aWZpZWQgc2V0cyBvZiBzaWduaWZpY2FudGx5IGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyAoREVHcykgYmV0d2VlbiBwYWlycyBvZiB0cmVhdG1lbnRzIChlLmcuLCBMaXZlciB0aXNzdWUgZm9yIDlDIHZzLiAxNkMpLgoKTm93IHdlIHdhbnQgdG8gdXNlIHRoZSBkYXRhYmFzZSB0byBpZGVudGlmeSBHTyB0ZXJtcyBhc3NvY2lhdGVkIHdpdGggb3VyIGxpc3RzIG9mIERFR3MsIGFuZCB0byBldmFsdWF0ZSB3aGljaCBHTyB0ZXJtcyBhcmUgb3ZlcnJlcHJlc2VudGVkLgoKaHR0cHM6Ly93aWtpcy51dGV4YXMuZWR1L2Rpc3BsYXkvYmlvaXRlYW0vR08rRW5yaWNobWVudCt1c2luZytnb3NlcSM6fjp0ZXh0PWdvc2VxJTIwaXMlMjBhbiUyMFIlMjBwYWNrYWdlLGluJTIwb3VyJTIwZGlmZmVyZW50aWFsbHklMjBleHByZXNzZWQlMjBnZW5lcy4KaHR0cHM6Ly9iaW9jb25kdWN0b3Iub3JnL3BhY2thZ2VzL2RldmVsL2Jpb2MvdmlnbmV0dGVzL2dvc2VxL2luc3QvZG9jL2dvc2VxLnBkZgoKCmBgYHtyIGxvYWQtcGFja2FnZXMsIGV2YWw9VFJVRX0KIyBMaXN0IG9mIHBhY2thZ2VzIHdlIHdhbnQgdG8gaW5zdGFsbCAocnVuIGV2ZXJ5IHRpbWUpCmxpYnJhcnkodGlkeXZlcnNlKQpsaWJyYXJ5KGRwbHlyKQpsaWJyYXJ5KG1hZ3JpdHRyKQpsaWJyYXJ5KGtuaXRyKQpsaWJyYXJ5KGdndmVubikKCmBgYAoKYGBge3IgbG9hZC1kYXRhfQpnbWFjX2lkbWFwIDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDMtdHJhbnNjcmlwdG9tZS1hbm5vdGF0aW9uL0dfbWFjcm9jZXBoYWx1c19ybmFfSURtYXBwaW5nXzIwMjRfMDRfMTcudGFiIiwgc2VwPSdcdCcpICU+JQogIHN1YnNldChzZWxlY3Q9LVgpICMgcmVtb3ZlIHN1cGVyZmxvdXMgY29sdW1uIGNvbnRhaW5pbmcgcm93SURzCgpERUdzX0wuOS4wIDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDctY29kLVJOQXNlcS1ERVNlcTIvR21hY19ERUdzX3NpZ19MLjkuMF9ub3JtLnRhYiIsIHNlcD0nXHQnKSAlPiUKICBzdWJzZXQoc2VsZWN0PS1YKSAjIHJlbW92ZSBzdXBlcmZsb3VzIGNvbHVtbiBjb250YWluaW5nIHJvd0lEcwpERUdzX0wuOS41IDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDctY29kLVJOQXNlcS1ERVNlcTIvR21hY19ERUdzX3NpZ19MLjkuNV9ub3JtLnRhYiIsIHNlcD0nXHQnKSAlPiUKICBzdWJzZXQoc2VsZWN0PS1YKSAjIHJlbW92ZSBzdXBlcmZsb3VzIGNvbHVtbiBjb250YWluaW5nIHJvd0lEcwpERUdzX0wuOS4xNiA8LSByZWFkLmNzdigiLi4vb3V0cHV0LzA3LWNvZC1STkFzZXEtREVTZXEyL0dtYWNfREVHc19zaWdfTC45LjE2X25vcm0udGFiIiwgc2VwPSdcdCcpICU+JQogIHN1YnNldChzZWxlY3Q9LVgpICMgcmVtb3ZlIHN1cGVyZmxvdXMgY29sdW1uIGNvbnRhaW5pbmcgcm93SURzCgprYWxsaXN0b19jb3VudHNfbWF0cml4IDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDYtY29kLVJOQXNlcS1hbGlnbm1lbnQva2FsbGlzdG8va2FsbGlzdG8uaXNvZm9ybS5jb3VudHMubWF0cml4Iiwgc2VwPSdcdCcpCmthbGxpc3RvX2NvdW50c19tYXRyaXhbLC0xXSA8LSByb3VuZChrYWxsaXN0b19jb3VudHNfbWF0cml4WywtMV0sIGRpZ2l0cyA9IDApICMgcm91bmQgY291bnRzIHRvIGludGVnZXJzCmBgYAoKIyBBbm5vdGF0ZSBERUdzIHVzaW5nIEdPIHRlcm1zCgpgYGB7ciBqb2luLURFRy1HTy1kYXRhfQojIEFsbCBERUdzCkRFR3NfR09fTC45LjAgPC0gbGVmdF9qb2luKERFR3NfTC45LjAsIGdtYWNfaWRtYXAsIGJ5PWMoImdlbmUiID0gIlYxIikpCkRFR3NfR09fTC45LjUgPC0gbGVmdF9qb2luKERFR3NfTC45LjUsIGdtYWNfaWRtYXAsIGJ5PWMoImdlbmUiID0gIlYxIikpCkRFR3NfR09fTC45LjE2IDwtIGxlZnRfam9pbihERUdzX0wuOS4xNiwgZ21hY19pZG1hcCwgYnk9YygiZ2VuZSIgPSAiVjEiKSkKCiMgVW5pcXVlIERFR3MKREVHc19HT19MLjkuMF91bmlxdWUgPC0gREVHc19HT19MLjkuMCAlPiUgZGlzdGluY3QoZ2VuZSwgLmtlZXBfYWxsID0gVFJVRSkKREVHc19HT19MLjkuNV91bmlxdWUgPC0gREVHc19HT19MLjkuNSAlPiUgZGlzdGluY3QoZ2VuZSwgLmtlZXBfYWxsID0gVFJVRSkKREVHc19HT19MLjkuMTZfdW5pcXVlIDwtIERFR3NfR09fTC45LjE2ICU+JSBkaXN0aW5jdChnZW5lLCAua2VlcF9hbGwgPSBUUlVFKQoKIyBzdW1tYXJpemUgY291bnRzCnByaW50KHBhc3RlKCJBbGwgREVHczoiLCBucm93KERFR3NfR09fTC45LjApLCAiKDlDIHYgMEMpLCIsIG5yb3coREVHc19HT19MLjkuNSksICIoOUMgdiA1QyksIiwgbnJvdyhERUdzX0dPX0wuOS4xNiksICIoOUMgdiAxNkMpIikpCnByaW50KHBhc3RlKCJVbmlxdWUgREVHczoiLCBucm93KERFR3NfR09fTC45LjBfdW5pcXVlKSwgIig5QyB2IDBDKSwiLCBucm93KERFR3NfR09fTC45LjVfdW5pcXVlKSwgIig5QyB2IDVDKSwiLCBucm93KERFR3NfR09fTC45LjE2X3VuaXF1ZSksICIoOUMgdiAxNkMpIikpCgojIFNhdmUKd3JpdGUudGFibGUoREVHc19HT19MLjkuMF91bmlxdWUsICIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfREVHc19HT19MLjkuMF91bmlxdWUudGFiIiwgc2VwID0gIlx0Iiwgcm93Lm5hbWVzID0gVFJVRSwgY29sLm5hbWVzID0gTkEpCndyaXRlLnRhYmxlKERFR3NfR09fTC45LjVfdW5pcXVlLCAiLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX0RFR3NfR09fTC45LjVfdW5pcXVlLnRhYiIsIHNlcCA9ICJcdCIsIHJvdy5uYW1lcyA9IFRSVUUsIGNvbC5uYW1lcyA9IE5BKQp3cml0ZS50YWJsZShERUdzX0dPX0wuOS4xNl91bmlxdWUsICIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfREVHc19HT19MLjkuMTZfdW5pcXVlLnRhYiIsIHNlcCA9ICJcdCIsIHJvdy5uYW1lcyA9IFRSVUUsIGNvbC5uYW1lcyA9IE5BKQpgYGAKCkkgYWxzbyB3YW50IGEgbWF0cml4IGFzc29jaWF0aW5nIEdPIHRlcm1zIHdpdGggYWxsIG9mIG91ciBjb3VudCBkYXRhLCB3aGljaCBpbmNsdWRlcyBnZW5lLWxldmVsIHRyYW5zY3JpcHQgY291bnRzIGZvciBlYWNoIHNhbXBsZQpgYGB7cn0KY291bnRzX0dPIDwtIGxlZnRfam9pbihrYWxsaXN0b19jb3VudHNfbWF0cml4LCBnbWFjX2lkbWFwLCBieT1jKCJYIiA9ICJWMSIpKQpjb3VudHNfR08gPC0gY291bnRzX0dPWywgYygiR2VuZS5PbnRvbG9neS4uYmlvbG9naWNhbC5wcm9jZXNzLiIsIHNldGRpZmYobmFtZXMoY291bnRzX0dPKSwgIkdlbmUuT250b2xvZ3kuLmJpb2xvZ2ljYWwucHJvY2Vzcy4iKSldCiMgUmVvcmRlciBjb2x1bW5zIHRvIGhhdmUgZ2VuZSBuYW1lIGFuZCBHTyBhbm5vdGF0aW9uIG5leHQgdG8gZWFjaCBvdGhlcgpgYGAKCgojIyMgS2V5d29yZHMKCldlIGNhbiBnZXQgYSBoaWdoZXItbGV2ZWwgc3VtbWFyeSBvZiBERUcgZnVuY3Rpb24gdXNpbmcgVW5pcHJvdCBrZXl3b3JkcywgaW5zdGVhZCBvZiB0aGUgbW9yZSBzcGVjaWZpYyBHTyB0ZXJtcy4gV2UgbmVlZCB0byByZXRyaWV2ZSB0aGVzZSBmcm9tIHRoZSBbTklIIERBVklEIGJpb2luZm9ybWF0aWNzIHRvb2xdKGh0dHBzOi8vZGF2aWQubmNpZmNyZi5nb3YvKS4KCkZpcnN0LCBpc29sYXRlIGxpc3RzIG9mIFVuaXByb3QgQWNlc3Npb24gbnVtYmVyIGZyb20gZWFjaCBzZXQgb2ZmIHNpZ25pZmljYW50IERFR3MuCmBgYHtyIGdldC11bmlwcm90LWFjZXNzaW9uLW51bXN9CnVuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMCA8LSBuYS5vbWl0KERFR3NfR09fTC45LjBfdW5pcXVlJFYzKQp3cml0ZS50YWJsZSh1bmlwcm90QWNlc3Npb25zX0RFR3NfTC45LjAsICIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfdW5pcHJvdEFjZXNzaW9uc19ERUdzX0wuOS4wLnR4dCIpCnVuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuNSA8LSBuYS5vbWl0KERFR3NfR09fTC45LjVfdW5pcXVlJFYzKQp3cml0ZS50YWJsZSh1bmlwcm90QWNlc3Npb25zX0RFR3NfTC45LjUsICIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfdW5pcHJvdEFjZXNzaW9uc19ERUdzX0wuOS41LnR4dCIpCnVuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMTYgPC0gbmEub21pdChERUdzX0dPX0wuOS4xNl91bmlxdWUkVjMpCndyaXRlLnRhYmxlKHVuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMTYsICIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfdW5pcHJvdEFjZXNzaW9uc19ERUdzX0wuOS4xNi50eHQiKQpgYGAKCmBgYHtyIGZvcm1hdC1hY2Vzc2lvbi1udW1zLCBlbmdpbmU9J2Jhc2gnfQojIFdlIG5lZWQgdG8gMSkgcmVtb3ZlIHRoZSBmaXJzdCBsaW5lLCAyKSBnZXQgcmlkIG9mIHRoZSByb3cgbnVtYmVycywgYW5kIDMpIHJlbW92ZSBleHRyYSAiIGNoYXJhY3RlcnMKc2VkICcxZCcgLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX3VuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMC50eHQgfCBcCiAgYXdrICd7cHJpbnQgJDJ9JyB8IFwKICB0ciAtZCAnIicgXAogID4gLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX3VuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMF9mb3JtYXR0ZWQudHh0CiAgCnNlZCAnMWQnIC4uL291dHB1dC8wOC1jb2QtUk5Bc2VxLUdPLWFubm90YXRpb24vR21hY191bmlwcm90QWNlc3Npb25zX0RFR3NfTC45LjUudHh0IHwgXAogIGF3ayAne3ByaW50ICQyfScgfCBcCiAgdHIgLWQgJyInIFwKICA+IC4uL291dHB1dC8wOC1jb2QtUk5Bc2VxLUdPLWFubm90YXRpb24vR21hY191bmlwcm90QWNlc3Npb25zX0RFR3NfTC45LjVfZm9ybWF0dGVkLnR4dAogIApzZWQgJzFkJyAuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfdW5pcHJvdEFjZXNzaW9uc19ERUdzX0wuOS4xNi50eHQgfCBcCiAgYXdrICd7cHJpbnQgJDJ9JyB8IFwKICB0ciAtZCAnIicgXAogID4gLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX3VuaXByb3RBY2Vzc2lvbnNfREVHc19MLjkuMTZfZm9ybWF0dGVkLnR4dApgYGAKCk5vdyB3ZSBjYW4gZG93bmxvYWQgdGhlc2UgZm9ybWF0dGVkIGxpc3RzIG9mIGFjZXNzaW9uIG51bWJycyBhbmQgcnVuIHRoZW0gdGhyb3VnaCBEQVZJRCB0byBvYnRhaW4gbGlzdHMgb2YgYXNzb2NpYXRlZCBVbmlwcm90IGtleXdvcmRzLiBVbmZvcnR1bmF0ZWx5IEkgZG9uJ3QgdGhpbmsgdGhpcyBjYW4gYmUgZG9uZSBmcm9tIGNvbW1hbmQgbGluZSB0aG91Z2gsIHNvIEknbGwgYmUgdXNpbmcgdGhlIG9ubGluZSB0b29sLiBEQVZJRCBkb2Vzbid0IGhhdmUgKkdhZHVzIG1hY3JvY2VwaGFsdXMqIGFzIGEgYmFja2dyb3VuZCBvcHRpb24sIHNvIEkgdXNlZCB0aGUgY2xvc2VseSByZWxhdGVkICpHYWR1cyBtb3JodWEqIChBdGxhbnRpYyBjb2QpIGluc3RlYWQuCgpgYGB7ciBsb2FkLURBVklELWZpbGVzLCBlbmdpbmU9J2Jhc2gnfQpjdXJsIGh0dHBzOi8vZGF2aWQubmNpZmNyZi5nb3YvZGF0YS9kb3dubG9hZC90cl9GMjE3ODU5MkU2RkIxNzE0NTk2MjE0NjEyLnR4dCA+IC4uL291dHB1dC8wOC1jb2QtUk5Bc2VxLUdPLWFubm90YXRpb24vR21hY19EQVZJRF9MLjkuMC50YWIKCmN1cmwgaHR0cHM6Ly9kYXZpZC5uY2lmY3JmLmdvdi9kYXRhL2Rvd25sb2FkL3RyX0YyMTc4NTkyRTZGQjE3MTQ1OTY3ODU2ODMudHh0ID4gLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX0RBVklEX0wuOS41LnRhYgoKY3VybCBodHRwczovL2RhdmlkLm5jaWZjcmYuZ292L2RhdGEvZG93bmxvYWQvdHJfRjIxNzg1OTJFNkZCMTcxNDU5Njg5MDE1OC50eHQgPiAuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfREFWSURfTC45LjE2LnRhYgpgYGAKCmBgYHtyIGxvYWQtRGF2aWQtZmlsZXMtaW4tUn0KREVHc19EQVZJRF9MLjkuMCA8LSByZWFkLmRlbGltKCIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfREFWSURfTC45LjAudGFiIiwgc2VwPSJcdCIpCkRFR3NfREFWSURfTC45LjUgPC0gcmVhZC5kZWxpbSgiLi4vb3V0cHV0LzA4LWNvZC1STkFzZXEtR08tYW5ub3RhdGlvbi9HbWFjX0RBVklEX0wuOS41LnRhYiIsIHNlcD0iXHQiKQpERUdzX0RBVklEX0wuOS4xNiA8LSByZWFkLmRlbGltKCIuLi9vdXRwdXQvMDgtY29kLVJOQXNlcS1HTy1hbm5vdGF0aW9uL0dtYWNfREFWSURfTC45LjE2LnRhYiIsIHNlcD0iXHQiKQpgYGAKCk5vdyB3ZSBjYW4gbWFrZSBkYXRhc2V0cyB0aGF0IGluY2x1ZGUgZGlmZmVyZW50aWFsIGV4cHJlc3Npb24gc3RhdHMgKGUuZy4sIGBwYWRqYCkgQU5EIGhpZ2gtbGV2ZWwgVW5pcHJvdCBrZXl3b3Jkcy4KYGBge3Igam9pbi1EQVZJRC1hbmQtREVHfQpERUdzX0RBVklEX0dPX0wuOS4wIDwtIGxlZnRfam9pbihERUdzX0dPX0wuOS4wX3VuaXF1ZSwgREVHc19EQVZJRF9MLjkuMCwgYnk9YygiVjMiID0gIklEIikpCkRFR3NfREFWSURfR09fTC45LjUgPC0gbGVmdF9qb2luKERFR3NfR09fTC45LjVfdW5pcXVlLCBERUdzX0RBVklEX0wuOS41LCBieT1jKCJWMyIgPSAiSUQiKSkKREVHc19EQVZJRF9HT19MLjkuMTYgPC0gbGVmdF9qb2luKERFR3NfR09fTC45LjE2X3VuaXF1ZSwgREVHc19EQVZJRF9MLjkuMTYsIGJ5PWMoIlYzIiA9ICJJRCIpKQpgYGAKCiMjIyBWaWV3IHRvcCBERUdzIGFuZCBhbm5vdGF0aW9ucwoKRmlyc3Qgd2UgY2FuIGxvb2sgYXQgdGhlIGJpb2xvZ2ljYWwgcHJvY2Vzc2VzIGFzc29jaWF0ZWQgd2l0aCBvdXIgbW9zdCBzaWduaWZpY2FudGx5IGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcwpgYGB7cn0KdG9wXzI1X0RFR3NfTC45LjAgPC0gaGVhZChERUdzX0RBVklEX0dPX0wuOS4wW29yZGVyKERFR3NfREFWSURfR09fTC45LjAkcGFkaiksIF0sIDI1KQp0b3BfMjVfREVHc19MLjkuMCRwYWRqIDwtIGFzLmNoYXJhY3Rlcih0b3BfMjVfREVHc19MLjkuMCRwYWRqKSAjIHByZXZlbnRzIGthYmxlIGZyb20gYXV0by1yb3VuZGluZyBvdXIgcGFkaiB2YWx1ZXMKa2FibGUodG9wXzI1X0RFR3NfTC45LjBbLCBjKCJnZW5lIiwgInBhZGoiLCAiR2VuZS5PbnRvbG9neS4uYmlvbG9naWNhbC5wcm9jZXNzLiIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgMEMgKGJhc2VkIG9uIGFkanVzdGVkIHAtdmFsdWUpIikgIAoKdG9wXzI1X0RFR3NfTC45LjUgPC0gaGVhZChERUdzX0RBVklEX0dPX0wuOS41W29yZGVyKERFR3NfREFWSURfR09fTC45LjUkcGFkaiksIF0sIDI1KQp0b3BfMjVfREVHc19MLjkuNSRwYWRqIDwtIGFzLmNoYXJhY3Rlcih0b3BfMjVfREVHc19MLjkuNSRwYWRqKSAjIHByZXZlbnRzIGthYmxlIGZyb20gYXV0by1yb3VuZGluZyBvdXIgcGFkaiB2YWx1ZXMKa2FibGUodG9wXzI1X0RFR3NfTC45LjVbLCBjKCJnZW5lIiwgInBhZGoiLCAiR2VuZS5PbnRvbG9neS4uYmlvbG9naWNhbC5wcm9jZXNzLiIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgNUMgKGJhc2VkIG9uIGFkanVzdGVkIHAtdmFsdWUpIikgIAoKdG9wXzI1X0RFR3NfTC45LjE2IDwtIGhlYWQoREVHc19EQVZJRF9HT19MLjkuMTZbb3JkZXIoREVHc19EQVZJRF9HT19MLjkuMTYkcGFkaiksIF0sIDI1KQp0b3BfMjVfREVHc19MLjkuMTYkcGFkaiA8LSBhcy5jaGFyYWN0ZXIodG9wXzI1X0RFR3NfTC45LjE2JHBhZGopICMgcHJldmVudHMga2FibGUgZnJvbSBhdXRvLXJvdW5kaW5nIG91ciBwYWRqIHZhbHVlcwprYWJsZSh0b3BfMjVfREVHc19MLjkuMTZbLCBjKCJnZW5lIiwgInBhZGoiLCAiR2VuZS5PbnRvbG9neS4uYmlvbG9naWNhbC5wcm9jZXNzLiIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgMTZDIChiYXNlZCBvbiBhZGp1c3RlZCBwLXZhbHVlKSIpICAKYGBgCgpXaGlsZSB0aGlzIGlzIGludGVyZXN0aW5nLCB0aGUgR08gYW5ub3RhdGlvbnMgYXJlIGEgbGl0dGxlIGRlbnNlLiBMZXQncyBsb29rIGF0IHRoZSBiaW9sb2dpY2FsIHByb2Nlc3NlcyAqa2V5d29yZHMqIGFzc29jaWF0ZWQgd2l0aCBvdXIgdG9wIDI1IGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyBmb3IgZWFjaCB0cmF0bWVudCBjb21wYXJpc29uCmBgYHtyfQprYWJsZSh0b3BfMjVfREVHc19MLjkuMFssIGMoImdlbmUiLCAicGFkaiIsICJVUF9LV19CSU9MT0dJQ0FMX1BST0NFU1MiKV0sCiAgICAgIHJvdy5uYW1lcyA9IEZBTFNFLAogICAgICBjYXB0aW9uID0gIlRvcCAyNSBERUdzIGZvciA5QyB2IDBDIChiYXNlZCBvbiBhZGp1c3RlZCBwLXZhbHVlKSIpICAKCmthYmxlKHRvcF8yNV9ERUdzX0wuOS41WywgYygiZ2VuZSIsICJwYWRqIiwgIlVQX0tXX0JJT0xPR0lDQUxfUFJPQ0VTUyIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgNUMgKGJhc2VkIG9uIGFkanVzdGVkIHAtdmFsdWUpIikgIAoKa2FibGUodG9wXzI1X0RFR3NfTC45LjE2WywgYygiZ2VuZSIsICJwYWRqIiwgIlVQX0tXX0JJT0xPR0lDQUxfUFJPQ0VTUyIpXSwKICAgICAgcm93Lm5hbWVzID0gRkFMU0UsCiAgICAgIGNhcHRpb24gPSAiVG9wIDI1IERFR3MgZm9yIDlDIHYgMTZDIChiYXNlZCBvbiBhZGp1c3RlZCBwLXZhbHVlKSIpICAKYGBgCgoKIyMgVmVubiBkaWFncmFtIG9mIERFRyBjb3VudHMgYWNjcm9zcyB0cmVhdG1lbnRzCmBgYHtyfQojIE1ha2UgbGlzdApkZWdfY291bnRzX3VuaXF1ZSA8LSBsaXN0KAogICI5QyB2IDBDIiA9IHVuaXF1ZShERUdzX0dPX0wuOS4wJGdlbmUpLAogICI5QyB2IDVDIiA9IHVuaXF1ZShERUdzX0dPX0wuOS41JGdlbmUpLAogICI5QyB2IDE2QyIgPSB1bmlxdWUoREVHc19HT19MLjkuMTYkZ2VuZSkKKQoKIyBNYWtlIHZlbm4gZGlhZ3JhbXMKZ2d2ZW5uKGRlZ19jb3VudHNfdW5pcXVlLAogICAgICAgZmlsbF9jb2xvciA9IGMoImJsdWUiLCAieWVsbG93IiwgInJlZCIpKQoKYGBgCgojIyBERUcgYmFyIHBsb3RzCgpgYGB7cn0KIyBDcmVhdGUgYSBkYXRhIGZyYW1lIHdpdGggZXh0cmFjdGVkIGNvbHVtbnMKY29tYmluZWRfdW5pcXVlX0RFR19jb3VudHMgPC0gZGF0YS5mcmFtZSgKICBERUdzX2NvdW50ID0gYyhsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjAkZ2VuZSkpLCAKICAgICAgICAgICAgICAgICBsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjUkZ2VuZSkpLCAKICAgICAgICAgICAgICAgICBsZW5ndGgodW5pcXVlKERFR3NfR09fTC45LjE2JGdlbmUpKSksCiAgdHJlYXRtZW50ID0gZmFjdG9yKGMoIjlDIHYgMEMiLCAiOUMgdiA1QyIsICI5QyB2IDE2QyIpLCAKICAgICAgICAgICAgICAgICAgICAgbGV2ZWxzPWMoIjlDIHYgMEMiLCAiOUMgdiA1QyIsICI5QyB2IDE2QyIpKSkKCiMgQXNzaWduIGNvbG9ycwpjdXN0b21fY29sb3JzIDwtIGMoIjlDIHYgMEMiPSJibHVlIiwgIjlDIHYgNUMiPSJ5ZWxsb3ciLCAiOUMgdiAxNkMiPSJyZWQiKQoKIyBDcmVhdGUgYSBiYXIgcGxvdApnZ3Bsb3QoY29tYmluZWRfdW5pcXVlX0RFR19jb3VudHMsIGFlcyh4ID0gdHJlYXRtZW50LCB5ID0gREVHc19jb3VudCwgZmlsbCA9IHRyZWF0bWVudCkpICsKICBnZW9tX2NvbCgpICsKICBsYWJzKHRpdGxlID0gIkJhciBQbG90IG9mIFVuaXF1ZSBERUdzIGFjcm9zcyBUcmVhdG1lbnRzIiwKICAgICAgIHggPSAiREVHcyIsCiAgICAgICB5ID0gIkNvdW50IikgKwogIHNjYWxlX2ZpbGxfbWFudWFsKHZhbHVlcyA9IGN1c3RvbV9jb2xvcnMpICsKICBnZW9tX3RleHQoYWVzKGxhYmVsID0gREVHc19jb3VudCksIHZqdXN0ID0gLTAuNSkgKwogIHRoZW1lX21pbmltYWwoKQpgYGAKCgoKCgoKCgoKCgoKIyMgR08gRW5yaWNobWVudCBBbmFseXNpcwoKdiBTQU1QTEUgQ09ERSwgTk9ORlVOQ1RJT05BTCBXSVRIIE1ZIERBVEEvVkFSSUFCTEVTIHYKYGBge3IsIGV2YWw9RkFMU0V9CmRpcGxvaWRfU1NfdW5pcXVlIDwtIHJlYWQudGFibGUoImdlbmVfdGFibGVzL2ZpbHRlcmVkL0hJU0FUMl9tdWx0aXFjX2JpcGxvdC9kaXBsb2lkX1NTX3VuaXF1ZS50eHQiLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGhlYWRlciA9IFRSVUUsIHF1b3RlID0gIiIsIHNlcCA9ICJcdCIpIApucm93KGRpcGxvaWRfU1NfdW5pcXVlKSAjIDExOTYxNQpkaXBsb2lkX1NTX3VuaXF1ZSA8LSBuYS5vbWl0KGRpcGxvaWRfU1NfdW5pcXVlKQpucm93KGRpcGxvaWRfU1NfdW5pcXVlKSAjIDExOTYxNQoKCmRpcGxvaWRfU1NfdW5pcXVlX2JnIDwtIHJlYWQuZGVsaW0oImh0dHBzOi8vZ2FubmV0LmZpc2gud2FzaGluZ3Rvbi5lZHUvcGFub3BlYS9OT1BQLWdpZ2FzLXBsb2lkeS10ZW1wLzIwMjIxMDI1LWdlbmUtYmFja2dyb3VuZHMvZGlwbG9pZF9kZXNpY2NhdGlvbl9iZy50eHQiLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGhlYWRlciA9IFRSVUUsIHNlcCA9ICJcdCIpIApucm93KGRpcGxvaWRfU1NfdW5pcXVlX2JnKSAjIDU4MCw3OTQKCmRpcGxvaWRfU1NfdW5pcXVlX2JnJGxlbmd0aCA8LSBkaXBsb2lkX1NTX3VuaXF1ZV9iZyRlbmQgLSBkaXBsb2lkX1NTX3VuaXF1ZV9iZyRzdGFydAoKIyBJRC5kYXRhZnJhbWUgPC0gcmVhZC5kZWxpbSgiYmxhc3QvX2JsYXN0LUdPLXVuZm9sZGVkLnRhYiIsIGhlYWRlciA9IEZBTFNFLCBzZXAgPSAiXHQiKQojIElELmRhdGFmcmFtZSA8LSBJRC5kYXRhZnJhbWVbLGMoMiwgMyldCiMgY29sbmFtZXMoSUQuZGF0YWZyYW1lKSA8LSBjKCJwcm9kdWN0LmFjY2Vzc2lvbiIsIkdPLklEIikKCiMgR2VuZUlEIHRvIEdPSUQKSUQuZGF0YWZyYW1lIDwtIGRpcGxvaWRfU1NfdW5pcXVlX2JnWyxjKCJHZW5lSUQiLCJHT0lEIildCkdPc2xpbS5kYXRhZnJhbWUgPC0gZGlwbG9pZF9TU191bmlxdWVfYmdbLGMoIkdPSUQiLCJHT1NsaW0iKV0KCiMgR2V0IERFRyBhbmQgYWxsIGdlbmUgbGlzdApERUcgICAgICAgICAgIDwtIHVuaXF1ZShkaXBsb2lkX1NTX3VuaXF1ZSRHZW5lSUQpCkFMTCAgICAgICAgICAgPC0gdW5pcXVlKGRpcGxvaWRfU1NfdW5pcXVlX2JnJEdlbmVJRCkKCiMgY3JlYXRlIGdlbmUgbGVuZ3RoIHZlY3RvciBmb3IgYWxsIGdlbmVzIGluIGJhY2tncm91bmQKZmluZF9hbGwgPC0gYXMuZGF0YS5mcmFtZShBTEwpCmNvbG5hbWVzKGZpbmRfYWxsKSA8LSAiR2VuZUlEIgpMRU5HVEgudmVjdG9yIDwtIGZpbmRfYWxsICU+JSBsZWZ0X2pvaW4oZHBseXI6OmRpc3RpbmN0KGRpcGxvaWRfU1NfdW5pcXVlX2JnLCBHZW5lSUQsIC5rZWVwX2FsbCA9IFQpKQpMRU5HVEgudmVjdG9yIDwtIExFTkdUSC52ZWN0b3IkbGVuZ3RoCgojIENvbnZlcnQgdGhlIERFRyBhbmQgQUxMIGRhdGEgb2JqZWN0cyB0byB2ZWN0b3JzCkRFRy52ZWN0b3IgPC0gYyh0KERFRykpCkFMTC52ZWN0b3IgPC0gYyh0KEFMTCkpCgojIENvbnN0cnVjdCBhIG5ldyB2ZWN0b3I6IDAgbmV4dCB0byBldmVyeSBnZW5lIHRoYXQgaXMgbm90IGluIG91ciBERUcgbGlzdCBhbmQgYSAxIG5leHQgdG8gZXZlcnkgZ2VuZSB0aGF0IGlzIGluIG91ciBERUcgbGlzdC4KZ2VuZS52ZWN0b3I9YXMuaW50ZWdlcihBTEwudmVjdG9yJWluJURFRy52ZWN0b3IpCm5hbWVzKGdlbmUudmVjdG9yKT1BTEwudmVjdG9yCgojIFdlaWdoIHRoZSBnZW5lIHZlY3RvciBieSBnZW5lIGxlbmd0aApERUcucHdmPC1udWxscChnZW5lLnZlY3RvciwgSUQuZGF0YWZyYW1lLCBiaWFzLmRhdGE9TEVOR1RILnZlY3RvcikgI3dlaWdodCB2ZWN0b3IgYnkgbGVuZ3RoIG9mIGdlbmUKCiMgRmluZCBlbnJpY2hlZCBHTyB0ZXJTUwpHTy53YWxsPC1nb3NlcShERUcucHdmLCBJRC5kYXRhZnJhbWUsIGdlbmUyY2F0PUlELmRhdGFmcmFtZSwgdGVzdC5jYXRzPWMoIkdPOkNDIiwgIkdPOkJQIiwgIkdPOk1GIiksIG1ldGhvZD0iV2FsbGVuaXVzIiwgdXNlX2dlbmVzX3dpdGhvdXRfY2F0PVRSVUUpCkdPIDwtIEdPLndhbGxbb3JkZXIoR08ud2FsbCRvdmVyX3JlcHJlc2VudGVkX3B2YWx1ZSksXQpjb2xuYW1lcyhHTylbMV0gPC0gIkdPSUQiCgojIEF0dGFjaCBHTyBzbGltIHRlclNTCkdPLnNsaW0gPC0gbGVmdF9qb2luKEdPLCBHT3NsaW0uZGF0YWZyYW1lLCBieSA9ICJHT0lEIikKR08uc2xpbSA8LSBHTy5zbGltWyFkdXBsaWNhdGVkKEdPLnNsaW0kR09JRCksIF0gI25vdCBzdXJlIEkgbmVlZCB0aGlzIHN0ZXAKCiMgRmlsdGVyaW5nIGZvciBwIDwgMC4wNQpmaWx0ZXJlZC5HTyA8LSBHTy5zbGltICU+JQogIGRwbHlyOjpmaWx0ZXIob3Zlcl9yZXByZXNlbnRlZF9wdmFsdWU8MC4wNSkgJT4lCiAgYXJyYW5nZSguLCBvbnRvbG9neSwgdGVybSwgb3Zlcl9yZXByZXNlbnRlZF9wdmFsdWUpCgojIE1ha2UgcGxvdCBvYmplY3QKZmlsdGVyZWQuR09fcGxvdCA8LSBmaWx0ZXJlZC5HTyAlPiUKICBmaWx0ZXIob3Zlcl9yZXByZXNlbnRlZF9wdmFsdWUgIT0gIk5BIikgJT4lCiAgZmlsdGVyKG51bUluQ2F0ID41KSAlPiUKICBmaWx0ZXIob250b2xvZ3kgPT0gIkJQIikgJT4lCiAgYXJyYW5nZSguLCBvbnRvbG9neSwgb3Zlcl9yZXByZXNlbnRlZF9wdmFsdWUpCgojIEZhY3RvciB0ZXJTUyBzbyB0aGV5IGFyZSBkaXNwbGF5IGluIHRoZSBjb3JyZWN0IG9yZGVyIGluIHRoZSBwbG90CmZpbHRlcmVkLkdPX3Bsb3QkdGVybSA8LSBmYWN0b3IoZmlsdGVyZWQuR09fcGxvdCR0ZXJtLCBsZXZlbHM9cmV2KGZpbHRlcmVkLkdPX3Bsb3QkdGVybSkpCmZpbHRlcmVkLkdPX3Bsb3QkR09TbGltIDwtIGZhY3RvcihmaWx0ZXJlZC5HT19wbG90JEdPU2xpbSwgbGV2ZWxzID0gYygnY2VsbCBhZGhlc2lvbicsICdjZWxsIGN5Y2xlIGFuZCBwcm9saWZlcmF0aW9uJywgJ2NlbGwgb3JnYW5pemF0aW9uIGFuZCBiaW9nZW5lc2lzJywgJ2NlbGwtY2VsbCBzaWduYWxpbmcnLCd0cmFuc3BvcnQnLCAnc2lnbmFsIHRyYW5zZHVjdGlvbicsICdkZXZlbG9wbWVudGFsIHByb2Nlc3NlcycsICdvdGhlciBtZXRhYm9saWMgcHJvY2Vzc2VzJywgJ3Byb3RlaW4gbWV0YWJvbGlzbScsICdSTkEgbWV0YWJvbGlzbScsICdzdHJlc3MgcmVzcG9uc2UnLCAnZGVhdGgnLCdvdGhlciBiaW9sb2dpY2FsIHByb2Nlc3NlcycpLCBvcmRlcmVkID0gVFJVRSkKCiMgQXNzaWduIGNvbG9yIHBhbGV0dGVzIGZvciBlYWNoIEdPc2xpbSBjYXRlZ29yeQpjZWxsICAgICAgIDwtIGJyZXdlci5wYWwoOSwgIkJsdWVzIikKZGV2ZWxvcCAgICA8LSBicmV3ZXIucGFsKDksICJQdXJwbGVzIikKbWV0YWJvbGlzbSA8LSBicmV3ZXIucGFsKDksICJHcmVlbnMiKQpzdHJlc3MgICAgIDwtIGJyZXdlci5wYWwoOSwgIllsT3JSZCIpCm90aGVyICAgICAgPC0gYnJld2VyLnBhbCg5LCAiWWxPclJkIikKCiMgQXNzaWduIGNvbG9ycyBmb3IgdGhlIHBsb3QgKHJlbW92ZSBvbmVzIHRoYXQgYXJlbid0IHJlcHJlc2VudGVkKQpwbG90X2NvbG9ycyA8LSBjKHJldihjZWxsWyg5LTQpOjldKSxkZXZlbG9wWzddLHJldihtZXRhYm9saXNtWyg4LTIpOjhdKSxzdHJlc3NbNTo2XSwnZ3JheTMwJykKCiMgcGxvdCBzaWduaWZpY2FudGx5IGVucmljaGVkIEdPIHRlclNTIGJ5IHB2YWx1ZQpwMiA8LSBnZ3Bsb3QoZmlsdGVyZWQuR09fcGxvdCwgYWVzKHg9dGVybSwgeT0tbG9nMTAob3Zlcl9yZXByZXNlbnRlZF9wdmFsdWUpLCBmaWxsID0gR09TbGltKSkgKwogICAgICAgICAgICAgc3RhdF9zdW1tYXJ5KGdlb20gPSAiYmFyIiwgZnVuID0gbWVhbiwgcG9zaXRpb24gPSAiZG9kZ2UiLCBjb2xvcj0iYmxhY2siLCBzaXplID0gMC4zKSArCiAgICAgICAgICAgICB4bGFiKCJCaW9sb2dpY2FsIHByb2Nlc3MiKSArCiAgICAgICAgICAgICB5bGFiKCJFbnJpY2htZW50IikgKwogICAgICAgICAgICAgc2NhbGVfZmlsbF9tYW51YWwodmFsdWVzID0gcGxvdF9jb2xvcnMpICsKICAgICAgICAgICAgICMgc2NhbGVfeV9jb250aW51b3VzKGJyZWFrcyA9IHNlcSgwLCA4LCBieSA9IDIpLCBsaW1pdHMgPSBjKDAsOSkpICsKICAgICAgICAgICAgICMgZ3VpZGVzKGNvbG91cj1ndWlkZV9sZWdlbmQob3ZlcnJpZGUuYWVzPWxpc3Qoc2l6ZT0yLjUpKSkgKwogICAgICAgICAgICAgY29vcmRfZmxpcCgpCgpwMgoKIyBwbG90IHNpZ25pZmljYW50bHkgZW5yaWNoZWQgR08gdGVyU1MgYnkgU2xpbSBDYXRlZ29yeQpwaWUyICA8LSBnZ3Bsb3QoZmlsdGVyZWQuR09fcGxvdCwgYWVzKHg9ZmFjdG9yKDEpLHk9R09TbGltLCBmaWxsPUdPU2xpbSkpICsKICAgICAgICAgICAgICBnZW9tX2Jhcih3aWR0aCA9IDEsIHN0YXQgPSAiaWRlbnRpdHkiLCBzaG93LmxlZ2VuZCA9IFRSVUUpICsKICAgICAgICAgICAgICBzY2FsZV9maWxsX21hbnVhbCh2YWx1ZXMgPSBwbG90X2NvbG9ycykgKyBsYWJzKE5VTEwpICsKICAgICAgICAgICAgICBjb29yZF9wb2xhcigieSIsIHN0YXJ0PTApICsgbXlfdGhlbWUKcGllMgoKZ2dzYXZlKCJHT3Rlcm1fYW5ub3RhdGlvbi9kaXBsb2lkX1NTX3VuaXF1ZS9HT3NlcV9kaXBsb2lkX1NTX2Jhcl9CUC5wbmciLAogICAgICAgcGxvdCAgID0gcDIsCiAgICAgICBkcGkgICAgPSA2MDAsCiAgICAgICBkZXZpY2UgPSAicG5nIiwKICAgICAgIHdpZHRoICA9IDcsCiAgICAgICBoZWlnaHQgPSA1LAogICAgICAgdW5pdHMgID0gImluIikKCmdnc2F2ZSgiR090ZXJtX2Fubm90YXRpb24vZGlwbG9pZF9TU191bmlxdWUvR09zZXFfZGlwbG9pZF9TU19waWVfQlAucG5nIiwKICAgICAgIHBsb3QgICA9IHBpZTIsCiAgICAgICBkcGkgICAgPSAxNjAwLAogICAgICAgZGV2aWNlID0gInBuZyIsCiAgICAgICB3aWR0aCAgPSAxMCwKICAgICAgIGhlaWdodCA9IDUsCiAgICAgICB1bml0cyAgPSAiaW4iKQoKd3JpdGUuY3N2KGZpbHRlcmVkLkdPX3Bsb3QgLCBmaWxlID0gIkdPdGVybV9hbm5vdGF0aW9uL2RpcGxvaWRfU1NfdW5pcXVlL0dPc2VxX3NpZ25pZmljYW50X2RpcGxvaWRfU1NfQlAuY3N2IikKCmBgYAoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK</div>
 
 
 </div>

@@ -4,6 +4,11 @@ author: "Kathleen Durkin"
 date: "2024-04-15"
 always_allow_html: true
 output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -11,11 +16,6 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -33,7 +33,7 @@ This code depends on the database (`G_macrocephalus_IDmapping_2024_04_17.tab`) o
 
 This code identifies overrepresented gene ontology (GO) terms in *G.macrocephalus* RNA sequencing data
 
-Inputs: - transcript ID/GO term database (`G_macrocephalus_IDmapping_2024_04_17.tab`) - DEGs
+Inputs: - transcript ID/GO term database (`G_macrocephalus_rna_IDmapping_2024_04_17.tab`) - DEGs
 
 In 03-transcriptome-annotation.Rmd we used BLAST and Uniprot/SwissProt to obtain UniProt Accession numbers for each transcript in the *G. macrocephalus* transcriptome. We then used those Accession numbers to obtain GO terms for each transcript, functionally creating a database which matches *G.macrocephalus* transcripts with associated GO terms.
 
@@ -86,6 +86,11 @@ DEGs_GO_L.9.16_unique <- DEGs_GO_L.9.16 %>% distinct(gene, .keep_all = TRUE)
 # summarize counts
 print(paste("All DEGs:", nrow(DEGs_GO_L.9.0), "(9C v 0C),", nrow(DEGs_GO_L.9.5), "(9C v 5C),", nrow(DEGs_GO_L.9.16), "(9C v 16C)"))
 print(paste("Unique DEGs:", nrow(DEGs_GO_L.9.0_unique), "(9C v 0C),", nrow(DEGs_GO_L.9.5_unique), "(9C v 5C),", nrow(DEGs_GO_L.9.16_unique), "(9C v 16C)"))
+
+# Save
+write.table(DEGs_GO_L.9.0_unique, "../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.0_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.5_unique, "../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.5_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.16_unique, "../output/08-cod-RNAseq-GO-annotation/Gmac_DEGs_GO_L.9.16_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
 ```
 
 I also want a matrix associating GO terms with all of our count data, which includes gene-level transcript counts for each sample
@@ -93,28 +98,102 @@ I also want a matrix associating GO terms with all of our count data, which incl
 counts_GO <- left_join(kallisto_counts_matrix, gmac_idmap, by=c("X" = "V1"))
 counts_GO <- counts_GO[, c("Gene.Ontology..biological.process.", setdiff(names(counts_GO), "Gene.Ontology..biological.process."))]
 # Reorder columns to have gene name and GO annotation next to each other
-head(counts_GO)
 ```
 
+
+### Keywords
+
+We can get a higher-level summary of DEG function using Uniprot keywords, instead of the more specific GO terms. We need to retrieve these from the [NIH DAVID bioinformatics tool](https://david.ncifcrf.gov/).
+
+First, isolate lists of Uniprot Acession number from each set off significant DEGs.
+```{r get-uniprot-acession-nums}
+uniprotAcessions_DEGs_L.9.0 <- na.omit(DEGs_GO_L.9.0_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.0, "../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0.txt")
+uniprotAcessions_DEGs_L.9.5 <- na.omit(DEGs_GO_L.9.5_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.5, "../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5.txt")
+uniprotAcessions_DEGs_L.9.16 <- na.omit(DEGs_GO_L.9.16_unique$V3)
+write.table(uniprotAcessions_DEGs_L.9.16, "../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16.txt")
+```
+
+```{r format-acession-nums, engine='bash'}
+# We need to 1) remove the first line, 2) get rid of the row numbers, and 3) remove extra " characters
+sed '1d' ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.0_formatted.txt
+  
+sed '1d' ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.5_formatted.txt
+  
+sed '1d' ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08-cod-RNAseq-GO-annotation/Gmac_uniprotAcessions_DEGs_L.9.16_formatted.txt
+```
+
+Now we can download these formatted lists of acession numbrs and run them through DAVID to obtain lists of associated Uniprot keywords. Unfortunately I don't think this can be done from command line though, so I'll be using the online tool. DAVID doesn't have *Gadus macrocephalus* as a background option, so I used the closely related *Gadus morhua* (Atlantic cod) instead.
+
+```{r load-DAVID-files, engine='bash'}
+curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596214612.txt > ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.0.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596785683.txt > ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.5.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_F2178592E6FB1714596890158.txt > ../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.16.tab
+```
+
+```{r load-David-files-in-R}
+DEGs_DAVID_L.9.0 <- read.delim("../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.0.tab", sep="\t")
+DEGs_DAVID_L.9.5 <- read.delim("../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.5.tab", sep="\t")
+DEGs_DAVID_L.9.16 <- read.delim("../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_L.9.16.tab", sep="\t")
+```
+
+Now we can make datasets that include differential expression stats (e.g., `padj`) AND high-level Uniprot keywords.
+```{r join-DAVID-and-DEG}
+DEGs_DAVID_GO_L.9.0 <- left_join(DEGs_GO_L.9.0_unique, DEGs_DAVID_L.9.0, by=c("V3" = "ID"))
+DEGs_DAVID_GO_L.9.5 <- left_join(DEGs_GO_L.9.5_unique, DEGs_DAVID_L.9.5, by=c("V3" = "ID"))
+DEGs_DAVID_GO_L.9.16 <- left_join(DEGs_GO_L.9.16_unique, DEGs_DAVID_L.9.16, by=c("V3" = "ID"))
+```
+
+### View top DEGs and annotations
+
+First we can look at the biological processes associated with our most significantly differentially expressed genes
 ```{r}
-top_25_DEGs_L.9.0 <- head(DEGs_GO_L.9.0_unique[order(DEGs_GO_L.9.0_unique$padj), ], 25)
+top_25_DEGs_L.9.0 <- head(DEGs_DAVID_GO_L.9.0[order(DEGs_DAVID_GO_L.9.0$padj), ], 25)
 top_25_DEGs_L.9.0$padj <- as.character(top_25_DEGs_L.9.0$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.0[, c("gene", "padj", "Gene.Ontology..biological.process.")],
       row.names = FALSE,
       caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
 
-top_25_DEGs_L.9.5 <- head(DEGs_GO_L.9.5_unique[order(DEGs_GO_L.9.5_unique$padj), ], 25)
+top_25_DEGs_L.9.5 <- head(DEGs_DAVID_GO_L.9.5[order(DEGs_DAVID_GO_L.9.5$padj), ], 25)
 top_25_DEGs_L.9.5$padj <- as.character(top_25_DEGs_L.9.5$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.5[, c("gene", "padj", "Gene.Ontology..biological.process.")],
       row.names = FALSE,
       caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
 
-top_25_DEGs_L.9.16 <- head(DEGs_GO_L.9.16_unique[order(DEGs_GO_L.9.16_unique$padj), ], 25)
+top_25_DEGs_L.9.16 <- head(DEGs_DAVID_GO_L.9.16[order(DEGs_DAVID_GO_L.9.16$padj), ], 25)
 top_25_DEGs_L.9.16$padj <- as.character(top_25_DEGs_L.9.16$padj) # prevents kable from auto-rounding our padj values
 kable(top_25_DEGs_L.9.16[, c("gene", "padj", "Gene.Ontology..biological.process.")],
       row.names = FALSE,
       caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
 ```
+
+While this is interesting, the GO annotations are a little dense. Let's look at the biological processes *keywords* associated with our top 25 differentially expressed genes for each tratment comparison
+```{r}
+kable(top_25_DEGs_L.9.0[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
+
+kable(top_25_DEGs_L.9.5[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
+
+kable(top_25_DEGs_L.9.16[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
+```
+
 
 ## Venn diagram of DEG counts accross treatments
 ```{r}
@@ -155,6 +234,8 @@ ggplot(combined_unique_DEG_counts, aes(x = treatment, y = DEGs_count, fill = tre
   geom_text(aes(label = DEGs_count), vjust = -0.5) +
   theme_minimal()
 ```
+
+
 
 
 
