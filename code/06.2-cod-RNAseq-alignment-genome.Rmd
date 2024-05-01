@@ -30,11 +30,12 @@ knitr::opts_chunk$set(
 ```
 
 ```{r load-packages, eval=TRUE}
-# if (!require("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# 
-# BiocManager::install("Rsubread")
-library(Rsubread)
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(ggplot2)
+library(plotly)
 ```
 
 Code for aligning RNAseq data to reference genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html). 
@@ -181,7 +182,7 @@ source .bashvars
 # Create Hisat2 exons tab file
 /home/shared/hisat2-2.2.1/hisat2_extract_exons.py \
 ../data/genomic.gtf \
-> ../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_exon.tab
+> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_exon.tab
 
 # Create Hisat2 exons tab file
 #"${programs_array[hisat2_exons]}" \
@@ -193,7 +194,7 @@ source .bashvars
 # Create Hisat2 splice sites tab file
 /home/shared/hisat2-2.2.1/hisat2_extract_splice_sites.py \
 ../data/genomic.gtf \
-> ../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_splice_sites.tab
+> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_splice_sites.tab
 
 #"${programs_array[hisat2_splice_sites]}" \
 #"${genome_gtf}.gtf" \
@@ -205,11 +206,11 @@ source .bashvars
 # Build Hisat2 reference index using splice sites and exons
 /home/shared/hisat2-2.2.1/hisat2-build \
 ../data/GCF_031168955.1_ASM3116895v1_genomic.fna \
-../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_index.idx \
---exon ../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_exon.tab \
---ss ../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_splice_sites.tab \
+../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_index.idx \
+--exon ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_exon.tab \
+--ss ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_splice_sites.tab \
 -p 20 \
-2> ../output/06.2-cod-RNAseq-alignment-genome/hisat2-build_stats.txt
+2> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/hisat2-build_stats.txt
 
 #"${programs_array[hisat2_build]}" \
 #"${genome_fasta}.fna" \
@@ -240,12 +241,12 @@ source .bashvars
 find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 | xargs basename -s .flexbar_trim.R_1.fastq.gz | xargs -I{} \
 /home/shared/hisat2-2.2.1/hisat2 \
--x ../output/06.2-cod-RNAseq-alignment-genome/G_macrocephalus_index.idx \
+-x ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_index.idx \
 -p 20 \
 -1 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_1.fastq.gz \
 -2 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_2.fastq.gz \
--S ../output/06.2-cod-RNAseq-alignment-genome/{}.sam
-&> ../output/06.2-cod-RNAseq-alignment-genome/{}_hisat2.log
+-S ../output/06.2-cod-RNAseq-alignment-genome/hisat2/{}.sam
+&> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/{}_hisat2.log
 
 
 
@@ -264,7 +265,7 @@ find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 ```{r sort-sam-files, engine='bash'}
 # Sort SAM files, convert to BAM, and index
 
-for samfile in ../output/06.2-cod-RNAseq-alignment-genome/*.sam; do
+for samfile in ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sam; do
   bamfile="${samfile%.sam}.bam"
   sorted_bamfile="${samfile%.sam}.sorted.bam"
   
@@ -284,15 +285,15 @@ done
 
 ```{r count-output-files, engine='bash', eval=TRUE}
 # Count the number of samples for which we have sorted bam files -- I should have 79 (one for each input sample)
-find ../output/06.2-cod-RNAseq-alignment-genome -type f -name "*.sorted.bam" | wc -l
+find ../output/06.2-cod-RNAseq-alignment-genome/hisat2/ -type f -name "*.sorted.bam" | wc -l
 ```
 
 ```{r delete-excess-files, engine='bash'}
 # Delete unneccessary index files
-rm ../output/06.2-cod-RNAseq-alignment-genome/*.ht2
+rm ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.ht2
 
 # Delete unneeded SAM files
-rm ../output/06.2-cod-RNAseq-alignment-genome/*.sam
+rm ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sam
 
 
 # # Sort SAM files, convert to BAM, and index
@@ -315,16 +316,16 @@ rm ../output/06.2-cod-RNAseq-alignment-genome/*.sam
 
 ```{r check-output-dir, engine='bash', eval=TRUE}
 # View the output files
-ls -lh ../output/06.2-cod-RNAseq-alignment-genome
+ls -lh ../output/06.2-cod-RNAseq-alignment-genome/hisat2/
 ```
 
 # Read Summarization
 
 Will be summarizing reads using [featureCounts](https://www.rdocumentation.org/packages/Rsubread/versions/1.22.2/topics/featureCounts) in the [Rsubread](https://bioconductor.org/packages/release/bioc/vignettes/Rsubread/inst/doc/SubreadUsersGuide.pdf) Bioconductor package
 
+## Exons
 
-
-```{r featureCounts, engine='bash'}
+```{r featureCounts-exon, engine='bash'}
 
 /home/shared/subread-2.0.5-Linux-x86_64/bin/featureCounts \
 -p --countReadPairs \
@@ -332,13 +333,103 @@ Will be summarizing reads using [featureCounts](https://www.rdocumentation.org/p
 -t exon \
 -g gene_id \
 -a ../data/genomic.gtf \
--o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts_matrix.txt \
-../output/06.2-cod-RNAseq-alignment-genome/*.sorted.bam \
-&> ../output/06.2-cod-RNAseq-alignment-genome/featureCounts.log
+-o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix.txt \
+../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sorted.bam \
+&> ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon.log
 
 ```
 
+```{r featureCounts-exon-multiqc, engine='bash'}
 
+/home/sam/programs/mambaforge/bin/multiqc \
+../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix.txt.summary \
+-o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon
 
+# View directory contents
+ls -lh ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon
 
+```
+
+I also want to include the treatment/tank info when plotting alignment rates across samples
+```{r plot-alignment-rates-exon, eval=TRUE}
+# Load multiqc stats
+featureCounts_exon_multiqc <- read.csv("../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/multiqc_data/multiqc_featureCounts.txt", sep = '\t')
+# Adjust sample name formatting (to prep for join)
+featureCounts_exon_multiqc$Sample <- paste("sample_", featureCounts_exon_multiqc$Sample, sep = "")
+# Load experimental data
+cod_sample_info_OG <- read.csv("../data/DESeq2_Sample_Information.csv")
+
+featureCounts_exon_multiqc_plustreatment <- left_join(cod_sample_info_OG, featureCounts_exon_multiqc, by = c("sample_name" = "Sample")) %>% 
+  na.omit()
+featureCounts_exon_multiqc_plustreatment <- featureCounts_exon_multiqc_plustreatment[order(featureCounts_exon_multiqc_plustreatment$sample_number),]
+
+a <- ggplot(featureCounts_exon_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+a
+#ggplotly(a)
+
+b <- ggplot(featureCounts_exon_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(tank))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+b
+#ggplotly(b)
+
+```
+
+## Genes
+
+```{r featureCounts-gene, engine='bash'}
+
+/home/shared/subread-2.0.5-Linux-x86_64/bin/featureCounts \
+-p --countReadPairs \
+-T 5 \
+-t gene \
+-g gene_id \
+-a ../data/genomic.gtf \
+-o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt \
+../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sorted.bam \
+&> ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene.log
+
+```
+
+```{r featureCounts-gene-multiqc, engine='bash'}
+
+/home/sam/programs/mambaforge/bin/multiqc \
+../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt.summary \
+-o ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene
+
+# View directory contents
+ls -lh ../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene
+
+```
+
+I also want to include the treatment/tank info when plotting alignment rates across samples
+```{r plot-alignment-rates-gene, eval=TRUE}
+# Load multiqc stats
+featureCounts_gene_multiqc <- read.csv("../output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/multiqc_data/multiqc_featureCounts.txt", sep = '\t')
+# Adjust sample name formatting (to prep for join)
+featureCounts_gene_multiqc$Sample <- paste("sample_", featureCounts_gene_multiqc$Sample, sep = "")
+
+featureCounts_gene_multiqc_plustreatment <- left_join(cod_sample_info_OG, featureCounts_gene_multiqc, by = c("sample_name" = "Sample")) %>% 
+  na.omit()
+featureCounts_gene_multiqc_plustreatment <- featureCounts_gene_multiqc_plustreatment[order(featureCounts_gene_multiqc_plustreatment$sample_number),]
+
+a <- ggplot(featureCounts_gene_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+a
+#ggplotly(a)
+
+b <- ggplot(featureCounts_gene_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(tank))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+b
+#ggplotly(b)
+
+```
 
