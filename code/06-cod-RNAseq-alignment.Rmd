@@ -271,6 +271,7 @@ ls -lh ${output_dir_top}
 
 ```
 
+
 I also want to include the treatment/tank info when plotting alignment rates across samples
 ```{r plot-alignment-rates, eval=TRUE}
 # Load multiqc stats
@@ -285,19 +286,26 @@ kallisto_multiqc_plustreatment <- left_join(cod_sample_info_OG, kallisto_multiqc
   na.omit()
 kallisto_multiqc_plustreatment <- kallisto_multiqc_plustreatment[order(kallisto_multiqc_plustreatment$sample_number),]
 
-a <- ggplot(kallisto_multiqc_plustreatment,
+ggplot(kallisto_multiqc_plustreatment,
        aes(x=reorder(sample_name, sample_number), y=percent_aligned, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-a
-#ggplotly(a)
 
-b <- ggplot(kallisto_multiqc_plustreatment,
-       aes(x=reorder(sample_name, sample_number), y=percent_aligned, fill=as.factor(tank))) +
+ggplot(kallisto_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=total_reads, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-b
-#ggplotly(b)
+
+# sample149 is kind of throwing off the visualization, so lets remove and redo
+ggplot(kallisto_multiqc_plustreatment[kallisto_multiqc_plustreatment$sample_name != "sample_149", ],
+       aes(x=reorder(sample_name, sample_number), y=total_reads, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
+
+ggplot(kallisto_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=fragment_length, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
 
 ```
 
