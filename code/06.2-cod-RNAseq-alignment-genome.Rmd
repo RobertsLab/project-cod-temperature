@@ -4,11 +4,6 @@ author: "Kathleen Durkin"
 date: "2024-04-16"
 always_allow_html: true
 output: 
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -16,6 +11,11 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -368,19 +368,21 @@ featureCounts_exon_multiqc_plustreatment <- left_join(cod_sample_info_OG, featur
   na.omit()
 featureCounts_exon_multiqc_plustreatment <- featureCounts_exon_multiqc_plustreatment[order(featureCounts_exon_multiqc_plustreatment$sample_number),]
 
-a <- ggplot(featureCounts_exon_multiqc_plustreatment,
+ggplot(featureCounts_exon_multiqc_plustreatment,
        aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-a
-#ggplotly(a)
 
-b <- ggplot(featureCounts_exon_multiqc_plustreatment,
-       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(tank))) +
+ggplot(featureCounts_exon_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=Total, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-b
-#ggplotly(b)
+
+# sample149 is kind of throwing off the visualization, so lets remove and redo
+ggplot(featureCounts_exon_multiqc_plustreatment[featureCounts_exon_multiqc_plustreatment$sample_name != "sample_149", ],
+       aes(x=reorder(sample_name, sample_number), y=Total, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
 
 ```
 
@@ -427,19 +429,21 @@ featureCounts_gene_multiqc_plustreatment <- left_join(cod_sample_info_OG, featur
   na.omit()
 featureCounts_gene_multiqc_plustreatment <- featureCounts_gene_multiqc_plustreatment[order(featureCounts_gene_multiqc_plustreatment$sample_number),]
 
-a <- ggplot(featureCounts_gene_multiqc_plustreatment,
+ggplot(featureCounts_gene_multiqc_plustreatment,
        aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-a
-#ggplotly(a)
 
-b <- ggplot(featureCounts_gene_multiqc_plustreatment,
-       aes(x=reorder(sample_name, sample_number), y=percent_assigned, fill=as.factor(tank))) +
+ggplot(featureCounts_gene_multiqc_plustreatment,
+       aes(x=reorder(sample_name, sample_number), y=Total, fill=as.factor(temp_treatment))) +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
-b
-#ggplotly(b)
+
+# sample149 is kind of throwing off the visualization, so lets remove and redo
+ggplot(featureCounts_gene_multiqc_plustreatment[featureCounts_gene_multiqc_plustreatment$sample_name != "sample_149", ],
+       aes(x=reorder(sample_name, sample_number), y=Total, fill=as.factor(temp_treatment))) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1, size=7))
 
 ```
 
