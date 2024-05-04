@@ -24,9 +24,10 @@ knitr::opts_chunk$set(message=FALSE, warning=FALSE,
 library(tidyverse)
 library(infer)
 library(broom)
+library(knitr)
 ```
 
-I'm doing this analysis under the assumption that all three of the SL columns (SL_11212022, SL_12272022, and SL_mm) are measuring some consistent size/length value over three measurement dates. Similarly, I'm assuming the the columns WWT_11212022, WWT_12272022, and WholeBodyWW_g are measurements of body weight (maybe whole body wet weight?) on the same three measurement dates. 
+I'm doing this analysis under the assumption that all three of the SL columns (SL_11212022, SL_12272022, and SL_mm) are measuring some consistent size/length value over three measurement dates. Similarly, I'm assuming the the columns WWT_11212022, WWT_12272022, and WholeBodyWW_g are measurements of body weight (maybe whole body wet weight?) on the same three measurement dates. I believe the first measurement date is from tagging (before acclimitization to lab conditions), the second is date of transfer to temperature treatment tanks, and the third is sampling post-treatment.
 
 # Data Munging
 ```{r}
@@ -34,12 +35,12 @@ I'm doing this analysis under the assumption that all three of the SL columns (S
 codTempData <- read.csv("../data/temp-experiment.csv")
 head(codTempData)
 
-# Create two new columns indicating change from Nov.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). Also, modify the Temperature variable from a numeric to an ordered factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
+# Create two new columns indicating change from Dec.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). I'm excluding the Nov.2022 size/weight measurements, because Nov.2022-Dec.2022 was the acclimation period, not treatment. Also, modify the Temperature variable from a numeric to an ordered factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
 codTempData_plus <- transform(codTempData,
                               # create column for change in size
-                              sizeChange_mm = SL_mm - SL_11212022,
+                              sizeChange_mm = SL_mm - SL_12272022,
                               # create column for change in weight
-                              weightChange_g = WholeBodyWW_g - WWT_11212022) %>%
+                              weightChange_g = WholeBodyWW_g - WWT_12272022) %>%
   # change type of Temperature variable to an ordered factor
   mutate(codTempData, Temperature = relevel(as.factor(Temperature), "0", "5", "9", "16"))
 head(codTempData_plus)
@@ -202,11 +203,16 @@ p = 1.79e-18 << 0.05, so there is a significant relationship between treatment (
 
 ```{r}
 # Tukey HSD
-sizeANOVA %>%
+sizeTukeyHSD <- sizeANOVA %>%
   TukeyHSD() %>%
   tidy() %>% 
   select(contrast, estimate, adj.p.value) %>% 
   arrange(adj.p.value)
+
+sizeTukeyHSD
+
+kable(sizeTukeyHSD,
+      caption = "Tukey HSD for change in size across treatments")
 
 codTempData_plus %>%
   ggplot(aes(x=Temperature,
@@ -216,7 +222,7 @@ codTempData_plus %>%
   geom_jitter(width = 0.1, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C")) +
+  annotate(geom = "text", x = 1:4, y = 25, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
   ylab("Size Change (mm), 11/21/22 to 02/08/23")
 
@@ -244,11 +250,16 @@ p = 3.73e-15 << 0.05, so there is a significant relationship between treatment (
 
 ```{r}
 # Tukey HSD
-weightANOVA %>%
+weightTukeyHSD <- weightANOVA %>%
   TukeyHSD() %>%
   tidy() %>% 
   select(contrast, estimate, adj.p.value) %>% 
   arrange(adj.p.value)
+
+weightTukeyHSD
+
+kable(weightTukeyHSD,
+      caption = "Tukey HSD for change in weight across treatments")
 
 codTempData_plus %>%
   ggplot(aes(x=Temperature,
@@ -258,7 +269,7 @@ codTempData_plus %>%
   geom_jitter(width = 0.1, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C")) +
+  annotate(geom = "text", x = 1:4, y = 8, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
   ylab("Weight Change (g), 11/21/22 to 02/08/23")
 
