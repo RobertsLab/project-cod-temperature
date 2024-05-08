@@ -4,6 +4,11 @@ author: "Kathleen Durkin"
 date: "2024-04-30"
 always_allow_html: true
 output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -11,11 +16,6 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -77,7 +77,7 @@ I found the [DESeq2 vignette](https://www.bioconductor.org/packages/release/bioc
 Load in the count matrix we generated after alignment using the featureCounts. We also need to slightly reformat the count matrix to make all of the estimated counts integers, as required for DESeq2.
 
 ```{r}
-# Read in counts data. This is a gene-level counts matrix generated from kallisto transcript abundances using Trinity
+# Read in counts data. This is a gene-level counts matrix generated from hisat2 and summarized using featureCounts
 cod_counts_data_OG <- read_delim("../output/06.2-cod-RNAseq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix_noheader.txt", delim="\t") 
 head(cod_counts_data_OG)
 ```
