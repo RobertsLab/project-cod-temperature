@@ -1,5 +1,5 @@
 ---
-title: "07.2.2-cod-RNAseq-DESeq2genome-gene"
+title: "07.2.2-cod-RNAseq-DESeq2-genome-gene"
 author: "Kathleen Durkin"
 date: "2024-04-30"
 always_allow_html: true
@@ -102,7 +102,7 @@ cod_counts_data <- cod_counts_data[, order(colnames(cod_counts_data))]
 
 cod_sample_names <- names(cod_counts_data)
 
-write.table(cod_counts_data, file = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/Gmac_genome_gene_counts_formatted.tab", sep = "\t",
+write.table(cod_counts_data, file = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/Gmac_genome_gene_counts_formatted.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
 
 head(cod_counts_data)
@@ -326,19 +326,19 @@ p.L.all.SLdiff
 p.L.all.WWTdiff
 
 # Export PCAs as pngs
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-PCA_L_500.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-PCA_L_500.png",
          plot   = p.L.500,
          res    = 600,
          width  = 6000,
          height = 4000)
 
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-PCA_L_1000.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-PCA_L_1000.png",
          plot   = p.L.1000,
          res    = 600,
          width  = 6000,
          height = 4000)
 
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-PCA_L_all.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-PCA_L_all.png",
          plot   = p.L.all,
          res    = 600,
          width  = 6000,
@@ -431,7 +431,7 @@ sig_L.9.16_norm <- res_table_L.9.16_norm_tb %>%
 
 head(sig_L.9.16_norm)
 
-write.table(sig_L.9.16_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-Gmac_DEGs_sig_L.9.16_norm.tab", sep = "\t",
+write.table(sig_L.9.16_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-Gmac_DEGs_sig_L.9.16_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
 ```
 
@@ -469,7 +469,7 @@ h.L.9.16 <- pheatmap(norm_sig_L.9.16,
                      main = "Normalized Significant Expression, Liver, 9*C and 16*C")
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-heatmap_L.9.16_norm_sig.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-heatmap_L.9.16_norm_sig.png",
          plot   = h.L.9.16,
          res    = 600,
          width  = 5000,
@@ -510,7 +510,7 @@ v.L.9.16 <-
 v.L.9.16
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-volcano_L.9.16.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-volcano_L.9.16.png",
          plot   = v.L.9.16,
          res    = 600,
          width  = 6000,
@@ -604,7 +604,7 @@ sig_L.9.0_norm <- res_table_L.9.0_norm_tb %>%
 
 head(sig_L.9.0_norm)
 
-write.table(sig_L.9.0_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-Gmac_DEGs_sig_L.9.0_norm.tab", sep = "\t",
+write.table(sig_L.9.0_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-Gmac_DEGs_sig_L.9.0_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
 ```
 
@@ -642,7 +642,7 @@ h.L.9.0 <- pheatmap(norm_sig_L.9.0,
                      main = "Normalized Significant Expression, Liver, 9*C and 0*C")
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-heatmap_L.9.0_norm_sig.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-heatmap_L.9.0_norm_sig.png",
          plot   = h.L.9.0,
          res    = 600,
          width  = 5000,
@@ -683,7 +683,7 @@ v.L.9.0 <-
 v.L.9.0
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-volcano_L.9.0.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-volcano_L.9.0.png",
          plot   = v.L.9.0,
          res    = 600,
          width  = 6000,
@@ -777,7 +777,7 @@ sig_L.9.5_norm <- res_table_L.9.5_norm_tb %>%
 
 head(sig_L.9.5_norm)
 
-write.table(sig_L.9.5_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-Gmac_DEGs_sig_L.9.5_norm.tab", sep = "\t",
+write.table(sig_L.9.5_norm, file = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-Gmac_DEGs_sig_L.9.5_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
 ```
 
@@ -815,7 +815,7 @@ h.L.9.5 <- pheatmap(norm_sig_L.9.5,
                      main = "Normalized Significant Expression, Liver, 9*C and 5*C")
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-heatmap_L.9.5_norm_sig.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-heatmap_L.9.5_norm_sig.png",
          plot   = h.L.9.5,
          res    = 600,
          width  = 5000,
@@ -856,7 +856,7 @@ v.L.9.5 <-
 v.L.9.5
 
 # Save plot
-ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2genome-gene/gene-volcano_L.9.5.png",
+ggexport(filename = "../output/07.2.2-cod-RNAseq-DESeq2-genome-gene/gene-volcano_L.9.5.png",
          plot   = v.L.9.0,
          res    = 600,
          width  = 6000,
