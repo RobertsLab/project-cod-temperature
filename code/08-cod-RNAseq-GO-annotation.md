@@ -257,22 +257,22 @@ curl https://david.ncifcrf.gov/data/download/chart_EDDFE74F4DD11715195175792.txt
 
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 3393k    0 3393k    0     0  4512k      0 --:--:-- --:--:-- --:--:-- 4506k100 4419k    0 4419k    0     0  5416k      0 --:--:-- --:--:-- --:--:-- 5409k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 2126k    0 2126k    0     0  2909k      0 --:--:-- --:--:-- --:--:-- 2905k100 4419k    0 4419k    0     0  5497k      0 --:--:-- --:--:-- --:--:-- 5490k
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  298k    0  298k    0     0   565k      0 --:--:-- --:--:-- --:--:--  565k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  298k    0  298k    0     0   566k      0 --:--:-- --:--:-- --:--:--  566k
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 40954    0 40954    0     0   106k      0 --:--:-- --:--:-- --:--:--  106k100 1038k    0 1038k    0     0  1577k      0 --:--:-- --:--:-- --:--:-- 1575k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 40587    0 40587    0     0   106k      0 --:--:-- --:--:-- --:--:--  106k100 1038k    0 1038k    0     0  1585k      0 --:--:-- --:--:-- --:--:-- 1582k
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  109k    0  109k    0     0   244k      0 --:--:-- --:--:-- --:--:--  245k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  109k    0  109k    0     0   246k      0 --:--:-- --:--:-- --:--:--  246k
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 2881k    0 2881k    0     0  3899k      0 --:--:-- --:--:-- --:--:-- 3894k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 2881k    0 2881k    0     0  3867k      0 --:--:-- --:--:-- --:--:-- 3867k
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                      Dload  Upload   Total   Spent    Left  Speed
-      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  100k    0  100k    0     0   223k      0 --:--:-- --:--:-- --:--:--  222k100  242k    0  242k    0     0   464k      0 --:--:-- --:--:-- --:--:--  464k
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  206k    0  206k    0     0   396k      0 --:--:-- --:--:-- --:--:--  396k100  242k    0  242k    0     0   465k      0 --:--:-- --:--:-- --:--:--  464k
 
 ``` r
 DEGs_DAVID_FAtable_L.9.0 <- read.delim("../output/08-cod-RNAseq-GO-annotation/Gmac_DAVID_FAtable_L.9.0.tab", sep="\t")
@@ -296,7 +296,9 @@ DEGs_DAVID_FAtable_GO_L.9.16 <- left_join(DEGs_GO_L.9.16_unique, DEGs_DAVID_FAta
 ### 1.3.1 View top DEGs and annotations
 
 First we can look at the biological processes associated with our most
-significantly differentially expressed genes
+significantly differentially expressed genes – note that this is *NOT*
+making use of our enrichment analysis, it’s just the GO terms associated
+with the top 25 DEGs
 
 ``` r
 top_25_DEGs_L.9.0 <- head(na.omit(DEGs_DAVID_FAtable_GO_L.9.0[order(DEGs_DAVID_FAtable_GO_L.9.0$padj), ]), 25)
@@ -412,119 +414,78 @@ kable(top_25_DEGs_L.9.16[, c("gene", "padj", "Gene.Ontology..biological.process.
 
 Top 25 DEGs for 9C v 16C (based on adjusted p-value)
 
-While this is interesting, the GO annotations are a little dense. Let’s
-look at the biological processes *keywords* associated with our top 25
-differentially expressed genes for each tratment comparison
-
-``` r
-kable(top_25_DEGs_L.9.0[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
-```
-
-| gene           | padj                  | UP_KW_BIOLOGICAL_PROCESS                                                                                                                     |
-|:---------------|:----------------------|:---------------------------------------------------------------------------------------------------------------------------------------------|
-| XM_060037653.1 | 2.65059340718516e-116 | KW-0275\~Fatty acid biosynthesis,KW-0276\~Fatty acid metabolism,KW-0443\~Lipid metabolism,KW-0444\~Lipid biosynthesis,                       |
-| XM_060049763.1 | 9.12527523202844e-94  | KW-0443\~Lipid metabolism,                                                                                                                   |
-| XM_060060166.1 | 1.42450720228371e-85  | KW-0278\~Fertilization,                                                                                                                      |
-| XM_060035971.1 | 8.66449260549534e-84  | KW-0507\~mRNA processing,KW-0508\~mRNA splicing,                                                                                             |
-| XM_060057750.1 | 6.38418170589001e-74  |                                                                                                                                              |
-| XM_060038917.1 | 7.42028388386766e-73  |                                                                                                                                              |
-| XM_060041837.1 | 1.67320958843222e-71  | KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,                                                                             |
-| XM_060049740.1 | 4.86364826911051e-67  | KW-0109\~Calcium transport,KW-0406\~Ion transport,KW-0813\~Transport,                                                                        |
-| XM_060049939.1 | 3.45402241606145e-66  |                                                                                                                                              |
-| XM_060068071.1 | 4.61565129576928e-65  |                                                                                                                                              |
-| XM_060060171.1 | 5.85829856535501e-65  | KW-0278\~Fertilization,                                                                                                                      |
-| XM_060056708.1 | 3.51183573584622e-64  | KW-0346\~Stress response,                                                                                                                    |
-| XM_060045462.1 | 1.0273894884123e-63   |                                                                                                                                              |
-| XM_060036042.1 | 1.82056756959209e-62  |                                                                                                                                              |
-| XM_060061635.1 | 3.0894711535196e-59   | KW-0324\~Glycolysis,                                                                                                                         |
-| XM_060067933.1 | 4.53686815697762e-58  | KW-0346\~Stress response,                                                                                                                    |
-| XM_060061319.1 | 6.08606636149451e-58  | KW-0376\~Hydrogen peroxide,KW-0893\~Thyroid hormones biosynthesis,                                                                           |
-| XM_060038697.1 | 7.49314138927052e-55  | KW-0443\~Lipid metabolism,KW-0444\~Lipid biosynthesis,KW-0594\~Phospholipid biosynthesis,KW-1208\~Phospholipid metabolism,                   |
-| XM_060060130.1 | 2.16442886447122e-53  |                                                                                                                                              |
-| XM_060056417.1 | 3.17006572189851e-52  | KW-0346\~Stress response,                                                                                                                    |
-| XM_060073306.1 | 1.66155359670683e-47  |                                                                                                                                              |
-| XM_060047018.1 | 9.40093229797643e-47  | KW-0221<sub>Differentiation,KW-0804</sub>Transcription,KW-0805\~Transcription regulation,                                                    |
-| XR_009527059.1 | 8.79962417234868e-46  | KW-0090\~Biological rhythms,KW-0507\~mRNA processing,KW-0508\~mRNA splicing,KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation, |
-| XM_060069367.1 | 1.66189858596371e-43  | KW-0648\~Protein biosynthesis,                                                                                                               |
-| XM_060040146.1 | 3.18308161023476e-42  |                                                                                                                                              |
-
-Top 25 DEGs for 9C v 0C (based on adjusted p-value)
-
-``` r
-kable(top_25_DEGs_L.9.5[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
-```
-
-| gene           | padj                 | UP_KW_BIOLOGICAL_PROCESS                                                                                                                                                     |
-|:---------------|:---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| XM_060035971.1 | 7.98182203996108e-25 | KW-0507\~mRNA processing,KW-0508\~mRNA splicing,                                                                                                                             |
-| XM_060056708.1 | 5.51070147655825e-17 | KW-0346\~Stress response,                                                                                                                                                    |
-| XM_060067933.1 | 6.63135038511177e-17 | KW-0346\~Stress response,                                                                                                                                                    |
-| XM_060048079.1 | 2.86886992285965e-11 |                                                                                                                                                                              |
-| XM_060046801.1 | 4.88332021457905e-11 | KW-0233\~DNA recombination,KW-0391<sub>Immunity,KW-0395</sub>Inflammatory response,KW-0399\~Innate immunity,KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation, |
-| XM_060059453.1 | 5.85108708439188e-11 | KW-0346\~Stress response,                                                                                                                                                    |
-| XM_060038917.1 | 9.71444383807465e-11 |                                                                                                                                                                              |
-| XM_060072201.1 | 1.16398952181429e-09 | KW-0051\~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,KW-0945\~Host-virus interaction,                                                                |
-| XM_060069281.1 | 2.71579719203814e-09 | KW-0051\~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,                                                                                                |
-| XM_060069936.1 | 5.2895760703378e-09  | KW-0833\~Ubl conjugation pathway,                                                                                                                                            |
-| XM_060038661.1 | 1.03080201969747e-08 |                                                                                                                                                                              |
-| XM_060053374.1 | 1.47130354758428e-08 |                                                                                                                                                                              |
-| XM_060076665.1 | 1.55169394761084e-08 | KW-0131\~Cell cycle,KW-0132\~Cell division,KW-0498\~Mitosis,                                                                                                                 |
-| XM_060052059.1 | 2.87494723884798e-08 |                                                                                                                                                                              |
-| XM_060069277.1 | 2.87494723884798e-08 | KW-0051\~Antiviral defense,KW-0391<sub>Immunity,KW-0399</sub>Innate immunity,                                                                                                |
-| XM_060068061.1 | 3.44303976784469e-08 | KW-0833\~Ubl conjugation pathway,                                                                                                                                            |
-| XM_060050173.1 | 4.13791667888411e-08 |                                                                                                                                                                              |
-| XM_060060887.1 | 5.18446434464799e-08 | KW-0375\~Hydrogen ion transport,KW-0406\~Ion transport,KW-0813\~Transport,                                                                                                   |
-| XM_060060887.1 | 5.18446434464799e-08 | KW-0375\~Hydrogen ion transport,KW-0406\~Ion transport,KW-0813\~Transport,                                                                                                   |
-| XM_060056417.1 | 6.49622256621704e-08 | KW-0346\~Stress response,                                                                                                                                                    |
-| XM_060037177.1 | 6.7743914689955e-08  | KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,                                                                                                             |
-| XM_060075851.1 | 8.76137658495863e-08 | KW-0094\~Blood coagulation,KW-0356\~Hemostasis,                                                                                                                              |
-| XM_060052126.1 | 1.21561119079485e-07 | KW-0131\~Cell cycle,KW-0507\~mRNA processing,KW-0804<sub>Transcription,KW-0805</sub>Transcription regulation,                                                                |
-| XM_060044075.1 | 1.24248617352416e-07 | KW-0130\~Cell adhesion,KW-0131\~Cell cycle,KW-0132\~Cell division,KW-0341\~Growth regulation,KW-0498\~Mitosis,                                                               |
-| XM_060061319.1 | 1.49045711783832e-07 | KW-0376\~Hydrogen peroxide,KW-0893\~Thyroid hormones biosynthesis,                                                                                                           |
-
-Top 25 DEGs for 9C v 5C (based on adjusted p-value)
-
-``` r
-kable(top_25_DEGs_L.9.16[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
-```
-
-| gene           | padj                  | UP_KW_BIOLOGICAL_PROCESS                                                                                               |
-|:---------------|:----------------------|:-----------------------------------------------------------------------------------------------------------------------|
-| XM_060067933.1 | 3.34339884448267e-131 | KW-0346\~Stress response,                                                                                              |
-| XM_060035618.1 | 4.56825944864665e-39  |                                                                                                                        |
-| XM_060038070.1 | 9.4474915720096e-34   | KW-0445\~Lipid transport,KW-0813\~Transport,                                                                           |
-| XM_060055200.1 | 2.24810444952908e-33  | KW-0130\~Cell adhesion,KW-0221<sub>Differentiation,KW-0524</sub>Neurogenesis,                                          |
-| XM_060074499.1 | 3.37674667521652e-33  |                                                                                                                        |
-| XM_060044415.1 | 2.23973084206205e-28  |                                                                                                                        |
-| XM_060059917.1 | 2.36351348255791e-27  | KW-0131\~Cell cycle,KW-0804<sub>Transcription,KW-0879</sub>Wnt signaling pathway,                                      |
-| XM_060060459.1 | 5.7025219583369e-24   | KW-0834\~Unfolded protein response,                                                                                    |
-| XM_060035971.1 | 4.07619559044959e-23  | KW-0507\~mRNA processing,KW-0508\~mRNA splicing,                                                                       |
-| XM_060069449.1 | 5.6638831038487e-23   | KW-0406\~Ion transport,KW-0633\~Potassium transport,KW-0813\~Transport,                                                |
-| XM_060071156.1 | 1.09590320360766e-22  | KW-0276\~Fatty acid metabolism,KW-0443\~Lipid metabolism,                                                              |
-| XM_060062807.1 | 1.12188038617635e-21  | KW-0507\~mRNA processing,KW-0508\~mRNA splicing,                                                                       |
-| XM_060076847.1 | 2.19962301278613e-21  | KW-0275\~Fatty acid biosynthesis,KW-0276\~Fatty acid metabolism,KW-0443\~Lipid metabolism,KW-0444\~Lipid biosynthesis, |
-| XM_060046540.1 | 1.57081807452208e-20  |                                                                                                                        |
-| XM_060069363.1 | 2.22712416434098e-20  | KW-0648\~Protein biosynthesis,                                                                                         |
-| XM_060058017.1 | 2.55845315056141e-20  |                                                                                                                        |
-| XM_060059787.1 | 5.41557921560011e-20  | KW-0153\~Cholesterol metabolism,KW-0443\~Lipid metabolism,KW-0753\~Steroid metabolism,KW-1207\~Sterol metabolism,      |
-| XM_060060095.1 | 1.5961486946803e-19   |                                                                                                                        |
-| XM_060060095.1 | 1.5961486946803e-19   |                                                                                                                        |
-| XM_060043501.1 | 2.73868167705382e-19  |                                                                                                                        |
-| XM_060064095.1 | 1.25760400894235e-18  |                                                                                                                        |
-| XM_060036420.1 | 6.41686755963648e-18  | KW-0131\~Cell cycle,KW-0132\~Cell division,KW-0159\~Chromosome partition,KW-0498\~Mitosis,                             |
-| XM_060048785.1 | 1.49379466840533e-17  |                                                                                                                        |
-| XM_060074056.1 | 1.01658426074323e-16  | KW-0221<sub>Differentiation,KW-0744</sub>Spermatogenesis,KW-0833\~Ubl conjugation pathway,                             |
-| XM_060044104.1 | 1.11749934262127e-16  |                                                                                                                        |
-
-Top 25 DEGs for 9C v 16C (based on adjusted p-value)
-
 ### 1.3.2 View over-represented (enriched) processes
+
+#### 1.3.2.1 GO terms
+
+First, let’s grab just the GO terms for biological processes, and sort
+and filter by the Bonferroni-adjusted p-value
+
+``` r
+DEGs_DAVID_FAchart_L.9.0_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.0 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.5_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.5 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.16_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.16 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+```
+
+``` r
+DEGs_DAVID_FAchart_L.9.0_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.0_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.0_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 0C (based on adjusted p-value)")
+```
+
+| Term                                                                                    | Bonferroni           |
+|:----------------------------------------------------------------------------------------|:---------------------|
+| <a href="GO:0006334\~nucleosome" class="uri">GO:0006334\~nucleosome</a> assembly        | 8.80938655356545e-11 |
+| <a href="GO:0000398\~mRNA" class="uri">GO:0000398\~mRNA</a> splicing, via spliceosome   | 4.109024835941e-07   |
+| <a href="GO:0006397\~mRNA" class="uri">GO:0006397\~mRNA</a> processing                  | 8.19662548501299e-07 |
+| <a href="GO:0008380\~RNA" class="uri">GO:0008380\~RNA</a> splicing                      | 1.56335007539532e-06 |
+| <a href="GO:0042742\~defense" class="uri">GO:0042742\~defense</a> response to bacterium | 0.000670834509616358 |
+| <a href="GO:0000387\~spliceosomal"                                                      
+ class="uri">GO:0000387\~spliceosomal</a> snRNP assembly                                  | 0.0279648979525878   |
+
+Enriched GO Biological Processes for 9C v 0C (based on adjusted p-value)
+
+``` r
+DEGs_DAVID_FAchart_L.9.5_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.5_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.5_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 5C (based on adjusted p-value)")
+```
+
+| Term                                                                  | Bonferroni           |
+|:----------------------------------------------------------------------|:---------------------|
+| <a href="GO:0051301\~cell" class="uri">GO:0051301\~cell</a> division  | 1.89957214585812e-05 |
+| <a href="GO:0006260\~DNA" class="uri">GO:0006260\~DNA</a> replication | 0.0235737394986572   |
+| <a href="GO:0007049\~cell" class="uri">GO:0007049\~cell</a> cycle     | 0.0262123687761406   |
+
+Enriched GO Biological Processes for 9C v 5C (based on adjusted p-value)
+
+``` r
+DEGs_DAVID_FAchart_L.9.16_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.16_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.16_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 16C (based on adjusted p-value)") 
+```
+
+| Term                                                                 | Bonferroni          |
+|:---------------------------------------------------------------------|:--------------------|
+| <a href="GO:0051301\~cell" class="uri">GO:0051301\~cell</a> division | 0.00392696398105574 |
+| <a href="GO:0007049\~cell" class="uri">GO:0007049\~cell</a> cycle    | 0.0169894770671077  |
+
+Enriched GO Biological Processes for 9C v 16C (based on adjusted
+p-value)
+
+#### 1.3.2.2 Uniprot Keywords
 
 First, let’s grab just the Uniprot keywords for biological processes,
 and sort and filter by the Bonferroni-adjusted p-value

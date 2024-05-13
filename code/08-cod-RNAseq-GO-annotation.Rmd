@@ -231,7 +231,7 @@ DEGs_DAVID_FAtable_GO_L.9.16 <- left_join(DEGs_GO_L.9.16_unique, DEGs_DAVID_FAta
 
 ### View top DEGs and annotations
 
-First we can look at the biological processes associated with our most significantly differentially expressed genes
+First we can look at the biological processes associated with our most significantly differentially expressed genes -- note that this is *NOT* making use of our enrichment analysis, it's just the GO terms associated with the top 25 DEGs
 ```{r view-top-DEG-GO}
 top_25_DEGs_L.9.0 <- head(na.omit(DEGs_DAVID_FAtable_GO_L.9.0[order(DEGs_DAVID_FAtable_GO_L.9.0$padj), ]), 25)
 top_25_DEGs_L.9.0$padj <- as.character(top_25_DEGs_L.9.0$padj) # prevents kable from auto-rounding our padj values
@@ -252,22 +252,45 @@ kable(top_25_DEGs_L.9.16[, c("gene", "padj", "Gene.Ontology..biological.process.
       caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
 ```
 
-While this is interesting, the GO annotations are a little dense. Let's look at the biological processes *keywords* associated with our top 25 differentially expressed genes for each tratment comparison
-```{r view-top-DEG-KW}
-kable(top_25_DEGs_L.9.0[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
-
-kable(top_25_DEGs_L.9.5[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
-
-kable(top_25_DEGs_L.9.16[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
-      row.names = FALSE,
-      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
-```
 
 ### View over-represented (enriched) processes
+
+#### GO terms
+
+First, let's grab just the GO terms for biological processes, and sort and filter by the Bonferroni-adjusted p-value
+```{r select-enriched-GOBP}
+DEGs_DAVID_FAchart_L.9.0_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.0 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.5_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.5 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.16_enrichedGOBP <- DEGs_DAVID_FAchart_L.9.16 %>% 
+  filter(Category == "GOTERM_BP_DIRECT") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+```
+
+```{r view-enriched-GOBP}
+DEGs_DAVID_FAchart_L.9.0_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.0_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.0_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 0C (based on adjusted p-value)")
+
+DEGs_DAVID_FAchart_L.9.5_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.5_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.5_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 5C (based on adjusted p-value)")
+
+DEGs_DAVID_FAchart_L.9.16_enrichedGOBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.16_enrichedGOBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.16_enrichedGOBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched GO Biological Processes for 9C v 16C (based on adjusted p-value)") 
+```
+
+#### Uniprot Keywords
 
 First, let's grab just the Uniprot keywords for biological processes, and sort and filter by the Bonferroni-adjusted p-value
 ```{r select-enriched-KWBP}
