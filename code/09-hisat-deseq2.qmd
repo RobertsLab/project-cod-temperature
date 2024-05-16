@@ -46,4 +46,23 @@ Reads
 ```{r, engine='bash', eval=TRUE}
 ls /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/05-cod-RNAseq-trimming/trimmed-reads
 ```
+Need to find treatment file...
 
+
+
+# Genome
+
+https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/
+
+![genome](http://gannet.fish.washington.edu/seashell/snaps/Monosnap_Gadus_macrocephalus_genome_assembly_ASM3116895v1_-_NCBI_-_NLM_2024-05-15_09-20-59.png)
+```{r, engine='bash'}
+cd ../data
+
+/home/shared/datasets download genome accession GCF_031168955.1 --include gff3,gtf,rna,cds,protein,genome,seq-report
+```
+
+
+```{r, engine='bash'}
+cd ../data 
+unzip ncbi_dataset.zip
+```
