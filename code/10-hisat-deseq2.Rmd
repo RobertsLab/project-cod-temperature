@@ -1,0 +1,86 @@
+---
+title: "10-Hisat"
+author: "Steven Roberts"
+date: "`r format(Sys.time(), '%d %B, %Y')`"  
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+  html_document:
+    theme: readable
+    highlight: zenburn
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(DT)
+library(Biostrings)
+library(tm)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,         # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  fig.width = 6,       # Set plot width in inches
+  fig.height = 4,      # Set plot height in inches
+  fig.align = "center", # Align plots to the center
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+Alt splice test run
+
+
+
+# Reads
+
+```{r, engine='bash', eval=TRUE}
+ls ../data/reads/*
+```
+Need to find treatment file...
+
+
+## multiqc
+
+
+
+
+# Genome
+
+https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/
+
+![genome](http://gannet.fish.washington.edu/seashell/snaps/Monosnap_Gadus_macrocephalus_genome_assembly_ASM3116895v1_-_NCBI_-_NLM_2024-05-15_09-20-59.png)
+```{r, engine='bash'}
+cd ../data
+
+/home/shared/datasets download genome accession GCF_031168955.1 --include gff3,gtf,rna,cds,protein,genome,seq-report
+```
+
+
+```{r, engine='bash'}
+cd ../data 
+unzip ncbi_dataset.zip
+```
+
+
+
+```{r, engine='bash', eval=TRUE}
+ls /home/shared/8TB_HDD_03/sr320/github/project-cod-temperature/data/ncbi_dataset/data/GCF_031168955.1
+
+```
+
+
+
+
