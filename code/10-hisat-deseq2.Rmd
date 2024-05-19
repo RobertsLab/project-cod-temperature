@@ -54,9 +54,10 @@ Need to find treatment file...
 
 ## multiqc
 
-
-
-
+```{r, engine='bash'}
+/home/sam/programs/mambaforge/bin/multiqc \
+../data/reads/*gz
+```
 # Genome
 
 https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/
@@ -81,6 +82,47 @@ ls /home/shared/8TB_HDD_03/sr320/github/project-cod-temperature/data/ncbi_datase
 
 ```
 
+# Hisat
+
+```{r, engine='bash'}
+/home/shared/hisat2-2.2.1/hisat2_extract_exons.py \
+../data/ncbi_dataset/data/GCF_031168955.1/genomic.gtf \
+> ../output/10-hisat-deseq2/m_exon.tab
+```
+
+```{r, engine='bash'}
+/home/shared/hisat2-2.2.1/hisat2_extract_splice_sites.py \
+../data/ncbi_dataset/data/GCF_031168955.1/genomic.gtf \
+> ../output/10-hisat-deseq2/m_spice_sites.tab
+```
+
+```{r, engine='bash'}
+echo "10-hisat-deseq2/GCF*" >> ../output/.gitignore
+```
 
 
 
+```{r, engine='bash'}
+/home/shared/hisat2-2.2.1/hisat2-build \
+../data/ncbi_dataset/data/GCF_031168955.1/GCF_031168955.1_ASM3116895v1_genomic.fna \
+../output/10-hisat-deseq2/GCF_031168955.1.index \
+--exon ../output/10-hisat-deseq2/m_exon.tab \
+--ss ../output/10-hisat-deseq2/m_spice_sites.tab \
+-p 20 \
+../data/ncbi_dataset/data/GCF_031168955.1/genomic.gtf \
+2> ../output/10-hisat-deseq2/hisat2-build_stats.txt
+```
+
+
+```{r, engine='bash'}
+find ../data/reads/*.trimmed.R1.fastq.gz \
+| xargs basename -s .trimmed.R1.fastq.gz | xargs -I{} \
+/home/shared/hisat2-2.2.1/hisat2 \
+-x ../output/10-hisat-deseq2/GCF_031168955.1 \
+--dta \
+-p 20 \
+-1 ../data/reads/{}.trimmed.R1.fastq.gz \
+-2 ../data/fastq/{}.trimmed.R2.fastq.gz \
+-S ../output/10-hisat-deseq2/{}.sam \
+2> ../output/10-hisat-deseq2/hisat.out
+```
