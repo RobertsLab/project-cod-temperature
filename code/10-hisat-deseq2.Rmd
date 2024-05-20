@@ -28,6 +28,8 @@ library(kableExtra)
 library(DT)
 library(Biostrings)
 library(tm)
+library(pheatmap)
+library(DESeq2)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
   eval = FALSE,         # Evaluate code chunks
@@ -55,6 +57,15 @@ Need to find treatment file...
 ```{r, engine='bash'}
 /home/sam/programs/mambaforge/bin/multiqc \
 ../data/reads/*gz
+```
+```{r, engine='bash'}
+eval "$(/opt/anaconda/anaconda3/bin/conda shell.bash hook)"
+conda activate
+which multiqc
+
+cd ../data/reads/
+
+multiqc .
 ```
 
 # Genome
@@ -139,6 +150,11 @@ for samfile in ../output/10-hisat-deseq2/*.sam; do
   /home/shared/samtools-1.12/samtools index -@ 20 "$sorted_bamfile"
 done
 ```
+
+```{r, engine='bash'}
+rm ../output/10-hisat-deseq2/*sam
+```
+
 
 ```{r, engine='bash'}
 ls ../output/10-hisat-deseq2/*sorted.bam | wc -l
@@ -241,6 +257,7 @@ all(rownames(colData) == colnames(countData)) # This should also return TRUE
 dds <- DESeqDataSetFromMatrix(countData = countData,
                               colData = colData, design = ~ Condition)
 
+
 # Run the default analysis for DESeq2 and generate results table
 dds <- DESeq(dds)
 deseq2.res <- results(dds)
@@ -250,3 +267,48 @@ resOrdered <- deseq2.res[order(deseq2.res$padj), ]
 vsd <- vst(dds, blind = FALSE)
 plotPCA(vsd, intgroup = "Condition")
 ```
+```{r}
+# Select top 50 differentially expressed genes
+res <- results(dds)
+res_ordered <- res[order(res$padj), ]
+top_genes <- row.names(res_ordered)[1:50]
+
+# Extract counts and normalize
+counts <- counts(dds, normalized = TRUE)
+counts_top <- counts[top_genes, ]
+
+# Log-transform counts
+log_counts_top <- log2(counts_top + 1)
+
+# Generate heatmap
+pheatmap(log_counts_top, scale = "row")
+```
+
+```{r}
+# Count number of hits with adjusted p-value less then 0.05
+dim(res[!is.na(deseq2.res$padj) & deseq2.res$padj <= 0.05, ])
+```
+
+```{r}
+tmp <- deseq2.res
+# The main plot
+plot(tmp$baseMean, tmp$log2FoldChange, pch=20, cex=0.45, ylim=c(-3, 3), log="x", col="darkgray",
+     main="DEG Dessication  (pval <= 0.05)",
+     xlab="mean of normalized counts",
+     ylab="Log2 Fold Change")
+# Getting the significant points and plotting them again so they're a different color
+tmp.sig <- deseq2.res[!is.na(deseq2.res$padj) & deseq2.res$padj <= 0.05, ]
+points(tmp.sig$baseMean, tmp.sig$log2FoldChange, pch=20, cex=0.45, col="red")
+# 2 FC lines
+abline(h=c(-1,1), col="blue")
+```
+```{r}
+write.table(tmp.sig, "../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', row.names = T)
+```
+
+```{r}
+deglist <- read.csv("../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', header = TRUE)
+deglist$RowName <- rownames(deglist)
+deglist2 <- deglist[, c("RowName", "pvalue")] # Optionally, reorder the columns
+```
+
