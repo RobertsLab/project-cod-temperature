@@ -1,0 +1,309 @@
+---
+title: "08.2.1-cod-RNAseq-GO-annotation-genome-exon"
+author: "Kathleen Durkin"
+date: "2024-05-8"
+always_allow_html: true
+output: 
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = TRUE,        # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+This code depends on the database (`G_macrocephalus_genes_IDmapping_2024_05_22.tab`) of *G.macrocephalus* gene IDs and associated GO terms generated in 03.2-genome-annotation.Rmd, AND on lists of differentially expressed genes (DEGs) generated in 07.2.1-cod-RNAseq-DESeq2-genome-exon.Rmd.
+
+This code identifies overrepresented gene ontology (GO) terms in *G.macrocephalus* RNA sequencing data
+
+Inputs: - transcript ID/GO term database (`G_macrocephalus_genes_IDmapping_2024_05_22.tab`) - DEGs
+
+In 03-transcriptome-annotation.Rmd we used BLAST and Uniprot/SwissProt to obtain UniProt Accession numbers for each transcript in the *G. macrocephalus* transcriptome. We then used those Accession numbers to obtain GO terms for each transcript, functionally creating a database which matches *G.macrocephalus* transcripts with associated GO terms. Finally, in 03.2-genome-annotation, we matched transcript IDs with gene IDs to make a database associating gene IDs with the Uniprot Accession numbers and GO terms.
+
+In 07.2.1-cod-RNAseq-DESeq2-genome-exon.Rmd we identified sets of significantly differentially expressed genes (DEGs) between pairs of treatments (e.g., Liver tissue for 9C vs. 16C).
+
+Now we want to use the database to identify GO terms associated with our lists of DEGs, and to evaluate which GO terms are overrepresented.
+
+```{r load-packages, eval=TRUE}
+# List of packages we want to install (run every time)
+library(tidyverse)
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(ggvenn)
+
+```
+
+```{r load-data}
+gmac_idmap <- read.csv("../output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_05_22.tab", sep='\t') %>%
+  select(-X) # remove superflous column containing rowIDs
+
+DEGs_L.9.0 <- read.csv("../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/Gmac_DEGs_sig_L.9.0_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+DEGs_L.9.5 <- read.csv("../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/Gmac_DEGs_sig_L.9.5_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+DEGs_L.9.16 <- read.csv("../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/Gmac_DEGs_sig_L.9.16_norm.tab", sep='\t') %>%
+  subset(select=-X) # remove superflous column containing rowIDs
+
+hisat2_exon_counts_matrix <- read.csv("../output/07.2.1-cod-RNAseq-DESeq2-genome-exon/Gmac_genome_exon_counts_formatted.tab", sep='\t')
+hisat2_exon_counts_matrix[,-1] <- round(hisat2_exon_counts_matrix[,-1], digits = 0) # round counts to integers
+```
+
+# Annotate DEGs using GO terms
+
+```{r join-DEG-GO-data}
+# All DEGs
+DEGs_GO_L.9.0 <- left_join(DEGs_L.9.0, gmac_idmap, by=c("gene" = "gene_ID"))
+DEGs_GO_L.9.5 <- left_join(DEGs_L.9.5, gmac_idmap, by=c("gene" = "gene_ID"))
+DEGs_GO_L.9.16 <- left_join(DEGs_L.9.16, gmac_idmap, by=c("gene" = "gene_ID"))
+
+# Ensure we have unique DEGs
+DEGs_GO_L.9.0_unique <- DEGs_GO_L.9.0 %>% distinct(gene, .keep_all = TRUE)
+DEGs_GO_L.9.5_unique <- DEGs_GO_L.9.5 %>% distinct(gene, .keep_all = TRUE)
+DEGs_GO_L.9.16_unique <- DEGs_GO_L.9.16 %>% distinct(gene, .keep_all = TRUE)
+
+# summarize counts
+print(paste("All DEGs:", nrow(DEGs_GO_L.9.0), "(9C v 0C),", nrow(DEGs_GO_L.9.5), "(9C v 5C),", nrow(DEGs_GO_L.9.16), "(9C v 16C)"))
+print(paste("Unique DEGs:", nrow(DEGs_GO_L.9.0_unique), "(9C v 0C),", nrow(DEGs_GO_L.9.5_unique), "(9C v 5C),", nrow(DEGs_GO_L.9.16_unique), "(9C v 16C)"))
+
+# Save
+write.table(DEGs_GO_L.9.0_unique, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DEGs_GO_L.9.0_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.5_unique, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DEGs_GO_L.9.5_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
+write.table(DEGs_GO_L.9.16_unique, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DEGs_GO_L.9.16_unique.tab", sep = "\t", row.names = TRUE, col.names = NA)
+```
+
+## Venn diagram of DEG counts accross treatments
+```{r}
+# Make list
+deg_counts_unique <- list(
+  "9C v 0C" = unique(DEGs_GO_L.9.0$gene),
+  "9C v 5C" = unique(DEGs_GO_L.9.5$gene),
+  "9C v 16C" = unique(DEGs_GO_L.9.16$gene)
+)
+
+# Make venn diagrams
+ggvenn(deg_counts_unique,
+       fill_color = c("blue", "yellow", "red"))
+
+```
+
+## DEG bar plots
+
+```{r}
+# Create a data frame with extracted columns
+combined_unique_DEG_counts <- data.frame(
+  DEGs_count = c(length(unique(DEGs_GO_L.9.0$gene)), 
+                 length(unique(DEGs_GO_L.9.5$gene)), 
+                 length(unique(DEGs_GO_L.9.16$gene))),
+  treatment = factor(c("9C v 0C", "9C v 5C", "9C v 16C"), 
+                     levels=c("9C v 0C", "9C v 5C", "9C v 16C")))
+
+# Assign colors
+custom_colors <- c("9C v 0C"="blue", "9C v 5C"="yellow", "9C v 16C"="red")
+
+# Create a bar plot
+ggplot(combined_unique_DEG_counts, aes(x = treatment, y = DEGs_count, fill = treatment)) +
+  geom_col() +
+  labs(title = "Bar Plot of Unique DEGs across Treatments",
+       x = "DEGs",
+       y = "Count") +
+  scale_fill_manual(values = custom_colors) +
+  geom_text(aes(label = DEGs_count), vjust = -0.5) +
+  theme_minimal()
+```
+
+
+## GO Enrichment
+
+First, isolate lists of Uniprot Accession numbers from each set off significant DEGs.
+```{r get-uniprot-accession-nums-DEGs}
+uniprotAccessions_DEGs_L.9.0 <- na.omit(DEGs_GO_L.9.0_unique$V3)
+write.table(uniprotAccessions_DEGs_L.9.0, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.0.txt")
+uniprotAccessions_DEGs_L.9.5 <- na.omit(DEGs_GO_L.9.5_unique$V3)
+write.table(uniprotAccessions_DEGs_L.9.5, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.5.txt")
+uniprotAccessions_DEGs_L.9.16 <- na.omit(DEGs_GO_L.9.16_unique$V3)
+write.table(uniprotAccessions_DEGs_L.9.16, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.16.txt")
+```
+
+```{r view-accession-list, engine='bash'}
+head -5 ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.0.txt
+```
+
+And reformat to get rid of superfluous characters
+```{r format-accession-nums-DEGs, engine='bash'}
+# We need to 1) remove the first line, 2) get rid of the row numbers, and 3) remove extra " characters
+sed '1d' ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.0.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.0_formatted.txt
+  
+sed '1d' ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.5.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.5_formatted.txt
+  
+sed '1d' ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.16.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.16_formatted.txt
+
+# Check formatting
+head -5 ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_DEGs_L.9.0_formatted.txt
+```
+
+We also want to get a list of Uniprot Accession numbers for our "background". This is a reference of all transcripts we would expect to find in our samples. We could just use IDs from our full reference transcriptome, but this may include transcripts we would not actually expect to find in our samples (e.g. the transcriptome may contain gonad-specific transcripts that would not appear in our liver tissue samples). To filter for only transcripts found in our samples, we can 1) filter our count matrix to retain only transcripts present in at least one sample, and then 2) join this filtered count matrix with our transcript/Uniprot ID database.
+
+```{r combine-counts-and-IDmap}
+# Remove any gene IDs that do not appear in any sample
+hisat2_exon_counts_filtered <- hisat2_exon_counts_matrix[rowSums(hisat2_exon_counts_matrix[, -1] != 0) > 0, ]
+og_num <- nrow (hisat2_exon_counts_matrix)
+filtered_num <- nrow(hisat2_exon_counts_filtered)
+
+paste("Filtered counts matrix from ", og_num, "transcripts to ", filtered_num, "transcripts")
+
+# Join the filtered counts matrix and the gene ID/Uniprot database
+counts_GO <- left_join(hisat2_exon_counts_filtered, gmac_idmap, by=c("X" = "gene_ID"))
+
+# Reorder columns to have gene name, GO annotation, and Uniprot ID next to each other
+counts_GO <- counts_GO[, c("Gene.Ontology..biological.process.", setdiff(names(counts_GO), "Gene.Ontology..biological.process."))]
+counts_GO <- counts_GO[, c("V3", setdiff(names(counts_GO), "V3"))]
+
+counts_GO %>% select(X, V3) %>% head()
+```
+
+```{r get-uniprot-accession-nums-ref}
+uniprotAccessions_genome_exon <- na.omit(counts_GO$V3)
+write.table(uniprotAccessions_genome_exon, "../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_genome_exon.txt")
+```
+
+```{r format-accession-nums-ref, engine='bash'}
+# We need to 1) remove the first line, 2) get rid of the row numbers, and 3) remove extra " characters
+sed '1d' ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_genome_exon.txt | \
+  awk '{print $2}' | \
+  tr -d '"' \
+  > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_genome_exon_formatted.txt
+  
+head -5 ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_uniprotAccessions_genome_exon_formatted.txt
+```
+
+Now we can download these formatted lists of accession numbers and run them through DAVID to obtain lists of associated Uniprot keywords. Unfortunately I don't think this can be done from command line though, so I'll be using the online tool: https://david.ncifcrf.gov/tools.jsp
+
+I upload my three DEG lists (`Gmac_uniprotAccessions_DEGs_L.9.0_formatted.txt`, `Gmac_uniprotAccessions_DEGs_L.9.5_formatted.txt`, `Gmac_uniprotAccessions_DEGs_L.9.16_formatted.txt`) as "Gene Lists" and upload the filtered transcripts list (`Gmac_uniprotAccessions_genome_exon_formatted.txt`) as the "Background", selecting "UNIPROT_ACCESSION" as the identifier for each. I analyzed each DEG list using the "Functional Annotation" tool, and downloaded the Functional Annotation Table and Functional Annotation Chart for each (below)
+
+```{r load-DAVID-files, engine='bash'}
+curl https://david.ncifcrf.gov/data/download/tr_022E2DF489311716412195130.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.0.tab
+curl https://david.ncifcrf.gov/data/download/chart_022E2DF489311716412324938.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.0.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_022E2DF489311716412370632.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.5.tab
+curl https://david.ncifcrf.gov/data/download/chart_022E2DF489311716412396081.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.5.tab
+
+curl https://david.ncifcrf.gov/data/download/tr_022E2DF489311716412439373.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.16.tab
+curl https://david.ncifcrf.gov/data/download/chart_022E2DF489311716412499995.txt > ../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.16.tab
+```
+
+```{r load-David-files-in-R}
+DEGs_DAVID_FAtable_L.9.0 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.0.tab", sep="\t")
+DEGs_DAVID_FAtable_L.9.5 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.5.tab", sep="\t")
+DEGs_DAVID_FAtable_L.9.16 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAtable_L.9.16.tab", sep="\t")
+
+DEGs_DAVID_FAchart_L.9.0 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.0.tab", sep="\t")
+DEGs_DAVID_FAchart_L.9.5 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.5.tab", sep="\t")
+DEGs_DAVID_FAchart_L.9.16 <- read.delim("../output/08.2.1-cod-RNAseq-GO-annotation-genome-exon/Gmac_DAVID_FAchart_L.9.16.tab", sep="\t")
+```
+
+Now we can also make datasets that include differential expression stats (e.g., `padj`) AND high-level Uniprot keywords.
+```{r join-DAVID-and-DEG}
+DEGs_DAVID_FAtable_GO_L.9.0 <- left_join(DEGs_GO_L.9.0_unique, DEGs_DAVID_FAtable_L.9.0, by=c("V3" = "ID"))
+DEGs_DAVID_FAtable_GO_L.9.5 <- left_join(DEGs_GO_L.9.5_unique, DEGs_DAVID_FAtable_L.9.5, by=c("V3" = "ID"))
+DEGs_DAVID_FAtable_GO_L.9.16 <- left_join(DEGs_GO_L.9.16_unique, DEGs_DAVID_FAtable_L.9.16, by=c("V3" = "ID"))
+```
+
+### View top DEGs and annotations
+
+First we can look at the biological processes associated with our most significantly differentially expressed genes
+```{r view-top-DEG-GO}
+top_25_DEGs_L.9.0 <- head(na.omit(DEGs_DAVID_FAtable_GO_L.9.0[order(DEGs_DAVID_FAtable_GO_L.9.0$padj), ]), 25)
+top_25_DEGs_L.9.0$padj <- as.character(top_25_DEGs_L.9.0$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.0[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
+
+top_25_DEGs_L.9.5 <- head(na.omit(DEGs_DAVID_FAtable_GO_L.9.5[order(DEGs_DAVID_FAtable_GO_L.9.5$padj), ]), 25)
+top_25_DEGs_L.9.5$padj <- as.character(top_25_DEGs_L.9.5$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.5[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
+
+top_25_DEGs_L.9.16 <- head(na.omit(DEGs_DAVID_FAtable_GO_L.9.16[order(DEGs_DAVID_FAtable_GO_L.9.16$padj), ]), 25)
+top_25_DEGs_L.9.16$padj <- as.character(top_25_DEGs_L.9.16$padj) # prevents kable from auto-rounding our padj values
+kable(top_25_DEGs_L.9.16[, c("gene", "padj", "Gene.Ontology..biological.process.")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
+```
+
+While this is interesting, the GO annotations are a little dense. Let's look at the biological processes *keywords* associated with our top 25 differentially expressed genes for each tratment comparison
+```{r view-top-DEG-KW}
+kable(top_25_DEGs_L.9.0[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 0C (based on adjusted p-value)")  
+
+kable(top_25_DEGs_L.9.5[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 5C (based on adjusted p-value)")  
+
+kable(top_25_DEGs_L.9.16[, c("gene", "padj", "UP_KW_BIOLOGICAL_PROCESS")],
+      row.names = FALSE,
+      caption = "Top 25 DEGs for 9C v 16C (based on adjusted p-value)")  
+```
+
+### View over-represented (enriched) processes
+
+First, let's grab just the Uniprot keywords for biological processes, and sort and filter by the Bonferroni-adjusted p-value
+```{r select-enriched-KWBP}
+DEGs_DAVID_FAchart_L.9.0_enrichedKWBP <- DEGs_DAVID_FAchart_L.9.0 %>% 
+  filter(Category == "UP_KW_BIOLOGICAL_PROCESS") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.5_enrichedKWBP <- DEGs_DAVID_FAchart_L.9.5 %>% 
+  filter(Category == "UP_KW_BIOLOGICAL_PROCESS") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+DEGs_DAVID_FAchart_L.9.16_enrichedKWBP <- DEGs_DAVID_FAchart_L.9.16 %>% 
+  filter(Category == "UP_KW_BIOLOGICAL_PROCESS") %>%
+  filter(Bonferroni < 0.05) %>%
+  arrange(Bonferroni)
+```
+
+```{r view-enriched-KWBP}
+DEGs_DAVID_FAchart_L.9.0_enrichedKWBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.0_enrichedKWBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.0_enrichedKWBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched Biological Processes for 9C v 0C (based on adjusted p-value)")
+
+DEGs_DAVID_FAchart_L.9.5_enrichedKWBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.5_enrichedKWBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.5_enrichedKWBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched Biological Processes for 9C v 5C (based on adjusted p-value)")
+
+DEGs_DAVID_FAchart_L.9.16_enrichedKWBP$Bonferroni <- as.character(DEGs_DAVID_FAchart_L.9.16_enrichedKWBP$Bonferroni) # prevents kable from auto-rounding our padj values
+kable(DEGs_DAVID_FAchart_L.9.16_enrichedKWBP[, c("Term", "Bonferroni")],
+      row.names = FALSE,
+      caption = "Enriched Biological Processes for 9C v 16C (based on adjusted p-value)") 
+```
