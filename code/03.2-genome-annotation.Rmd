@@ -59,8 +59,62 @@ grep -c ">" ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
 ```
 We want sequences for every gene. Thus, we need to use the genome fasta and gff to extract fastas for every entry in the gtf.
 ```{r get-reference-fastas, engine='bash'}
-/home/shared/bedtools2/bin/bedtools getfasta -fi ../data/GCF_031168955.1_ASM3116895v1_genomic.fna -bed ../data/GCF_031168955.1_ASM3116895v1.gff -fo ../data/Gmac_genes_fasta.fasta
+/home/shared/bedtools2/bin/bedtools getfasta -tab -fi ../data/GCF_031168955.1_ASM3116895v1_genomic.fna -bed ../data/genomic.gtf -fo ../data/Gmac_genes_fasta.tab
 ```
+
+We also want to be able to associate metadata
+
+```{r, engine='bash'}
+head -5 ../data/Gmac_genes_fasta.tab
+echo ""
+head -14 ../data/genomic.gtf | tail -5
+```
+
+It looks like the bedtools fasta output is 0-based, while the gtf is 1-based. To convert the gtf to 0-based, we just need to subtract 1 from the beginning coordinate of every entry.
+```{r, engine='bash'}
+# tail -n +6 ../data/genomic.gtf | \                Remove the descriptive header lines
+# head -n -1 | \                                    Remove the "###" tail line of the file
+# awk 'BEGIN{FS=OFS="\t"} { $4 = ($4 - 1) } 1' | \  Convert 1-based to 0-based (subtract 1 from start coordinate)
+# awk 'BEGIN{FS=OFS="\t"} { $1 = $1 ":" $4 "-" $5 } 1' | \  Add coordinates to name
+
+tail -n +6 ../data/genomic.gtf | \
+head -n -1 | \
+awk 'BEGIN{FS=OFS="\t"} { $4 = ($4 - 1) } 1' | \
+awk 'BEGIN{FS=OFS="\t"} { $1 = $1 ":" $4 "-" $5 } 1' \
+> ../output/03.2-genome-annotation/formatted_gtf.txt
+```
+
+```{r, engine='bash'}
+head -2 ../output/03.2-genome-annotation/formatted_gtf.txt
+```
+
+Check that we have the same number of lines in our formatted gtf as sequences in our gtf-based tab-delimited genes sequence file
+```{r, engine='bash'}
+wc -l ../output/03.2-genome-annotation/formatted_gtf.txt
+wc -l ../data/Gmac_genes_fasta.tab
+# grep ">" ../data/Gmac_genes_fasta.fasta | wc -l
+```
+
+Append all of the metadata contained in the formatted gtf to the sequences descriptions of our genes file, and convert back to fasta format. Basically, we should have an annotated genes fasta that contains gtf-sourced sequence information for each sequence
+```{r, engine='bash'}
+# paste ../data/Gmac_genes_fasta.tab ../output/03.2-genome-annotation/formatted_gtf.txt | \   parallel merge the sequence file and gtf 
+# sed 's/^/>/' | \    Add a ">" to the beginning of every line (i.e. to the sequence ID to match fasta format)
+# awk -v OFS='\t' -F'\t' '{ print $1, $3, $4, $5, $6, $7, $11 ; print $2 }' >   Move the nucleotide sequence of each line to a second line below the description (again, to meet fasta format)
+
+paste ../data/Gmac_genes_fasta.tab ../output/03.2-genome-annotation/formatted_gtf.txt | \
+sed 's/^/>/' | \
+awk -v OFS='\t' -F'\t' '{ print $1, $3, $4, $5, $6, $7, $11 ; print $2 }' > ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta
+```
+
+```{r, engine='bash'}
+# view some sequence description lines
+grep ">" ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta | head -2
+echo
+# and a full fasta sequence
+head -2 ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta
+```
+Looks good! Now we can use this annotated fasta as a query to BLASTx the Uniprot/Swissprot database!
+
 
 # Database Creation
 
@@ -89,14 +143,11 @@ mkdir ../blastdb
 -out ../blastdb/uniprot_sprot_r2023_04
 ```
 
-
-
-
 # Running Blastx
 
 ```{r blastx, engine='bash'}
 /home/shared/ncbi-blast-2.11.0+/bin/blastx \
--query ../data/Gmac_genes_fasta.fasta \
+-query ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta \
 -db ../blastdb/uniprot_sprot_r2023_04 \
 -out ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab \
 -evalue 1E-20 \
@@ -106,16 +157,31 @@ mkdir ../blastdb
 &> ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.log
 ```
 
-```{r blast-look, engine='bash', eval=TRUE}
-head -2 ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab
-```
-
 ```{r blast-look2, engine='bash', eval=TRUE}
 echo "Number of lines in output"
 wc -l ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab
 ```
 
+```{r blast-look, engine='bash', eval=TRUE}
+head -10 ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab
+```
+This output contains uniprot IDs for all of the entries in our gff, which is great, but it's missing associated metadata (e.g., whether it's gene/exon/transcript) that we'll need for later analysis. Let's add that back in!
 
+```{r, engine='bash'}
+
+```
+
+```{r, engine='bash'}
+head -19 ../data/GCF_031168955.1_ASM3116895v1.gff | tail -10
+```
+
+```{r, engine='bash'}
+
+```
+
+```{r, engine='bash'}
+
+```
 
 
 # Joining Blast table with annoations.
@@ -242,3 +308,65 @@ knitr::include_graphics("../output/GOlegend.png")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Trying something else, using existing transcriptome annotation
+
+First, load our existing transcriptome database, which associates transcript IDs with Uniprot Acession numbers and GO terms (generated in `03-transcriptome-annotation`)
+```{r load-transcriptome-database}
+# Load our transcript ID -> UniprotID/GO term database
+rna_id <- read.csv("../output/03-transcriptome-annotation/G_macrocephalus_rna_IDmapping_2024_04_17.tab", sep="\t")
+```
+
+Now let's view the header format from our original transcriptome file
+```{r view-transcriptome-headers, engine='bash'}
+grep "^>" ../data/GCF_031168955.1_ASM3116895v1_rna.fna | head -5
+```
+We need to extract three pieces of information from these headers: the transcript ID (e.g. "XM_060035408.1"), the associated gene ID (e.g. "LOC132473465"), and the type (e.g. "mRNA").
+```{r format-headers, engine='bash'}
+grep "^>" ../data/GCF_031168955.1_ASM3116895v1_rna.fna | \
+while read -r line; do
+    # Extract the sequence ID
+    seq_id=$(echo "$line" | awk -F'>| ' '{print $2}')
+    # Extract the gene ID
+    gene_ID=$(echo "$line" | grep -oP '\([^()]*\)(?=,[^()]*$)' | grep -oP '(?<=\().*(?=\))')
+    # Extract the sequence type
+    seq_type=$(echo "$line" | awk -F'), ' '{print $NF}')
+    # Print the desired tab-delimited output format
+    echo -e "${seq_id}\t${gene_ID}\t${seq_type}"
+done > ../output/03.2-genome-annotation/transcriptome_headers_formatted.txt
+```
+
+```{r check-headers, engine='bash'}
+# View some formatted headers
+head -5 ../output/03.2-genome-annotation/transcriptome_headers_formatted.txt
+
+echo ""
+echo ""
+
+# Check that we have the same number of formatted header lines as original header lines
+echo "# headers in original transcriptome file:"
+grep "^>" ../data/GCF_031168955.1_ASM3116895v1_rna.fna | wc -l
+echo""
+echo "# headers in formatted file:"
+wc -l < ../output/03.2-genome-annotation/transcriptome_headers_formatted.txt
+```
+
+```{r load-formatted-header-data}
+headers <- read.csv("../output/03.2-genome-annotation/transcriptome_headers_formatted.txt", sep="\t", header=FALSE, col.names=c("transcript_ID", "gene_ID", "transcript_type"))
+```
+
+```{r join-IDmapping-and-headers}
+joined <- left_join(rna_id, headers, by=c("V1"="transcript_ID"))
+```
