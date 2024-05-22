@@ -4,11 +4,6 @@ author: "Kathleen Durkin"
 date: "2024-03-19"
 always_allow_html: true
 output: 
-  github_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
-    html_preview: true 
   bookdown::html_document2:
     theme: cosmo
     toc: true
@@ -16,6 +11,11 @@ output:
     number_sections: true
     code_folding: show
     code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -151,10 +151,9 @@ cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
 # Remove bad/missing samples
 # Missing data: 92
 # MuliQC report: 149, 129
-# Pheatmap outliers:
-# BIPLOT outliers:
-cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129")),]
-cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129)))
+# PCA outliers: 31, 41 (per Laura)
+cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129", "sample_31", "sample_41")),]
+cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129, sample_31, sample_41)))
 
 # Check that the column names of our count data match the row names of our sample info sheet
 ncol(cod_counts_data)
@@ -426,6 +425,10 @@ sig_L.9.16_norm <- res_table_L.9.16_norm_tb %>%
         filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
 
 head(sig_L.9.16_norm)
+paste("Number of significant DEGs for 9C v 16C:", nrow(sig_L.9.16_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.16_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.16_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 ```
 
 ## Heatmap
@@ -596,6 +599,10 @@ sig_L.9.0_norm <- res_table_L.9.0_norm_tb %>%
         filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
 
 head(sig_L.9.0_norm)
+paste("Number of significant DEGs for 9C v 0C:", nrow(sig_L.9.0_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.0_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.0_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 ```
 
 ## Heatmap
@@ -766,6 +773,10 @@ sig_L.9.5_norm <- res_table_L.9.5_norm_tb %>%
         filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
 
 head(sig_L.9.5_norm)
+paste("Number of significant DEGs for 9C v 5C:", nrow(sig_L.9.5_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.5_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.5_norm.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 ```
 
 ## Heatmap
