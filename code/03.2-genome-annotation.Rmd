@@ -1,12 +1,11 @@
 ---
 title: "03.2-genome-annotation"
-author: Steven Roberts
-date: "`r format(Sys.time(), '%d %B, %Y')`" 
+author: "Kathleen Durkin"
+date: "2024-05-21" 
 always_allow_html: true
 output: 
-  html_document:
-    theme: readable
-    highlight: zenburn
+  bookdown::html_document2:
+    theme: cosmo
     toc: true
     toc_float: true
     number_sections: true
@@ -16,7 +15,7 @@ output:
     toc: true
     toc_depth: 3
     number_sections: true
-    html_preview: true
+    html_preview: true 
 ---
 
 ```{r setup, include=FALSE}
@@ -28,7 +27,7 @@ library(Biostrings)
 library(tm)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
-  eval = FALSE,         # Evaluate code chunks
+  eval = TRUE,         # Evaluate code chunks
   warning = FALSE,     # Hide warnings
   message = FALSE,     # Hide messages
   fig.width = 6,       # Set plot width in inches
@@ -37,291 +36,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-
-
-# Getting the query fasta file
-
-```{r download-query, engine='bash'}
-curl https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_genomic.fna\
--k \
-> ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
-```
-
-Exploring what fasta file
-
-```{r view-query, engine='bash', eval=TRUE}
-head -3 ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
-```
-
-```{r view2-query, engine='bash', eval=TRUE}
-echo "How many sequences are there?"
-grep -c ">" ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
-```
-We want sequences for every gene. Thus, we need to use the genome fasta and gff to extract fastas for every entry in the gtf.
-```{r get-reference-fastas, engine='bash'}
-/home/shared/bedtools2/bin/bedtools getfasta -tab -fi ../data/GCF_031168955.1_ASM3116895v1_genomic.fna -bed ../data/genomic.gtf -fo ../data/Gmac_genes_fasta.tab
-```
-
-We also want to be able to associate metadata
-
-```{r, engine='bash'}
-head -5 ../data/Gmac_genes_fasta.tab
-echo ""
-head -14 ../data/genomic.gtf | tail -5
-```
-
-It looks like the bedtools fasta output is 0-based, while the gtf is 1-based. To convert the gtf to 0-based, we just need to subtract 1 from the beginning coordinate of every entry.
-```{r, engine='bash'}
-# tail -n +6 ../data/genomic.gtf | \                Remove the descriptive header lines
-# head -n -1 | \                                    Remove the "###" tail line of the file
-# awk 'BEGIN{FS=OFS="\t"} { $4 = ($4 - 1) } 1' | \  Convert 1-based to 0-based (subtract 1 from start coordinate)
-# awk 'BEGIN{FS=OFS="\t"} { $1 = $1 ":" $4 "-" $5 } 1' | \  Add coordinates to name
-
-tail -n +6 ../data/genomic.gtf | \
-head -n -1 | \
-awk 'BEGIN{FS=OFS="\t"} { $4 = ($4 - 1) } 1' | \
-awk 'BEGIN{FS=OFS="\t"} { $1 = $1 ":" $4 "-" $5 } 1' \
-> ../output/03.2-genome-annotation/formatted_gtf.txt
-```
-
-```{r, engine='bash'}
-head -2 ../output/03.2-genome-annotation/formatted_gtf.txt
-```
-
-Check that we have the same number of lines in our formatted gtf as sequences in our gtf-based tab-delimited genes sequence file
-```{r, engine='bash'}
-wc -l ../output/03.2-genome-annotation/formatted_gtf.txt
-wc -l ../data/Gmac_genes_fasta.tab
-# grep ">" ../data/Gmac_genes_fasta.fasta | wc -l
-```
-
-Append all of the metadata contained in the formatted gtf to the sequences descriptions of our genes file, and convert back to fasta format. Basically, we should have an annotated genes fasta that contains gtf-sourced sequence information for each sequence
-```{r, engine='bash'}
-# paste ../data/Gmac_genes_fasta.tab ../output/03.2-genome-annotation/formatted_gtf.txt | \   parallel merge the sequence file and gtf 
-# sed 's/^/>/' | \    Add a ">" to the beginning of every line (i.e. to the sequence ID to match fasta format)
-# awk -v OFS='\t' -F'\t' '{ print $1, $3, $4, $5, $6, $7, $11 ; print $2 }' >   Move the nucleotide sequence of each line to a second line below the description (again, to meet fasta format)
-
-paste ../data/Gmac_genes_fasta.tab ../output/03.2-genome-annotation/formatted_gtf.txt | \
-sed 's/^/>/' | \
-awk -v OFS='\t' -F'\t' '{ print $1, $3, $4, $5, $6, $7, $11 ; print $2 }' > ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta
-```
-
-```{r, engine='bash'}
-# view some sequence description lines
-grep ">" ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta | head -2
-echo
-# and a full fasta sequence
-head -2 ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta
-```
-Looks good! Now we can use this annotated fasta as a query to BLASTx the Uniprot/Swissprot database!
-
-
-# Database Creation
-
-## Obtain Fasta (UniProt/Swiss-Prot)
-
-This is from here picur reviewe sequences I named based on the identify of the database given
-
-
-
-```{r download-data, engine='bash'}
-cd ../data
-curl -O https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
-mv uniprot_sprot.fasta.gz uniprot_sprot_r2023_04.fasta.gz
-gunzip -k uniprot_sprot_r2023_04.fasta.gz
-
-curl -O https://gannet.fish.washington.edu/seashell/snaps/uniprot_table_r2023_01.tab
-```
-
-## Making the database
-
-```{r make-blastdb, engine='bash'}
-mkdir ../blastdb
-/home/shared/ncbi-blast-2.11.0+/bin/makeblastdb \
--in ../data/uniprot_sprot_r2023_04.fasta \
--dbtype prot \
--out ../blastdb/uniprot_sprot_r2023_04
-```
-
-# Running Blastx
-
-```{r blastx, engine='bash'}
-/home/shared/ncbi-blast-2.11.0+/bin/blastx \
--query ../output/03.2-genome-annotation/Gmac_genes_fasta_metadata.fasta \
--db ../blastdb/uniprot_sprot_r2023_04 \
--out ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab \
--evalue 1E-20 \
--num_threads 20 \
--max_target_seqs 1 \
--outfmt 6 \
-&> ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.log
-```
-
-```{r blast-look2, engine='bash', eval=TRUE}
-echo "Number of lines in output"
-wc -l ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab
-```
-
-```{r blast-look, engine='bash', eval=TRUE}
-head -10 ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab
-```
-This output contains uniprot IDs for all of the entries in our gff, which is great, but it's missing associated metadata (e.g., whether it's gene/exon/transcript) that we'll need for later analysis. Let's add that back in!
-
-```{r, engine='bash'}
-
-```
-
-```{r, engine='bash'}
-head -19 ../data/GCF_031168955.1_ASM3116895v1.gff | tail -10
-```
-
-```{r, engine='bash'}
-
-```
-
-```{r, engine='bash'}
-
-```
-
-
-# Joining Blast table with annoations.
-
-## Prepping Blast table for easy join
-
-```{r separate, engine='bash', eval=TRUE}
-tr '|' '\t' < ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx.tab \
-> ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx_sep.tab
-
-head -1 ../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx_sep.tab
-
-```
-
-## Could do some cool stuff in R here reading in table
-
-```{r read-data, eval=TRUE, cache=TRUE}
-bltabl <- read.csv("../output/03.2-genome-annotation/Gmac.genesfasta-uniprot_blastx_sep.tab", sep = '\t', header = FALSE)
-
-spgo <- read.csv("../data/uniprot_table_r2023_01.tab", sep = '\t', header = TRUE)
-```
-
-```{r, eval=TRUE}
-datatable(head(bltabl), options = list(scrollX = TRUE, scrollY = "400px", scrollCollapse = TRUE, paging = FALSE))
-```
-
-```{r spgo-table, eval=TRUE}
-datatable(head(spgo), options = list(scrollX = TRUE, scrollY = "400px", scrollCollapse = TRUE, paging = FALSE))
-```
-
-```{r see, eval=TRUE}
-datatable(
-  left_join(bltabl, spgo,  by = c("V3" = "Entry")) %>%
-  select(V1, V3, V13, Protein.names, Organism, Gene.Ontology..biological.process., Gene.Ontology.IDs) 
- # %>% mutate(V1 = str_replace_all(V1,pattern = "solid0078_20110412_FRAG_BC_WHITE_WHITE_F3_QV_SE_trimmed", replacement = "Ab"))
-)
-```
-
-```{r join, eval=TRUE}
-annot_tab <-
-  left_join(bltabl, spgo,  by = c("V3" = "Entry")) %>%
-  select(V1, V3, V13, Protein.names, Organism, Gene.Ontology..biological.process., Gene.Ontology.IDs)
-
-write.table(annot_tab, file = "../output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_04_17.tab", sep = "\t",
-            row.names = TRUE, col.names = NA)
-```
-
-```{bash}
-head -n 3 ../output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_04_17.tab
-```
-
-```{r, eval=TRUE}
-# Read dataset
-#dataset <- read.csv("../output/blast_annot_go.tab", sep = '\t')  # Replace with the path to your dataset
-
-# Select the column of interest
-column_name <- "Organism"  # Replace with the name of the column of interest
-column_data <- annot_tab[[column_name]]
-
-# Count the occurrences of the strings in the column
-string_counts <- table(column_data)
-
-# Convert to a data frame, sort by count, and select the top 10
-string_counts_df <- as.data.frame(string_counts)
-colnames(string_counts_df) <- c("String", "Count")
-string_counts_df <- string_counts_df[order(string_counts_df$Count, decreasing = TRUE), ]
-top_10_strings <- head(string_counts_df, n = 10)
-
-# Plot the top 10 most common strings using ggplot2
-ggplot(top_10_strings, aes(x = reorder(String, -Count), y = Count, fill = String)) +
-  geom_bar(stat = "identity", position = "dodge", color = "black") +
-  labs(title = "Top 10 Species hits",
-       x = column_name,
-       y = "Count") +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  coord_flip()
-
-
-```
-
-```{r go, eval=TRUE}
-
-
-#data <- read.csv("../output/blast_annot_go.tab", sep = '\t')
-
-# Rename the `Gene.Ontology..biological.process.` column to `Biological_Process`
-colnames(annot_tab)[colnames(annot_tab) == "Gene.Ontology..biological.process."] <- "Biological_Process"
-
-# Separate the `Biological_Process` column into individual biological processes
-data_separated <- unlist(strsplit(annot_tab$Biological_Process, split = ";"))
-
-# Trim whitespace from the biological processes
-data_separated <- gsub("^\\s+|\\s+$", "", data_separated)
-
-# Count the occurrences of each biological process
-process_counts <- table(data_separated)
-process_counts <- data.frame(Biological_Process = names(process_counts), Count = as.integer(process_counts))
-process_counts <- process_counts[order(-process_counts$Count), ]
-
-# Select the 20 most predominant biological processes
-top_20_processes <- process_counts[1:20, ]
-
-# Create a color palette for the bars
-bar_colors <- rainbow(nrow(top_20_processes))
-
-# Create a staggered vertical bar plot with different colors for each bar
-barplot(top_20_processes$Count, names.arg = rep("", nrow(top_20_processes)), col = bar_colors,
-        ylim = c(0, max(top_20_processes$Count) * 1.25),
-        main = "Occurrences of the 20 Most Predominant Biological Processes", xlab = "Biological Process", ylab = "Count")
-
-
-# Create a separate plot for the legend
-png("../output/GOlegend.png", width = 800, height = 600)
-par(mar = c(0, 0, 0, 0))
-plot.new()
-legend("center", legend = top_20_processes$Biological_Process, fill = bar_colors, cex = 1, title = "Biological Processes")
-dev.off()
-```
-
-```{r legend, eval=TRUE, fig.width = 100 ,fig.height = 100}
-knitr::include_graphics("../output/GOlegend.png")
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Trying something else, using existing transcriptome annotation
+We need to generate a databse that associates gene IDs with Uniprot Acession numbers and GO terms, for use with our gene-level count matrices generated through Hisat2/featureCounts. We already have a transcriptome database (generated in `03-transcriptome-annotation`), and the transcriptome has annotated headers that include gene IDs. We can use these headers to add gene IDs to our existing database.
 
 First, load our existing transcriptome database, which associates transcript IDs with Uniprot Acession numbers and GO terms (generated in `03-transcriptome-annotation`)
 ```{r load-transcriptome-database}
@@ -333,8 +48,9 @@ Now let's view the header format from our original transcriptome file
 ```{r view-transcriptome-headers, engine='bash'}
 grep "^>" ../data/GCF_031168955.1_ASM3116895v1_rna.fna | head -5
 ```
-We need to extract three pieces of information from these headers: the transcript ID (e.g. "XM_060035408.1"), the associated gene ID (e.g. "LOC132473465"), and the type (e.g. "mRNA").
-```{r format-headers, engine='bash'}
+
+We need to extract three pieces of information from these headers: the transcript ID (e.g., "XM_060035408.1"), the associated gene ID (e.g., "LOC132473465"), and the type (e.g., "mRNA").
+```{r format-headers, engine='bash', eval=FALSE}
 grep "^>" ../data/GCF_031168955.1_ASM3116895v1_rna.fna | \
 while read -r line; do
     # Extract the sequence ID
@@ -368,5 +84,27 @@ headers <- read.csv("../output/03.2-genome-annotation/transcriptome_headers_form
 ```
 
 ```{r join-IDmapping-and-headers}
-joined <- left_join(rna_id, headers, by=c("V1"="transcript_ID"))
+# Join
+genes_IDmap <- left_join(rna_id, headers, by=c("V1"="transcript_ID"))
+
+# View output (columns gene_ID and transcript_type)
+genes_IDmap %>%
+  select(gene_ID, transcript_type) %>%
+  head()
+```
+
+
+The output indicates we have gene_ID duplicates due to multiple transcript variants in the transcriptome file. We only want *one* entry for each gene_ID, since this is the column which will be used to join with our gene-level counts matrix. We need to reduce this ID mapping to only unique gene_IDs
+```{r reduce-to-unique-geneIDs}
+# Reduce to unique gene_IDs 
+genes_IDmap_unique <- genes_IDmap %>%
+  distinct(gene_ID, .keep_all=TRUE)
+
+# Check
+genes_IDmap_unique %>%
+  select(gene_ID, transcript_type) %>%
+  head()
+
+# Save to file
+write.table(genes_IDmap_unique, "../output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_05_22.tab", sep="\t")
 ```
