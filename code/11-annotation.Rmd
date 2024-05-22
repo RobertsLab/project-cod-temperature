@@ -110,3 +110,45 @@ mkdir ../blastdb
 -max_target_seqs 1 \
 -outfmt 6
 ```
+
+```{r, engine='bash'}
+head ../output/11-annotation/PcodRNA_uniprot_blastx.tab
+```
+
+```{r}
+blast <- read.csv("../output/11-annotation/PcodRNA_uniprot_blastx.tab", sep = '\t', header = FALSE)
+```
+
+```{r, engine='bash', eval=TRUE}
+cat /home/shared/8TB_HDD_03/sr320/github/project-cod-temperature/data/ncbi_dataset/data/GCF_031168955.1/rna.fna | grep ">" | head -2
+```
+
+
+```{r, engine='bash'}
+perl -e '$count=0; $len=0; while(<>) {s/\r?\n//; s/\t/ /g; if (s/^>//) { if ($. != 1) {print "\n"} s/ |$/\t/; $count++; $_ .= "\t";} else {s/ //g; $len += length($_)} print $_;} print "\n"; warn "\nConverted $count FASTA records in $. lines to tabular format\nTotal sequence length: $len\n\n";' \
+../data/ncbi_dataset/data/GCF_031168955.1/rna.fna  > ../output/11-annotation/GCF_031168955.1_rna.tab 
+```
+
+
+
+```{r, engine='bash'}
+head ../output/11-annotation/GCF_031168955.1_rna.tab
+```
+
+
+
+```{r}
+rnatab <- read.csv("../output/11-annotation/GCF_031168955.1_rna.tab", sep = '\t', header = FALSE, row.names=NULL)
+
+```
+
+```{r}
+library(stringr)
+library(dplyr)
+```
+
+```{r}
+rnatabID <- rnatab %>% mutate(geneID = str_extract(V2, "\\(([^)]+)\\)(?=,)")) %>% mutate(geneID = str_replace_all(geneID, "\\(|\\)", ""))
+
+```
+

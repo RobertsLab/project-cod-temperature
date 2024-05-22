@@ -1,7 +1,7 @@
 10-Hisat
 ================
 Steven Roberts
-20 May, 2024
+21 May, 2024
 
 - <a href="#1-reads" id="toc-1-reads">1 Reads</a>
   - <a href="#11-multiqc" id="toc-11-multiqc">1.1 multiqc</a>
@@ -437,4 +437,14 @@ tmp.sig <- deseq2.res[!is.na(deseq2.res$padj) & deseq2.res$padj <= 0.05, ]
 points(tmp.sig$baseMean, tmp.sig$log2FoldChange, pch=20, cex=0.45, col="red")
 # 2 FC lines
 abline(h=c(-1,1), col="blue")
+```
+
+``` r
+write.table(tmp.sig, "../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', row.names = T)
+```
+
+``` r
+deglist <- read.csv("../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', header = TRUE)
+deglist$RowName <- rownames(deglist)
+deglist2 <- deglist[, c("RowName", "pvalue")] # Optionally, reorder the columns
 ```
