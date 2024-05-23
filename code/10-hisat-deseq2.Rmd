@@ -42,6 +42,8 @@ knitr::opts_chunk$set(
 )
 ```
 
+# Differentially Expressed Genes
+ 
 Alt splice test run
 
 # Reads
@@ -52,21 +54,6 @@ ls ../data/reads/*
 
 Need to find treatment file...
 
-## multiqc
-
-```{r, engine='bash'}
-/home/sam/programs/mambaforge/bin/multiqc \
-../data/reads/*gz
-```
-```{r, engine='bash'}
-eval "$(/opt/anaconda/anaconda3/bin/conda shell.bash hook)"
-conda activate
-which multiqc
-
-cd ../data/reads/
-
-multiqc .
-```
 
 # Genome
 
@@ -175,7 +162,7 @@ cat ../output/10-hisat-deseq2/hisat.out \
 echo "10-hisat-deseq2/*gtf" >> ../output/.gitignore
 ```
 
-```{r, engine='bash', eval=TRUE}
+```{r, engine='bash'}
 find ../output/10-hisat-deseq2/*sorted.bam \
 | xargs basename -s .sorted.bam | xargs -I{} \
 /home/shared/stringtie-2.2.1.Linux_x86_64/stringtie \
@@ -197,7 +184,7 @@ RNA-ACR-173 ../output/15-Apul-hisat/RNA-ACR-173.gtf
 RNA-ACR-178 ../output/15-Apul-hisat/RNA-ACR-178.gtf
 ```
 
-```{r, engine='bash'}
+```{r, engine='bash', eval=TRUE}
 ls ../output/10-hisat-deseq2/*gtf
 ```
 
@@ -237,9 +224,11 @@ head ../data/conditions.txt
 
 
 
-```{r}
+```{r, eval=TRUE}
 library(DESeq2)
+```
 
+```{r, eval=TRUE, cache=TRUE}
 # Load gene(/transcript) count matrix and labels
 countData <- as.matrix(read.csv("../output/10-hisat-deseq2/gene_count_matrix.csv", row.names="gene_id"))
 colData <- read.csv("../data/conditions.txt", sep="\t", row.names = 1)
@@ -267,7 +256,9 @@ resOrdered <- deseq2.res[order(deseq2.res$padj), ]
 vsd <- vst(dds, blind = FALSE)
 plotPCA(vsd, intgroup = "Condition")
 ```
-```{r}
+
+
+```{r, eval=TRUE}
 # Select top 50 differentially expressed genes
 res <- results(dds)
 res_ordered <- res[order(res$padj), ]
@@ -284,12 +275,12 @@ log_counts_top <- log2(counts_top + 1)
 pheatmap(log_counts_top, scale = "row")
 ```
 
-```{r}
+```{r, eval=TRUE}
 # Count number of hits with adjusted p-value less then 0.05
 dim(res[!is.na(deseq2.res$padj) & deseq2.res$padj <= 0.05, ])
 ```
 
-```{r}
+```{r, eval=TRUE}
 tmp <- deseq2.res
 # The main plot
 plot(tmp$baseMean, tmp$log2FoldChange, pch=20, cex=0.45, ylim=c(-3, 3), log="x", col="darkgray",
@@ -302,13 +293,19 @@ points(tmp.sig$baseMean, tmp.sig$log2FoldChange, pch=20, cex=0.45, col="red")
 # 2 FC lines
 abline(h=c(-1,1), col="blue")
 ```
+
 ```{r}
 write.table(tmp.sig, "../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', row.names = T)
 ```
 
-```{r}
+```{r, eval=TRUE}
 deglist <- read.csv("../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', header = TRUE)
 deglist$RowName <- rownames(deglist)
 deglist2 <- deglist[, c("RowName", "pvalue")] # Optionally, reorder the columns
 ```
+
+```{r,eval=TRUE}
+head(deglist)
+```
+
 

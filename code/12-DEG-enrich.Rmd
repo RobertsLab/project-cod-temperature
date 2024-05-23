@@ -1,0 +1,108 @@
+---
+title: "12-DEG-enrich"
+author: "Steven Roberts"
+date: "`r format(Sys.time(), '%d %B, %Y')`"  
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+  html_document:
+    theme: readable
+    highlight: zenburn
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(DT)
+library(Biostrings)
+library(tm)
+library(pheatmap)
+library(DESeq2)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,         # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  fig.width = 6,       # Set plot width in inches
+  fig.height = 4,      # Set plot height in inches
+  fig.align = "center", # Align plots to the center
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+
+DEG list
+
+```{r, eval=TRUE}
+deglist <- read.csv("../output/10-hisat-deseq2/DEGlist.tab", sep = '\t', header = TRUE)
+deglist$RowName <- rownames(deglist)
+deglist2 <- deglist[, c("RowName", "pvalue")] # Optionally, reorder the columns
+```
+
+```{r, eval=TRUE}
+head(deglist)
+```
+
+```{r, evalue=TRUE}
+deglistID <- deglist %>% mutate(geneID = sub(".*\\|", "", RowName))
+```
+
+```{r, evalue=TRUE}
+head(deglistID)
+```
+5061 DEGs
+
+
+Annotation of Cod
+
+```{r, eval=TRUE}
+blast <- read.csv("../output/11-annotation/PcodRNA_uniprot_blastx.tab", sep = '\t', header = FALSE)
+```
+
+
+```{r, eval=TRUE}
+head(blast)
+```
+
+```{r, eval=true}
+rnatabID <- read.csv("../output/11-annotation/rnatabID.tab", sep = '\t', header = TRUE)
+```
+
+
+```{r, evalue=true}
+head(rnatabID)
+```
+
+Count matrix
+
+
+```{r, eval=true}
+gcm <- read.csv("../output/10-hisat-deseq2/gene_count_matrix.csv", sep = ',', header = TRUE)
+```
+
+```{r, eval=true}
+head(gcm)
+```
+
+Join DEGList with cod annotation
+
+```{r, eval=TRUE}
+degannot <-
+  left_join(deglistID, rnatabID,  by = "geneID") %>%
+  select(geneID, V1, V2, padj) %>%
+  left_join(blast, by = "V1")
+
+```
+
