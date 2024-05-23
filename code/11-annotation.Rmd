@@ -82,14 +82,6 @@ gunzip -k uniprot_sprot_r2024_02.fasta.gz
 
 
 
-```{r, engine='bash'}
-
-cd ../data
-curl -O https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
-mv uniprot_sprot.fasta.gz uniprot_sprot_r2024_02.fasta.gz
-gunzip -k uniprot_sprot_r2024_02.fasta.gz
-
-```
 
 
 ```{r, engine='bash'}
@@ -164,9 +156,22 @@ rnatabID <- rnatab %>% mutate(geneID = str_extract(V2, "\\(([^)]+)\\)(?=,)")) %>
 
 ```
 
+```{r}
+write.table(rnatabID, "../output/11-annotation/rnatabID.tab", sep = '\t', row.names = T)
+```
 
 
 ```{r, eval=TRUE}
 head(rnatabID)
 
+```
+```{r, engine='bash'}
+/home/shared/ncbi-blast-2.15.0+/bin/blastx \
+-query /data/ncbi_dataset/data/GCF_031168955.1/cds_from_genomic.fna \
+-db ../blastdb/uniprot_sprot_r2024_02 \
+-out ../output/11-annotation/Pcod_cds_genomic_uniprot_blastx.tab \
+-evalue 1E-20 \
+-num_threads 46 \
+-max_target_seqs 1 \
+-outfmt 6
 ```
