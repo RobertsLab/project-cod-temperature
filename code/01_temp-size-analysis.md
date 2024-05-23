@@ -356,7 +356,7 @@ codTempData_plus %>%
               size = 1.5) +
   annotate(geom = "text", x = 1:4, y = 25, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
-  ylab("Size Change (mm), 11/21/22 to 02/08/23")
+  ylab("Size Change (mm), 12/27/2022 to 02/08/23")
 ```
 
 <img src="01_temp-size-analysis_files/figure-gfm/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
@@ -445,7 +445,7 @@ codTempData_plus %>%
               size = 1.5) +
   annotate(geom = "text", x = 1:4, y = 8, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
-  ylab("Weight Change (g), 11/21/22 to 02/08/23")
+  ylab("Weight Change (g), 12/27/2022 to 02/08/23")
 ```
 
 <img src="01_temp-size-analysis_files/figure-gfm/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
@@ -458,10 +458,10 @@ ggsave(
   )
 ```
 
-For both size and weight, growth from 11/21/22 to 02/08/23 significantly
-differed among all temperature treatments, with the exception of the 9
-degree and 16 degree treatments. For the 9 and 16 degree treatments,
-changes in size and weight were statistically similar. In other words,
-growth increased with the treatment temperature until the 16 degree
-treatment, for which growth was not significantly different from the 9
-degree treatment in either size or weight.
+For both size and weight, growth from 12/27/2022 to 02/08/23
+significantly differed among all temperature treatments, with the
+exception of the 9 degree and 16 degree treatments. For the 9 and 16
+degree treatments, changes in size and weight were statistically
+similar. In other words, growth increased with the treatment temperature
+until the 16 degree treatment, for which growth was not significantly
+different from the 9 degree treatment in either size or weight.
