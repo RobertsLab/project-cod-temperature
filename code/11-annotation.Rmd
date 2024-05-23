@@ -1,5 +1,5 @@
 ---
-title: "10-Hisat"
+title: "11-Annoation"
 author: "Steven Roberts"
 date: "`r format(Sys.time(), '%d %B, %Y')`"  
 output: 
@@ -42,7 +42,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r, engine='bash'}
+```{r, engine='bash', eval=TRUE}
 head ../output/10-hisat-deseq2/DEGlist.tab
 ```
 
@@ -111,13 +111,19 @@ mkdir ../blastdb
 -outfmt 6
 ```
 
-```{r, engine='bash'}
+```{r, engine='bash', eval=TRUE}
 head ../output/11-annotation/PcodRNA_uniprot_blastx.tab
 ```
 
-```{r}
+```{r, eval=TRUE}
 blast <- read.csv("../output/11-annotation/PcodRNA_uniprot_blastx.tab", sep = '\t', header = FALSE)
 ```
+
+
+```{r, eval=TRUE}
+head(blast)
+```
+
 
 ```{r, engine='bash', eval=TRUE}
 cat /home/shared/8TB_HDD_03/sr320/github/project-cod-temperature/data/ncbi_dataset/data/GCF_031168955.1/rna.fna | grep ">" | head -2
@@ -131,24 +137,36 @@ perl -e '$count=0; $len=0; while(<>) {s/\r?\n//; s/\t/ /g; if (s/^>//) { if ($. 
 
 
 
-```{r, engine='bash'}
+```{r, engine='bash', eval=TRUE}
 head ../output/11-annotation/GCF_031168955.1_rna.tab
 ```
 
 
 
-```{r}
+```{r, eval=TRUE}
 rnatab <- read.csv("../output/11-annotation/GCF_031168955.1_rna.tab", sep = '\t', header = FALSE, row.names=NULL)
 
 ```
 
-```{r}
+```{r, eval=TRUE}
+head(rnatab)
+
+```
+
+
+```{r, eval=TRUE}
 library(stringr)
 library(dplyr)
 ```
 
-```{r}
+```{r, eval=TRUE}
 rnatabID <- rnatab %>% mutate(geneID = str_extract(V2, "\\(([^)]+)\\)(?=,)")) %>% mutate(geneID = str_replace_all(geneID, "\\(|\\)", ""))
 
 ```
 
+
+
+```{r, eval=TRUE}
+head(rnatabID)
+
+```
