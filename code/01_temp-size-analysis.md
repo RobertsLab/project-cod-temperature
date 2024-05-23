@@ -19,7 +19,10 @@ columns (SL_11212022, SL_12272022, and SL_mm) are measuring some
 consistent size/length value over three measurement dates. Similarly,
 I’m assuming the the columns WWT_11212022, WWT_12272022, and
 WholeBodyWW_g are measurements of body weight (maybe whole body wet
-weight?) on the same three measurement dates.
+weight?) on the same three measurement dates. I believe the first
+measurement date is from tagging (before acclimitization to lab
+conditions), the second is date of transfer to temperature treatment
+tanks, and the third is sampling post-treatment.
 
 # 1 Data Munging
 
@@ -59,12 +62,12 @@ head(codTempData)
     ## 6
 
 ``` r
-# Create two new columns indicating change from Nov.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). Also, modify the Temperature variable from a numeric to an ordered factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
+# Create two new columns indicating change from Dec.2022 measurement to Feb.2022 measurement, for both size (mm) and weight (g). I'm excluding the Nov.2022 size/weight measurements, because Nov.2022-Dec.2022 was the acclimation period, not treatment. Also, modify the Temperature variable from a numeric to an ordered factor, since it's the treatment (will be necessary for ANOVA/TukeyHSD)
 codTempData_plus <- transform(codTempData,
                               # create column for change in size
-                              sizeChange_mm = SL_mm - SL_11212022,
+                              sizeChange_mm = SL_mm - SL_12272022,
                               # create column for change in weight
-                              weightChange_g = WholeBodyWW_g - WWT_11212022) %>%
+                              weightChange_g = WholeBodyWW_g - WWT_12272022) %>%
   # change type of Temperature variable to an ordered factor
   mutate(codTempData, Temperature = relevel(as.factor(Temperature), "0", "5", "9", "16"))
 head(codTempData_plus)
@@ -92,12 +95,12 @@ head(codTempData_plus)
     ## 5               0.1210               0.3434                    2
     ## 6               0.1342               0.2776                    9
     ##   DissectionComments sizeChange_mm weightChange_g
-    ## 1                               26           7.62
-    ## 2                               17           3.83
-    ## 3                                8           2.27
-    ## 4                               29           7.57
-    ## 5                               27           6.47
-    ## 6                               22           5.34
+    ## 1                               18           5.03
+    ## 2                                9           2.25
+    ## 3                                2           0.72
+    ## 4                               21           5.24
+    ## 5                               10           3.00
+    ## 6                               14           3.06
 
 ``` r
 # Reformatted data with single column for size values and single column for measurement values (and additional column indicating measurement date), enabling grouping by size/weight measurement date
@@ -265,10 +268,10 @@ codTempData_plus %>%
     ## # A tibble: 4 × 5
     ##   Temperature meanSizeChange sdSizeChange meanWeightChange sdWeightChange
     ##   <fct>                <dbl>        <dbl>            <dbl>          <dbl>
-    ## 1 0                     12.8         3.49             2.51           1.09
-    ## 2 5                     17.4         3.70             3.69           1.05
-    ## 3 9                     22.4         4.28             5.57           1.74
-    ## 4 16                    21.2         5.86             5.05           2.24
+    ## 1 0                     4.12         1.92           0.0518          0.526
+    ## 2 5                     9            2.53           1.46            0.770
+    ## 3 9                    14.4          3.51           3.44            1.25 
+    ## 4 16                   11.6          5.01           2.64            1.72
 
 ``` r
 # Assuming data are independent (part of experimental design)
@@ -289,8 +292,8 @@ tidySizeANOVA
     ## # A tibble: 2 × 6
     ##   term           df sumsq meansq statistic   p.value
     ##   <chr>       <dbl> <dbl>  <dbl>     <dbl>     <dbl>
-    ## 1 Temperature     3 2234.  745.       37.9  1.79e-18
-    ## 2 Residuals     156 3062.   19.6      NA   NA
+    ## 1 Temperature     3 2297.  766.       64.4  3.81e-27
+    ## 2 Residuals     156 1855.   11.9      NA   NA
 
 ``` r
 # Calculate R^2 (how much of the variation in the data is explained by the treatment)
@@ -298,7 +301,7 @@ r_squared <- tidySizeANOVA$sumsq[1]/(tidySizeANOVA$sumsq[1]+tidySizeANOVA$sumsq[
 r_squared
 ```
 
-    ## [1] 0.4218882
+    ## [1] 0.5532301
 
 p = 1.79e-18 \<\< 0.05, so there is a significant relationship between
 treatment (temperature) and size growth (change in size). R^2=0.422,
@@ -307,22 +310,40 @@ temperature treatment.
 
 ``` r
 # Tukey HSD
-sizeANOVA %>%
+sizeTukeyHSD <- sizeANOVA %>%
   TukeyHSD() %>%
   tidy() %>% 
   select(contrast, estimate, adj.p.value) %>% 
   arrange(adj.p.value)
+
+sizeTukeyHSD
 ```
 
     ## # A tibble: 6 × 3
     ##   contrast estimate adj.p.value
     ##   <chr>       <dbl>       <dbl>
-    ## 1 9-0          9.57    3.89e-14
-    ## 2 16-0         8.37    1.54e-13
-    ## 3 9-5          4.98    8.19e- 6
-    ## 4 5-0          4.60    4.25e- 5
-    ## 5 16-5         3.77    1.13e- 3
-    ## 6 16-9        -1.20    6.21e- 1
+    ## 1 9-0         10.3     1.44e-15
+    ## 2 16-0         7.52    3.99e-14
+    ## 3 9-5          5.4     4.21e-10
+    ## 4 5-0          4.87    1.55e- 8
+    ## 5 16-9        -2.75    2.68e- 3
+    ## 6 16-5         2.65    4.16e- 3
+
+``` r
+kable(sizeTukeyHSD,
+      caption = "Tukey HSD for change in size across treatments")
+```
+
+| contrast | estimate | adj.p.value |
+|:---------|---------:|------------:|
+| 9-0      |   10.275 |   0.0000000 |
+| 16-0     |    7.525 |   0.0000000 |
+| 9-5      |    5.400 |   0.0000000 |
+| 5-0      |    4.875 |   0.0000000 |
+| 16-9     |   -2.750 |   0.0026842 |
+| 16-5     |    2.650 |   0.0041642 |
+
+Tukey HSD for change in size across treatments
 
 ``` r
 codTempData_plus %>%
@@ -333,7 +354,7 @@ codTempData_plus %>%
   geom_jitter(width = 0.1, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 32, label = c("A","B","C","C")) +
+  annotate(geom = "text", x = 1:4, y = 25, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
   ylab("Size Change (mm), 11/21/22 to 02/08/23")
 ```
@@ -361,8 +382,8 @@ tidyWeightANOVA
     ## # A tibble: 2 × 6
     ##   term           df sumsq meansq statistic   p.value
     ##   <chr>       <dbl> <dbl>  <dbl>     <dbl>     <dbl>
-    ## 1 Temperature     3  229.  76.3       29.5  3.73e-15
-    ## 2 Residuals     156  404.   2.59      NA   NA
+    ## 1 Temperature     3  261.  86.9       64.5  3.65e-27
+    ## 2 Residuals     156  210.   1.35      NA   NA
 
 ``` r
 # Calculate R^2 (how much of the variation in the data is explained by the treatment)
@@ -370,7 +391,7 @@ r_squared <- tidyWeightANOVA$sumsq[1]/(tidyWeightANOVA$sumsq[1]+tidyWeightANOVA$
 r_squared
 ```
 
-    ## [1] 0.361786
+    ## [1] 0.5534805
 
 p = 3.73e-15 \<\< 0.05, so there is a significant relationship between
 treatment (temperature) and weight change. R^2=0.362, indicating \~36%
@@ -378,22 +399,40 @@ of variance in weight change is explained by the temperature treatment.
 
 ``` r
 # Tukey HSD
-weightANOVA %>%
+weightTukeyHSD <- weightANOVA %>%
   TukeyHSD() %>%
   tidy() %>% 
   select(contrast, estimate, adj.p.value) %>% 
   arrange(adj.p.value)
+
+weightTukeyHSD
 ```
 
     ## # A tibble: 6 × 3
     ##   contrast estimate adj.p.value
     ##   <chr>       <dbl>       <dbl>
-    ## 1 9-0         3.06     1.24e-13
-    ## 2 16-0        2.54     2.90e-10
-    ## 3 9-5         1.88     3.28e- 6
-    ## 4 16-5        1.36     1.22e- 3
-    ## 5 5-0         1.18     6.90e- 3
-    ## 6 16-9       -0.516    4.79e- 1
+    ## 1 9-0         3.38     1.55e-15
+    ## 2 16-0        2.59     3.77e-14
+    ## 3 9-5         1.97     1.57e-11
+    ## 4 5-0         1.41     1.23e- 6
+    ## 5 16-5        1.18     6.43e- 5
+    ## 6 16-9       -0.793    1.40e- 2
+
+``` r
+kable(weightTukeyHSD,
+      caption = "Tukey HSD for change in weight across treatments")
+```
+
+| contrast | estimate | adj.p.value |
+|:---------|---------:|------------:|
+| 9-0      |  3.38325 |   0.0000000 |
+| 16-0     |  2.59075 |   0.0000000 |
+| 9-5      |  1.97225 |   0.0000000 |
+| 5-0      |  1.41100 |   0.0000012 |
+| 16-5     |  1.17975 |   0.0000643 |
+| 16-9     | -0.79250 |   0.0140387 |
+
+Tukey HSD for change in weight across treatments
 
 ``` r
 codTempData_plus %>%
@@ -404,7 +443,7 @@ codTempData_plus %>%
   geom_jitter(width = 0.1, 
               height = 0.2, 
               size = 1.5) +
-  annotate(geom = "text", x = 1:4, y = 12, label = c("A","B","C","C")) +
+  annotate(geom = "text", x = 1:4, y = 8, label = c("A","B","C","D")) +
   xlab("Temperature Treatment (*C)") +
   ylab("Weight Change (g), 11/21/22 to 02/08/23")
 ```
