@@ -28,7 +28,7 @@ For any code document, the name should start with a 2 number prefix (eg 01-temp-
 
 ### Analysis of RNA sequencing data
 
-The workflow for RNAseq data analysis uses the following steps.
+The workflow for RNAseq data analysis uses the following steps. Visualizations of results can be viewed in the rendered `.md` files (e.g., 07-cod-RNAseq-DESeq2.md`)
 
 1.  Perform quality control (QC) and trimming on the raw reads (`05-cod-RNAseq-trimming`). QC was performed using FastQC/MultiQC, and reads were trimmed using Flexbar.
 2.  Align trimmed reads to reference transcriptome\genome and generate an estimate of transcript\gene abundance in the form of a gene-level counts matrix (`06-cod-RNAseq-alignment`, `06.2-cod-RNAseq-alignment-genome`). Reads were pseudoaligned to a transcriptome using kallisto, and transcript abundances were summarized to gene-level counts using Trinity abundance_estimates_to_matrix.pl. We also aligned reads to a genome using Hisat2 and summarized to gene-level counts using featureCounts.
