@@ -30,11 +30,11 @@ For any code document, the name should start with a 2 number prefix (eg 01-temp-
 
 The workflow for RNAseq data analysis uses the following steps.
 
-1.  Perform quality control (QC) and trimming on the raw reads (05-cod-RNAseq-trimming)
-2.  Align trimmed reads to reference transcriptome and generate an estimate of transcript abundance in the form of a gene-level counts matrix (06-cod-RNAseq-alignment)
-3.  Identify differentially expressed genes (DEGs), and generate associated visualizations (heatmap, volcano plot) (07-cod-RNAseq-DESeq2)
-4.  Annotate reference transcriptome to generate a database of transcript IDs and associated gene ontology (GO) terms (03-transcriptome-annotation)
-5.  Identify enriched GO terms (08-cod-RNAseq-GO-annotation)
+1.  Perform quality control (QC) and trimming on the raw reads (`05-cod-RNAseq-trimming`). QC was performed using FastQC/MultiQC, and reads were trimmed using Flexbar.
+2.  Align trimmed reads to reference transcriptome\genome and generate an estimate of transcript\gene abundance in the form of a gene-level counts matrix (`06-cod-RNAseq-alignment`, `06.2-cod-RNAseq-alignment-genome`). Reads were pseudoaligned to a transcriptome using kallisto, and transcript abundances were summarized to gene-level counts using Trinity abundance_estimates_to_matrix.pl. We also aligned reads to a genome using Hisat2 and summarized to gene-level counts using featureCounts.
+3.  Identify differentially expressed genes (DEGs), and generate associated visualizations (heatmap, volcano plot) (`07-cod-RNAseq-DESeq2`, `07.2.1-cod-RNAseq-DESeq2genome-exon`, `07.2.2-cod-RNAseq-DESeq2-genome-gene`). Differential expression analysis was performed with DESeq2.
+4.  Annotate reference transcriptome/genome to generate a database of transcript/gene IDs and associated gene ontology (GO) terms (`03-transcriptome-annotation`, `03.2-genome-annotation`)
+5.  Identify enriched GO terms (`08-cod-RNAseq-GO-annotation`, `08.2.1-cod-RNAseq-GO-annotation-genome-exon`). Enrichment analysis was performed using DAVID. 
 
 ### See also
 
