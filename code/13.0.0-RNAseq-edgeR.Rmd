@@ -23,3 +23,16 @@ output:
 bibliography: references.bib
 link-citations: true
 ---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+library(edgeR)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,        # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
