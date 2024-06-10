@@ -3,6 +3,22 @@
 Kathleen Durkin
 2024-03-04
 
+- <a href="#1-create-a-bash-variables-file"
+  id="toc-1-create-a-bash-variables-file">1 Create a Bash variables
+  file</a>
+- <a href="#2-download-raw-rnaseq-reads"
+  id="toc-2-download-raw-rnaseq-reads">2 Download raw RNAseq reads</a>
+  - <a href="#21-verify-raw-read-checksums"
+    id="toc-21-verify-raw-read-checksums">2.1 Verify raw read checksums</a>
+- <a href="#3-fastqcmultiqc-on-raw-reads"
+  id="toc-3-fastqcmultiqc-on-raw-reads">3 FastQC/MultiQC on raw reads</a>
+- <a href="#4-trimming-with-flexbar" id="toc-4-trimming-with-flexbar">4
+  Trimming with flexbar</a>
+- <a href="#5-fastqcmultiqc-on-trimmed-reads"
+  id="toc-5-fastqcmultiqc-on-trimmed-reads">5 FastQC/MultiQC on trimmed
+  reads</a>
+- <a href="#6-summary" id="toc-6-summary">6 Summary</a>
+
 Code for trimming and QCing RNAseq data, to be used on [Pacific cod
 RNAseq
 data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html),
@@ -31,7 +47,7 @@ Outputs:
 
 ------------------------------------------------------------------------
 
-# Create a Bash variables file
+# 1 Create a Bash variables file
 
 This allows usage of Bash variables (e.g. paths to common directories)
 across R Markdown chunks.
@@ -148,7 +164,7 @@ cat .bashvars
     [flexbar]="${flexbar}"
     )
 
-# Download raw RNAseq reads
+# 2 Download raw RNAseq reads
 
 Reads are downloaded from:
 
@@ -174,7 +190,7 @@ wget \
 ls -lh "${raw_reads_dir}"
 ```
 
-## Verify raw read checksums
+## 2.1 Verify raw read checksums
 
 ``` bash
 # Load bash variables into memory
@@ -185,7 +201,7 @@ cd "${raw_reads_dir}"
 md5sum checksums.md5 --check
 ```
 
-# FastQC/MultiQC on raw reads
+# 3 FastQC/MultiQC on raw reads
 
 ``` bash
 # Load bash variables into memory
@@ -240,27 +256,75 @@ echo ""
 ls -lh ${raw_fastqc_dir}
 ```
 
-    total 20M
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Oct 25 12:54 01_temp-size-analysis
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_cache
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_files
-    -rw-r--r-- 1 shedurkin labmembers  17M Oct 25 12:54 03-transcriptome-annotation.html
-    -rw-r--r-- 1 shedurkin labmembers 8.9K Oct 25 12:54 03-transcriptome-annotation.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2 11:00 04-RNASeq-sample-size.html
-    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2 10:58 04-RNASeq-sample-size.md
-    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2 11:00 04-RNASeq-sample-size.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  13K Mar  4 17:51 05-cod-RNAseq-trimming.md
-    -rw-r--r-- 1 shedurkin labmembers  11K Mar 22 12:15 05-cod-RNAseq-trimming.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 19 14:53 06-cod-RNAseq-alignment.html
-    -rw-r--r-- 1 shedurkin labmembers  35K Mar 19 14:43 06-cod-RNAseq-alignment.md
-    -rw-r--r-- 1 shedurkin labmembers 8.1K Mar 19 14:52 06-cod-RNAseq-alignment.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 8.0K Mar 21 15:59 07-cod-RNAseq-DESeq2.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  318 Oct 25 12:54 Rplot001.png
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 rsconnect
-    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25 12:54 Temp-Size-Graph-Box-Line.html
-    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.log
-    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25 12:54 Temp-Size-Graph-Box-Line.tex
+    total 72M
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:06 01_temp-size-analysis_files
+    -rw-r--r-- 1 shedurkin labmembers 1.4M May 23 15:06 01_temp-size-analysis.html
+    -rw-r--r-- 1 shedurkin labmembers  17K May 23 15:06 01_temp-size-analysis.md
+    -rw-r--r-- 1 shedurkin labmembers 361K Oct 25  2023 01_temp-size-analysis.pdf
+    -rw-r--r-- 1 shedurkin labmembers 9.7K May 23 15:06 01_temp-size-analysis.Rmd
+    drwxr-xr-x 4 shedurkin labmembers 4.0K May  8 11:05 03.2-genome-annotation_cache
+    drwxr-xr-x 4 shedurkin labmembers 4.0K May  8 11:07 03.2-genome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers 1.1M May 22 14:45 03.2-genome-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 5.0K May 22 14:45 03.2-genome-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 4.2K May 22 14:45 03.2-genome-annotation.Rmd
+    drwxr-xr-x 4 shedurkin labmembers 4.0K Apr 17 13:00 03-transcriptome-annotation_cache
+    drwxr-xr-x 4 shedurkin labmembers 4.0K Apr 17 13:00 03-transcriptome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers  50M Apr 24 12:59 03-transcriptome-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 9.6K Apr 24 12:54 03-transcriptome-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2  2023 04-RNASeq-sample-size.html
+    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2  2023 04-RNASeq-sample-size.md
+    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2  2023 04-RNASeq-sample-size.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 22 12:18 05-cod-RNAseq-trimming.html
+    -rw-r--r-- 1 shedurkin labmembers  15K Mar 22 12:15 05-cod-RNAseq-trimming.md
+    -rw-r--r-- 1 shedurkin labmembers  11K Jun 10 12:20 05-cod-RNAseq-trimming.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  3 14:59 06.2-cod-RNAseq-alignment-genome_files
+    -rw-r--r-- 1 shedurkin labmembers 1.8M May  3 14:59 06.2-cod-RNAseq-alignment-genome.html
+    -rw-r--r-- 1 shedurkin labmembers  36K May  3 14:59 06.2-cod-RNAseq-alignment-genome.md
+    -rw-r--r-- 1 shedurkin labmembers  16K May 21 14:01 06.2-cod-RNAseq-alignment-genome.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  3 15:02 06-cod-RNAseq-alignment_files
+    -rw-r--r-- 1 shedurkin labmembers 1.6M May  3 15:02 06-cod-RNAseq-alignment.html
+    -rw-r--r-- 1 shedurkin labmembers  52K May  3 15:01 06-cod-RNAseq-alignment.md
+    -rw-r--r-- 1 shedurkin labmembers  11K May  3 15:01 06-cod-RNAseq-alignment.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  8 13:42 07.2.1-cod-RNAseq-DESeq2-genome-exon_files
+    -rw-r--r-- 1 shedurkin labmembers  71K May  8 13:48 07.2.1-cod-RNAseq-DESeq2-genome-exon.md
+    -rw-r--r-- 1 shedurkin labmembers  33K May  8 13:43 07.2.1-cod-RNAseq-DESeq2-genome-exon.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  8 13:28 07.2.2-cod-RNAseq-DESeq2-genome-gene_files
+    -rw-r--r-- 1 shedurkin labmembers 4.6M May  8 13:28 07.2.2-cod-RNAseq-DESeq2-genome-gene.html
+    -rw-r--r-- 1 shedurkin labmembers  71K May  8 13:23 07.2.2-cod-RNAseq-DESeq2-genome-gene.md
+    -rw-r--r-- 1 shedurkin labmembers  33K May  8 13:23 07.2.2-cod-RNAseq-DESeq2-genome-gene.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 21 15:24 07-cod-RNAseq-DESeq2_files
+    -rw-r--r-- 1 shedurkin labmembers 4.7M May 21 15:24 07-cod-RNAseq-DESeq2.html
+    -rw-r--r-- 1 shedurkin labmembers  71K May 21 15:16 07-cod-RNAseq-DESeq2.md
+    -rw-r--r-- 1 shedurkin labmembers  35K Jun 10 12:16 07-cod-RNAseq-DESeq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon_files
+    -rw-r--r-- 1 shedurkin labmembers 1.4M May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.html
+    -rw-r--r-- 1 shedurkin labmembers 159K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.md
+    -rw-r--r-- 1 shedurkin labmembers  17K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 13 13:29 08-cod-RNAseq-GO-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers 1.3M May 13 13:29 08-cod-RNAseq-GO-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 129K May 13 13:28 08-cod-RNAseq-GO-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers  18K May 13 13:29 08-cod-RNAseq-GO-annotation.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 22 11:36 09-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers 8.4K May 22 11:36 09-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 1.8K May 22 11:36 09-hisat-deseq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10.1-hisat-deseq2_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10.1-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers  19K May 23 15:08 10.1-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 7.6K May 23 15:08 10.1-hisat-deseq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10-hisat-deseq2_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers  18K May 23 15:08 10-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 7.8K May 23 15:08 10-hisat-deseq2.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 112K May 23 15:08 11-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 4.4K May 23 15:08 11-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 2.1K May 23 15:08 12-DEG-enrich.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  844 Jun  6 14:42 13.0.0-RNAseq-edgeR.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.6K May 22 11:36 README.md
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25  2023 rsconnect
+    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25  2023 Temp-Size-Graph-Box-Line.html
+    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25  2023 Temp-Size-Graph-Box-Line.log
+    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25  2023 Temp-Size-Graph-Box-Line.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25  2023 Temp-Size-Graph-Box-Line.tex
 
 Samples 10, 13, 19, 37, 41, 48, 98, 129, 149, 57-S, 58-S had low
 quantity/quality of RNA after RNA extraction (see [Azenta RNA extraction
@@ -286,7 +350,7 @@ suggested that DV200 may be a more meaningful assessment of mRNA quality
 than RIN ([Matsubara et al 2020](https://doi.org/10.1155/2020/9349132))
 for NGS, but both are still commonly used.
 
-# Trimming with [flexbar](https://github.com/seqan/flexbar)
+# 4 Trimming with [flexbar](https://github.com/seqan/flexbar)
 
 ``` bash
 # Load bash variables into memory
@@ -378,7 +442,7 @@ cat "${trimmed_reads_dir}/${trimmed_checksums}"
 ############ END FLEXBAR ############
 ```
 
-# FastQC/MultiQC on trimmed reads
+# 5 FastQC/MultiQC on trimmed reads
 
 ``` bash
 # Load bash variables into memory
@@ -432,26 +496,74 @@ echo ""
 ls -lh ${trimmed_fastqc_dir}
 ```
 
-    total 20M
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Oct 25 12:54 01_temp-size-analysis
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_cache
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 03-transcriptome-annotation_files
-    -rw-r--r-- 1 shedurkin labmembers  17M Oct 25 12:54 03-transcriptome-annotation.html
-    -rw-r--r-- 1 shedurkin labmembers 8.9K Oct 25 12:54 03-transcriptome-annotation.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2 11:00 04-RNASeq-sample-size.html
-    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2 10:58 04-RNASeq-sample-size.md
-    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2 11:00 04-RNASeq-sample-size.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  13K Mar  4 17:51 05-cod-RNAseq-trimming.md
-    -rw-r--r-- 1 shedurkin labmembers  11K Mar 22 12:15 05-cod-RNAseq-trimming.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 19 14:53 06-cod-RNAseq-alignment.html
-    -rw-r--r-- 1 shedurkin labmembers  35K Mar 19 14:43 06-cod-RNAseq-alignment.md
-    -rw-r--r-- 1 shedurkin labmembers 8.1K Mar 19 14:52 06-cod-RNAseq-alignment.Rmd
-    -rw-r--r-- 1 shedurkin labmembers 8.0K Mar 21 15:59 07-cod-RNAseq-DESeq2.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  318 Oct 25 12:54 Rplot001.png
-    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25 12:54 rsconnect
-    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25 12:54 Temp-Size-Graph-Box-Line.html
-    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.log
-    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25 12:54 Temp-Size-Graph-Box-Line.Rmd
-    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25 12:54 Temp-Size-Graph-Box-Line.tex
+    total 72M
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:06 01_temp-size-analysis_files
+    -rw-r--r-- 1 shedurkin labmembers 1.4M May 23 15:06 01_temp-size-analysis.html
+    -rw-r--r-- 1 shedurkin labmembers  17K May 23 15:06 01_temp-size-analysis.md
+    -rw-r--r-- 1 shedurkin labmembers 361K Oct 25  2023 01_temp-size-analysis.pdf
+    -rw-r--r-- 1 shedurkin labmembers 9.7K May 23 15:06 01_temp-size-analysis.Rmd
+    drwxr-xr-x 4 shedurkin labmembers 4.0K May  8 11:05 03.2-genome-annotation_cache
+    drwxr-xr-x 4 shedurkin labmembers 4.0K May  8 11:07 03.2-genome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers 1.1M May 22 14:45 03.2-genome-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 5.0K May 22 14:45 03.2-genome-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 4.2K May 22 14:45 03.2-genome-annotation.Rmd
+    drwxr-xr-x 4 shedurkin labmembers 4.0K Apr 17 13:00 03-transcriptome-annotation_cache
+    drwxr-xr-x 4 shedurkin labmembers 4.0K Apr 17 13:00 03-transcriptome-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers  50M Apr 24 12:59 03-transcriptome-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 9.6K Apr 24 12:54 03-transcriptome-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 612K Nov  2  2023 04-RNASeq-sample-size.html
+    -rw-r--r-- 1 shedurkin labmembers 3.0K Nov  2  2023 04-RNASeq-sample-size.md
+    -rw-r--r-- 1 shedurkin labmembers 2.5K Nov  2  2023 04-RNASeq-sample-size.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.1M Mar 22 12:18 05-cod-RNAseq-trimming.html
+    -rw-r--r-- 1 shedurkin labmembers  15K Mar 22 12:15 05-cod-RNAseq-trimming.md
+    -rw-r--r-- 1 shedurkin labmembers  11K Jun 10 12:20 05-cod-RNAseq-trimming.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  3 14:59 06.2-cod-RNAseq-alignment-genome_files
+    -rw-r--r-- 1 shedurkin labmembers 1.8M May  3 14:59 06.2-cod-RNAseq-alignment-genome.html
+    -rw-r--r-- 1 shedurkin labmembers  36K May  3 14:59 06.2-cod-RNAseq-alignment-genome.md
+    -rw-r--r-- 1 shedurkin labmembers  16K May 21 14:01 06.2-cod-RNAseq-alignment-genome.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  3 15:02 06-cod-RNAseq-alignment_files
+    -rw-r--r-- 1 shedurkin labmembers 1.6M May  3 15:02 06-cod-RNAseq-alignment.html
+    -rw-r--r-- 1 shedurkin labmembers  52K May  3 15:01 06-cod-RNAseq-alignment.md
+    -rw-r--r-- 1 shedurkin labmembers  11K May  3 15:01 06-cod-RNAseq-alignment.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  8 13:42 07.2.1-cod-RNAseq-DESeq2-genome-exon_files
+    -rw-r--r-- 1 shedurkin labmembers  71K May  8 13:48 07.2.1-cod-RNAseq-DESeq2-genome-exon.md
+    -rw-r--r-- 1 shedurkin labmembers  33K May  8 13:43 07.2.1-cod-RNAseq-DESeq2-genome-exon.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May  8 13:28 07.2.2-cod-RNAseq-DESeq2-genome-gene_files
+    -rw-r--r-- 1 shedurkin labmembers 4.6M May  8 13:28 07.2.2-cod-RNAseq-DESeq2-genome-gene.html
+    -rw-r--r-- 1 shedurkin labmembers  71K May  8 13:23 07.2.2-cod-RNAseq-DESeq2-genome-gene.md
+    -rw-r--r-- 1 shedurkin labmembers  33K May  8 13:23 07.2.2-cod-RNAseq-DESeq2-genome-gene.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 21 15:24 07-cod-RNAseq-DESeq2_files
+    -rw-r--r-- 1 shedurkin labmembers 4.7M May 21 15:24 07-cod-RNAseq-DESeq2.html
+    -rw-r--r-- 1 shedurkin labmembers  71K May 21 15:16 07-cod-RNAseq-DESeq2.md
+    -rw-r--r-- 1 shedurkin labmembers  35K Jun 10 12:16 07-cod-RNAseq-DESeq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon_files
+    -rw-r--r-- 1 shedurkin labmembers 1.4M May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.html
+    -rw-r--r-- 1 shedurkin labmembers 159K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.md
+    -rw-r--r-- 1 shedurkin labmembers  17K May 22 14:44 08.2.1-cod-RNAseq-GO-annotation-genome-exon.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 13 13:29 08-cod-RNAseq-GO-annotation_files
+    -rw-r--r-- 1 shedurkin labmembers 1.3M May 13 13:29 08-cod-RNAseq-GO-annotation.html
+    -rw-r--r-- 1 shedurkin labmembers 129K May 13 13:28 08-cod-RNAseq-GO-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers  18K May 13 13:29 08-cod-RNAseq-GO-annotation.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 22 11:36 09-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers 8.4K May 22 11:36 09-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 1.8K May 22 11:36 09-hisat-deseq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10.1-hisat-deseq2_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10.1-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers  19K May 23 15:08 10.1-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 7.6K May 23 15:08 10.1-hisat-deseq2.Rmd
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10-hisat-deseq2_cache
+    drwxr-xr-x 3 shedurkin labmembers 4.0K May 23 15:08 10-hisat-deseq2_files
+    -rw-r--r-- 1 shedurkin labmembers  18K May 23 15:08 10-hisat-deseq2.md
+    -rw-r--r-- 1 shedurkin labmembers 7.8K May 23 15:08 10-hisat-deseq2.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 112K May 23 15:08 11-annotation.md
+    -rw-r--r-- 1 shedurkin labmembers 4.4K May 23 15:08 11-annotation.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 2.1K May 23 15:08 12-DEG-enrich.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  844 Jun  6 14:42 13.0.0-RNAseq-edgeR.Rmd
+    -rw-r--r-- 1 shedurkin labmembers 1.6K May 22 11:36 README.md
+    drwxr-xr-x 3 shedurkin labmembers 4.0K Oct 25  2023 rsconnect
+    -rw-r--r-- 1 shedurkin labmembers 1.7M Oct 25  2023 Temp-Size-Graph-Box-Line.html
+    -rw-r--r-- 1 shedurkin labmembers 3.7K Oct 25  2023 Temp-Size-Graph-Box-Line.log
+    -rw-r--r-- 1 shedurkin labmembers 2.7K Oct 25  2023 Temp-Size-Graph-Box-Line.Rmd
+    -rw-r--r-- 1 shedurkin labmembers  14K Oct 25  2023 Temp-Size-Graph-Box-Line.tex
 
-# Summary
+# 6 Summary
