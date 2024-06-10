@@ -316,7 +316,7 @@ cat "${trimmed_reads_dir}/${trimmed_checksums}"
 
 # FastQC/MultiQC on trimmed reads
 
-```{r FastQC-MultiQC-trimmed-reads, engine='bash', eval=FALSE}
+```{r FastQC-MultiQC-trimmed-reads, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
