@@ -39,7 +39,7 @@ library(plotly)
 ```
 Code for aligning RNAseq data to reference transcriptome/genome, to be used on [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html). 
 
-- Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
+- trimmed reads generated in `05-cod-RNAseq-trimming`
 - Transcriptome downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/), stored [here](https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna) as a part of lab [genomic resources](https://robertslab.github.io/resources/Genomic-Resources/#gadus-macrocephalus-pacific-cod)
 
 Note: Kallisto pseudoalignment doesn't necessarily require input reads to be trimmed, provided they are of sufficient quality.
@@ -55,8 +55,6 @@ echo ""
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
 echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment'
-echo 'export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc'
-echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads'
 echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
 echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
 echo 'export kallisto_output_dir=${output_dir_top}/kallisto'
@@ -100,14 +98,14 @@ echo ")"
 cat .bashvars
 ```
 
-There didn't seem to be a significant difference in sequence quality following trimming, so for now I'm proceeding with the raw reads (though I'll likely eventually rerun the kallisto with trimmed)
+I will be running kallisto with trimmed/QCd reads
 
 # Align to reference transcriptome (Kallisto pseudoalignment)
 
 
 ## Retrieving the reference transcriptome
 
-```{r download-transcriptome-fasta, engine='bash', eval=FALSE}
+```{r download-transcriptome-fasta, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -148,7 +146,7 @@ md5sum --check <<< "${transcriptome_checksum}  ${transcriptome_fasta_name}.fna"
 
 ## Building Index
 
-```{r kallisto-indexing, engine='bash', eval=FALSE}
+```{r kallisto-indexing, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -176,7 +174,7 @@ Again, gzipped files are acceptable.
 
 Kallisto quant is rather finicky about how you input sets of paired reads, and you can only input a single pair at a time. To circumvent, I'll create a quantification function and apply it iteratively to each pair of reads using a loop.
 
-```{r kallisto-quantification, engine='bash', eval=FALSE}
+```{r kallisto-quantification, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -187,7 +185,7 @@ run_kallisto_quant() {
     local R2_fastq=${2}
     
     cd ${kallisto_output_dir}
-    sample_num=$(basename "${R1_fastq}" "_R1_001.fastq.gz")
+    sample_num=$(basename "${R1_fastq}" ".flexbar_trim.R_1.fastq.gz")
     mkdir kallisto_quant_${sample_num}
 
     ${programs_array[kallisto]} quant \
@@ -195,26 +193,26 @@ run_kallisto_quant() {
         --index="${kallisto_output_dir}/${kallisto_index_name}" \
         --output-dir="${kallisto_output_dir}/kallisto_quant_${sample_num}" \
         --bootstrap-samples=100 \
-        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq} \
+        ${trimmed_reads_dir}/${R1_fastq} ${trimmed_reads_dir}/${R2_fastq} \
         &> "${kallisto_output_dir}/kallisto_quant_${sample_num}.log"
 }
 
 
 
 # Iteratively apply run_kallisto_quant on each pair of input reads
-for file_r1 in "${raw_reads_dir}"/*_R1_001.fastq.gz; do
+for file_r1 in "${trimmed_reads_dir}"/*.flexbar_trim.R_1.fastq.gz; do
     # Extract the sample name from the file name
-    sample_name=$(basename "${file_r1}" "_R1_001.fastq.gz")
+    sample_name=$(basename "${file_r1}" ".flexbar_trim.R_1.fastq.gz")
 
     # Form the file names (function takes input file names, not paths)
-    file_r1_name="${sample_name}_R1_001.fastq.gz"
-    file_r2_name="${sample_name}_R2_001.fastq.gz"
+    file_r1_name="${sample_name}.flexbar_trim.R_1.fastq.gz"
+    file_r2_name="${sample_name}.flexbar_trim.R_2.fastq.gz"
 
     # Check that the sample hasn't already been quantified
     if [ ! -d "${kallisto_output_dir}/kallisto_quant_${sample_name}" ]; then
     
         # Check if the corresponding R2 file exists
-        if [ -e "${raw_reads_dir}/${file_r2}" ]; then
+        if [ -e "${trimmed_reads_dir}/${file_r2}" ]; then
             # Run kallisto quant on the file pair
             run_kallisto_quant "${file_r1_name}" "${file_r2_name}" 
 
@@ -232,9 +230,9 @@ Check that we have the appropriate number of output folders. We should have one 
 source .bashvars
 
 # Count number of raw read files
-cd ${raw_reads_dir}
+cd ${trimmed_reads_dir}
 echo "Number of raw reads:"
-ls -1 | wc -l
+ls -1 *.fastq.gz | wc -l
 
 # Count number of kallisto output 
 cd ${kallisto_output_dir}
@@ -311,7 +309,7 @@ ggplot(kallisto_multiqc_plustreatment,
 
 ## Trinity Matrix with Kallisto Output
 
-```{r kallisto-trinity-matrix, engine='bash', eval=TRUE}
+```{r kallisto-trinity-matrix, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 

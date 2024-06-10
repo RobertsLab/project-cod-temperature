@@ -2,47 +2,32 @@
 
 # Data directories
 export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature
-export output_dir_top=${cod_dir}/output/05-cod-RNAseq-trimming
-export raw_fastqc_dir=${output_dir_top}/raw-fastqc
-export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads
-export raw_reads_url="https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/"
-export trimmed_fastqc_dir=${output_dir_top}/trimmed-fastqc
-export trimmed_reads_dir=${output_dir_top}/trimmed-reads
+export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment
+export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc
+export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads
+export kallisto_output_dir=${output_dir_top}/kallisto
+
+# Input/Output files
+export transcriptome_fasta_dir=${cod_dir}/data
+export transcriptome_fasta_name="GCF_031168955.1_ASM3116895v1_rna"
+export transcriptome_fasta="${transcriptome_fasta_dir}/${transcriptome_fasta_name}"
+export kallisto_index_name="G_macrocephalus_kallisto_index.idx"
+# External data URLs and checksums
+export transcriptome_fasta_url="https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna"
+export transcriptome_checksum="2a6c7c98982727e688f033a9b236725b"
 
 # Paths to programs
-export fastqc=/home/shared/FastQC-0.12.1/fastqc
+export kallisto=/home/shared/kallisto/kallisto
 export multiqc=/home/sam/programs/mambaforge/bin/multiqc
-export flexbar=/home/shared/flexbar-3.5.0-linux/flexbar
-
-# Set FastQ filename patterns
-export fastq_pattern='*.fastq.gz'
-export R1_fastq_pattern='*_R1_*.fastq.gz'
-export R2_fastq_pattern='*_R2_*.fastq.gz'
+export trinity_abund_to_matrix=/home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl
 
 # Set number of CPUs to use
 export threads=20
 
-# Input/output files
-export fastq_checksums=input_fastq_checksums.md5
-export trimmed_checksums=trimmed_fastq_checksums.md5
-export NEB_adapters_fasta=NEB-adapters.fasta
-
-## Illumina adapters
-export first_adapter="AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
-export second_adapter="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
-
-## Inititalize arrays
-export fastq_array_R1=()
-export fastq_array_R2=()
-export raw_fastqs_array=()
-export R1_names_array=()
-export R2_names_array=()
-export trimmed_fastqs_array=()
-
 # Programs associative array
 declare -A programs_array
 programs_array=(
-[fastqc]="${fastqc}" \
+[kallisto]="${kallisto}" \
 [multiqc]="${multiqc}" \
-[flexbar]="${flexbar}"
+[trinity_abund_to_matrix]="${trinity_abund_to_matrix}" \
 )

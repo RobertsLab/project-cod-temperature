@@ -1607,7 +1607,7 @@ library(ggplot2)
 library(plotly)</code></pre>
 <p>Code for aligning RNAseq data to reference transcriptome/genome, to be used on <a href="https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html">Pacific cod RNAseq data</a>.</p>
 <ul>
-<li>Raw reads found <a href="https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/">here</a></li>
+<li>trimmed reads generated in <code>05-cod-RNAseq-trimming</code></li>
 <li>Transcriptome downloaded from <a href="https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/">NCBI</a>, stored <a href="https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna">here</a> as a part of lab <a href="https://robertslab.github.io/resources/Genomic-Resources/#gadus-macrocephalus-pacific-cod">genomic resources</a></li>
 </ul>
 <p>Note: Kallisto pseudoalignment doesn’t necessarily require input reads to be trimmed, provided they are of sufficient quality.</p>
@@ -1621,8 +1621,6 @@ echo &quot;&quot;
 echo &quot;# Data directories&quot;
 echo &#39;export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature&#39;
 echo &#39;export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment&#39;
-echo &#39;export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc&#39;
-echo &#39;export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads&#39;
 echo &#39;export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc&#39;
 echo &#39;export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads&#39;
 echo &#39;export kallisto_output_dir=${output_dir_top}/kallisto&#39;
@@ -1669,8 +1667,6 @@ cat .bashvars</code></pre>
 # Data directories
 export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature
 export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment
-export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc
-export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads
 export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc
 export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads
 export kallisto_output_dir=${output_dir_top}/kallisto
@@ -1699,7 +1695,7 @@ programs_array=(
 [multiqc]=&quot;${multiqc}&quot; \
 [trinity_abund_to_matrix]=&quot;${trinity_abund_to_matrix}&quot; \
 )</code></pre>
-<p>There didn’t seem to be a significant difference in sequence quality following trimming, so for now I’m proceeding with the raw reads (though I’ll likely eventually rerun the kallisto with trimmed)</p>
+<p>I will be running kallisto with trimmed/QCd reads</p>
 </div>
 <div id="align-to-reference-transcriptome-kallisto-pseudoalignment" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Align to reference transcriptome (Kallisto pseudoalignment)</h1>
@@ -1723,21 +1719,28 @@ wget \
 source .bashvars
 
 ls -lh &quot;${transcriptome_fasta_dir}&quot;</code></pre>
-<pre><code>total 1.9G
+<pre><code>total 5.2G
 drwxr-xr-x 3 shedurkin labmembers 4.0K Mar  4 11:05 05-cod-RNAseq-trimming
 -rw-r--r-- 1 shedurkin labmembers  13K Dec 27 15:45 Cod_RNAseq_NGS_Template_File.xlsx
+-rw-r--r-- 1 shedurkin labmembers  253 May 22 11:36 conditions.txt
 -rw-r--r-- 1 shedurkin labmembers 2.1K Mar 20 20:55 DESeq2_Sample_Information.csv
 -rw-r--r-- 1 shedurkin labmembers  38M Oct 25  2023 Gadus_macrocephalus.coding.gene.V1.cds
 -rw-r--r-- 1 shedurkin labmembers 537M Oct 16  2023 GCF_031168955.1_ASM3116895v1_genomic.fna
+-rw-r--r-- 1 shedurkin labmembers  875 May  7 14:05 GCF_031168955.1_ASM3116895v1_genomic.fna.fai
 -rw-r--r-- 1 shedurkin labmembers 351M Oct 16  2023 GCF_031168955.1_ASM3116895v1.gff
 -rw-r--r-- 1 shedurkin labmembers 169M Oct 16  2023 GCF_031168955.1_ASM3116895v1_rna.fna
 -rw-r--r-- 1 shedurkin labmembers 404M Apr 23 14:29 genomic.gtf
+-rw-r--r-- 1 shedurkin labmembers 1.5G May  8 15:44 Gmac_genes_fasta.fasta
+-rw-r--r-- 1 shedurkin labmembers 1.5G May  8 16:14 Gmac_genes_fasta.tab
+-rw-r--r-- 1 shedurkin labmembers 1.3K May 22 11:36 list01.txt
 -rw-r--r-- 1 shedurkin labmembers  47K Oct 25  2023 Pcod Temp Growth experiment 2022-23 DATA.xlsx
+-rw-r--r-- 1 shedurkin labmembers 1.6K May 22 11:36 README.md
 -rw-r--r-- 1 shedurkin labmembers 231K Mar  4 17:41 Sample.QC.report.of_30-943133806_240118025106.pdf
 -rw-r--r-- 1 shedurkin labmembers  12K Mar  4 17:41 Sample.QC.report.of_30-943133806_240118025106.xlsx
 -rw-r--r-- 1 shedurkin labmembers  12K Oct 25  2023 temp-experiment.csv
 -rw-r--r-- 1 shedurkin labmembers 271M Oct 25  2023 uniprot_sprot_r2023_04.fasta
--rw-r--r-- 1 shedurkin labmembers  88M Apr 17 11:54 uniprot_sprot_r2023_04.fasta.gz</code></pre>
+-rw-r--r-- 1 shedurkin labmembers  88M May  8 10:57 uniprot_sprot_r2023_04.fasta.gz
+-rw-r--r-- 1 shedurkin labmembers 415M May  8 10:57 uniprot_table_r2023_01.tab</code></pre>
 </div>
 <div id="verify-transcriptome-fasta-md5-checksum" class="section level2" number="2.2">
 <h2><span class="header-section-number">2.2</span> Verify transcriptome FastA MD5 checksum</h2>
@@ -1768,168 +1771,170 @@ source .bashvars
 ls -lh ${kallisto_output_dir}</code></pre>
 <pre><code>total 1.5G
 -rw-r--r-- 1 shedurkin labmembers 1.5G Mar 18 16:08 G_macrocephalus_kallisto_index.idx
--rw-r--r-- 1 shedurkin labmembers  20M May  3 15:01 kallisto.isoform.counts.matrix
--rw-r--r-- 1 shedurkin labmembers    0 May  3 15:01 kallisto.isoform.TMM.EXPR.matrix
--rw-r--r-- 1 shedurkin labmembers  24M May  3 15:01 kallisto.isoform.TPM.not_cross_norm
--rw-r--r-- 1 shedurkin labmembers  532 May  3 15:01 kallisto.isoform.TPM.not_cross_norm.runTMM.R
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:46 kallisto_quant_1
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:11 kallisto_quant_10
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:03 kallisto_quant_100
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:04 kallisto_quant_100.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:05 kallisto_quant_107
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:05 kallisto_quant_107.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:07 kallisto_quant_108
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:08 kallisto_quant_108.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:09 kallisto_quant_109
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:10 kallisto_quant_109.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:12 kallisto_quant_10.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:22 kallisto_quant_11
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:13 kallisto_quant_110
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:14 kallisto_quant_110.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:15 kallisto_quant_117
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:16 kallisto_quant_117.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:18 kallisto_quant_118
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:18 kallisto_quant_118.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:20 kallisto_quant_119
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:20 kallisto_quant_119.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:22 kallisto_quant_11.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:33 kallisto_quant_12
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:24 kallisto_quant_120
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:24 kallisto_quant_120.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:26 kallisto_quant_121
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:27 kallisto_quant_121.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:28 kallisto_quant_127
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:29 kallisto_quant_127.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:30 kallisto_quant_128
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:30 kallisto_quant_128.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:31 kallisto_quant_129
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:31 kallisto_quant_129.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:33 kallisto_quant_12.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:39 kallisto_quant_13
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:34 kallisto_quant_131
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:34 kallisto_quant_131.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:35 kallisto_quant_137
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:35 kallisto_quant_137.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:36 kallisto_quant_138
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:36 kallisto_quant_138.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:37 kallisto_quant_139
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:37 kallisto_quant_139.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:39 kallisto_quant_13.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:40 kallisto_quant_140
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:40 kallisto_quant_140.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:41 kallisto_quant_147
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:41 kallisto_quant_147.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:43 kallisto_quant_148
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:44 kallisto_quant_148.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:51 kallisto_quant_149
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:52 kallisto_quant_149.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:52 kallisto_quant_150
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 22:53 kallisto_quant_150.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:37 kallisto_quant_18
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:37 kallisto_quant_18.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:41 kallisto_quant_19
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:39 kallisto_quant_19-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:40 kallisto_quant_19-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:41 kallisto_quant_19.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:43 kallisto_quant_19-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:44 kallisto_quant_19-S.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:46 kallisto_quant_1.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:59 kallisto_quant_2
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:50 kallisto_quant_20
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:48 kallisto_quant_20-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:49 kallisto_quant_20-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:50 kallisto_quant_20.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:52 kallisto_quant_20-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:52 kallisto_quant_20-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:54 kallisto_quant_21
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:54 kallisto_quant_21.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:56 kallisto_quant_28
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:56 kallisto_quant_28.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:57 kallisto_quant_29
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:58 kallisto_quant_29.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:00 kallisto_quant_2.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:53 kallisto_quant_3
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:01 kallisto_quant_30
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:02 kallisto_quant_30.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:03 kallisto_quant_31
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:04 kallisto_quant_31.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:47 kallisto_quant_37
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:48 kallisto_quant_37.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:49 kallisto_quant_38
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:49 kallisto_quant_38.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:51 kallisto_quant_39
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:51 kallisto_quant_39.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:53 kallisto_quant_3.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:04 kallisto_quant_4
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:54 kallisto_quant_40
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:55 kallisto_quant_40.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:56 kallisto_quant_41
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:56 kallisto_quant_41.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:58 kallisto_quant_47
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:58 kallisto_quant_47.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:00 kallisto_quant_48
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:00 kallisto_quant_48.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:02 kallisto_quant_49
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:02 kallisto_quant_49.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:04 kallisto_quant_4.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:26 kallisto_quant_5
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:06 kallisto_quant_50
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:06 kallisto_quant_50.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:14 kallisto_quant_57
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:10 kallisto_quant_57-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:11 kallisto_quant_57-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:14 kallisto_quant_57.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:15 kallisto_quant_57-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:15 kallisto_quant_57-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:20 kallisto_quant_58
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:18 kallisto_quant_58-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:18 kallisto_quant_58-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:20 kallisto_quant_58.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:22 kallisto_quant_58-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:22 kallisto_quant_58-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:24 kallisto_quant_59
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:24 kallisto_quant_59.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:26 kallisto_quant_5.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:28 kallisto_quant_60
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:28 kallisto_quant_60.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:30 kallisto_quant_67
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:30 kallisto_quant_67.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:32 kallisto_quant_68
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:32 kallisto_quant_68.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:34 kallisto_quant_69
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:34 kallisto_quant_69.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:35 kallisto_quant_70
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:36 kallisto_quant_70.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:37 kallisto_quant_78
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:37 kallisto_quant_78.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:39 kallisto_quant_79
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:39 kallisto_quant_79.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:40 kallisto_quant_80
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:41 kallisto_quant_80.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:42 kallisto_quant_83
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:43 kallisto_quant_83.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:44 kallisto_quant_88
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:44 kallisto_quant_88.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:46 kallisto_quant_90
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:46 kallisto_quant_90.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:48 kallisto_quant_91
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:48 kallisto_quant_91.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:50 kallisto_quant_97
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:50 kallisto_quant_97.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:52 kallisto_quant_98
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:52 kallisto_quant_98.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:53 kallisto_quant_99
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:54 kallisto_quant_99.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:55 kallisto_quant_RESUB-116
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:55 kallisto_quant_RESUB-116.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:57 kallisto_quant_RESUB-156
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:57 kallisto_quant_RESUB-156.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:58 kallisto_quant_RESUB-36
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:59 kallisto_quant_RESUB-36.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:54 kallisto_quant_RESUB-76
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:54 kallisto_quant_RESUB-76.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:13 kallisto_quant_RESUB-94
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:14 kallisto_quant_RESUB-94.log</code></pre>
+-rw-r--r-- 1 shedurkin labmembers  20M Jun 10 16:12 kallisto.isoform.counts.matrix
+-rw-r--r-- 1 shedurkin labmembers    0 Jun 10 16:12 kallisto.isoform.TMM.EXPR.matrix
+-rw-r--r-- 1 shedurkin labmembers  25M Jun 10 16:12 kallisto.isoform.TPM.not_cross_norm
+-rw-r--r-- 1 shedurkin labmembers  532 Jun 10 16:12 kallisto.isoform.TPM.not_cross_norm.runTMM.R
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:50 kallisto_quant_1
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:43 kallisto_quant_10
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:34 kallisto_quant_100
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:35 kallisto_quant_100.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:36 kallisto_quant_107
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:36 kallisto_quant_107.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:38 kallisto_quant_108
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:39 kallisto_quant_108.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:41 kallisto_quant_109
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:41 kallisto_quant_109.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:43 kallisto_quant_10.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:54 kallisto_quant_11
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:45 kallisto_quant_110
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:45 kallisto_quant_110.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:47 kallisto_quant_117
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:48 kallisto_quant_117.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:49 kallisto_quant_118
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:50 kallisto_quant_118.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:52 kallisto_quant_119
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:52 kallisto_quant_119.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:55 kallisto_quant_11.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:06 kallisto_quant_12
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:56 kallisto_quant_120
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:57 kallisto_quant_120.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:59 kallisto_quant_121
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:59 kallisto_quant_121.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:01 kallisto_quant_127
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:02 kallisto_quant_127.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:03 kallisto_quant_128
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:03 kallisto_quant_128.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:04 kallisto_quant_129
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:04 kallisto_quant_129.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:07 kallisto_quant_12.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:15 kallisto_quant_13
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:08 kallisto_quant_131
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:08 kallisto_quant_131.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:09 kallisto_quant_137
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:09 kallisto_quant_137.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:11 kallisto_quant_138
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:11 kallisto_quant_138.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:12 kallisto_quant_139
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:13 kallisto_quant_139.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:15 kallisto_quant_13.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:16 kallisto_quant_140
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:17 kallisto_quant_140.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:18 kallisto_quant_147
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:18 kallisto_quant_147.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:20 kallisto_quant_148
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:21 kallisto_quant_148.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:29 kallisto_quant_149
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:31 kallisto_quant_149.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:34 kallisto_quant_150
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:34 kallisto_quant_150.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:36 kallisto_quant_18
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:37 kallisto_quant_18.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:39 kallisto_quant_19
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:42 kallisto_quant_19-G
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:43 kallisto_quant_19-G.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:40 kallisto_quant_19.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:46 kallisto_quant_19-S
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:47 kallisto_quant_19-S.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:51 kallisto_quant_1.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:11 kallisto_quant_2
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:53 kallisto_quant_20
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:56 kallisto_quant_20-G
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:57 kallisto_quant_20-G.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:53 kallisto_quant_20.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:59 kallisto_quant_20-S
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:00 kallisto_quant_20-S.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:02 kallisto_quant_21
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:03 kallisto_quant_21.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:05 kallisto_quant_28
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:06 kallisto_quant_28.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:08 kallisto_quant_29
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:09 kallisto_quant_29.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:12 kallisto_quant_2.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:28 kallisto_quant_3
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:14 kallisto_quant_30
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:15 kallisto_quant_30.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:17 kallisto_quant_31
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:18 kallisto_quant_31.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:20 kallisto_quant_37
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:20 kallisto_quant_37.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:22 kallisto_quant_38
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:23 kallisto_quant_38.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:25 kallisto_quant_39
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:26 kallisto_quant_39.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:29 kallisto_quant_3.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:45 kallisto_quant_4
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:31 kallisto_quant_40
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:32 kallisto_quant_40.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:33 kallisto_quant_41
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:34 kallisto_quant_41.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:36 kallisto_quant_47
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:37 kallisto_quant_47.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:39 kallisto_quant_48
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:39 kallisto_quant_48.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:42 kallisto_quant_49
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:43 kallisto_quant_49.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:46 kallisto_quant_4.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:13 kallisto_quant_5
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:48 kallisto_quant_50
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:49 kallisto_quant_50.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:51 kallisto_quant_57
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:55 kallisto_quant_57-G
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:56 kallisto_quant_57-G.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:51 kallisto_quant_57.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:57 kallisto_quant_57-S
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:58 kallisto_quant_57-S.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:00 kallisto_quant_58
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:04 kallisto_quant_58-G
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:06 kallisto_quant_58-G.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:01 kallisto_quant_58.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:07 kallisto_quant_58-S
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:08 kallisto_quant_58-S.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:10 kallisto_quant_59
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:11 kallisto_quant_59.log
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:14 kallisto_quant_5.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:16 kallisto_quant_60
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:17 kallisto_quant_60.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:19 kallisto_quant_67
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:20 kallisto_quant_67.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:22 kallisto_quant_68
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:23 kallisto_quant_68.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:25 kallisto_quant_69
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:26 kallisto_quant_69.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:27 kallisto_quant_70
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:28 kallisto_quant_70.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:30 kallisto_quant_78
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:31 kallisto_quant_78.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:33 kallisto_quant_79
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:33 kallisto_quant_79.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:35 kallisto_quant_80
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:36 kallisto_quant_80.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:38 kallisto_quant_83
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:38 kallisto_quant_83.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:40 kallisto_quant_88
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:41 kallisto_quant_88.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:43 kallisto_quant_90
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:43 kallisto_quant_90.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:46 kallisto_quant_91
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:46 kallisto_quant_91.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:48 kallisto_quant_92
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:48 kallisto_quant_92.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:50 kallisto_quant_97
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:51 kallisto_quant_97.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:53 kallisto_quant_98
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:54 kallisto_quant_98.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:55 kallisto_quant_99
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:56 kallisto_quant_99.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:58 kallisto_quant_RESUB-116
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:58 kallisto_quant_RESUB-116.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:00 kallisto_quant_RESUB-156
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:01 kallisto_quant_RESUB-156.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:02 kallisto_quant_RESUB-36
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:03 kallisto_quant_RESUB-36.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:04 kallisto_quant_RESUB-76
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:05 kallisto_quant_RESUB-76.log
+drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:07 kallisto_quant_RESUB-94
+-rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:07 kallisto_quant_RESUB-94.log</code></pre>
 </div>
 <div id="sample-quantification" class="section level2" number="2.4">
 <h2><span class="header-section-number">2.4</span> Sample Quantification</h2>
@@ -1947,7 +1952,7 @@ run_kallisto_quant() {
     local R2_fastq=${2}
     
     cd ${kallisto_output_dir}
-    sample_num=$(basename &quot;${R1_fastq}&quot; &quot;_R1_001.fastq.gz&quot;)
+    sample_num=$(basename &quot;${R1_fastq}&quot; &quot;.flexbar_trim.R_1.fastq.gz&quot;)
     mkdir kallisto_quant_${sample_num}
 
     ${programs_array[kallisto]} quant \
@@ -1955,26 +1960,26 @@ run_kallisto_quant() {
         --index=&quot;${kallisto_output_dir}/${kallisto_index_name}&quot; \
         --output-dir=&quot;${kallisto_output_dir}/kallisto_quant_${sample_num}&quot; \
         --bootstrap-samples=100 \
-        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq} \
+        ${trimmed_reads_dir}/${R1_fastq} ${trimmed_reads_dir}/${R2_fastq} \
         &amp;&gt; &quot;${kallisto_output_dir}/kallisto_quant_${sample_num}.log&quot;
 }
 
 
 
 # Iteratively apply run_kallisto_quant on each pair of input reads
-for file_r1 in &quot;${raw_reads_dir}&quot;/*_R1_001.fastq.gz; do
+for file_r1 in &quot;${trimmed_reads_dir}&quot;/*.flexbar_trim.R_1.fastq.gz; do
     # Extract the sample name from the file name
-    sample_name=$(basename &quot;${file_r1}&quot; &quot;_R1_001.fastq.gz&quot;)
+    sample_name=$(basename &quot;${file_r1}&quot; &quot;.flexbar_trim.R_1.fastq.gz&quot;)
 
     # Form the file names (function takes input file names, not paths)
-    file_r1_name=&quot;${sample_name}_R1_001.fastq.gz&quot;
-    file_r2_name=&quot;${sample_name}_R2_001.fastq.gz&quot;
+    file_r1_name=&quot;${sample_name}.flexbar_trim.R_1.fastq.gz&quot;
+    file_r2_name=&quot;${sample_name}.flexbar_trim.R_2.fastq.gz&quot;
 
     # Check that the sample hasn&#39;t already been quantified
     if [ ! -d &quot;${kallisto_output_dir}/kallisto_quant_${sample_name}&quot; ]; then
     
         # Check if the corresponding R2 file exists
-        if [ -e &quot;${raw_reads_dir}/${file_r2}&quot; ]; then
+        if [ -e &quot;${trimmed_reads_dir}/${file_r2}&quot; ]; then
             # Run kallisto quant on the file pair
             run_kallisto_quant &quot;${file_r1_name}&quot; &quot;${file_r2_name}&quot; 
 
@@ -1989,18 +1994,18 @@ done</code></pre>
 source .bashvars
 
 # Count number of raw read files
-cd ${raw_reads_dir}
+cd ${trimmed_reads_dir}
 echo &quot;Number of raw reads:&quot;
-ls -1 | wc -l
+ls -1 *.fastq.gz | wc -l
 
 # Count number of kallisto output 
 cd ${kallisto_output_dir}
 echo &quot;Number of output log files&quot;
 find . -type f -name &quot;*.log&quot; | wc -l</code></pre>
 <pre><code>Number of raw reads:
-158
+160
 Number of output log files
-79</code></pre>
+80</code></pre>
 </div>
 <div id="multiqc-on-kallisto-output-logs" class="section level2" number="2.5">
 <h2><span class="header-section-number">2.5</span> MultiQC on Kallisto output logs</h2>
@@ -2077,261 +2082,10 @@ ${programs_array[trinity_abund_to_matrix]} \
 --name_sample_by_basedir ${kallisto_output_dir}/kallisto_quant_*/abundance.tsv
 
 ls -lh ${kallisto_output_dir}</code></pre>
-<pre><code>-reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_100/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_107/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_108/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_109/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_10/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_110/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_117/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_118/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_119/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_11/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_120/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_121/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_127/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_128/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_129/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_12/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_131/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_137/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_138/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_139/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_13/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_140/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_147/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_148/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_149/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_150/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_18/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19-G/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19-S/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_1/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20-G/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20-S/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_21/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_28/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_29/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_2/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_30/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_31/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_37/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_38/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_39/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_3/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_40/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_41/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_47/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_48/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_49/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_4/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_50/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57-G/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57-S/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58-G/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58-S/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_59/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_5/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_60/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_67/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_68/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_69/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_70/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_78/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_79/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_80/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_83/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_88/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_90/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_91/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_97/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_98/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_99/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-116/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-156/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-36/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-76/abundance.tsv
--reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-94/abundance.tsv
-
-
-* Outputting combined matrix.
-
-/home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl --matrix kallisto.isoform.TPM.not_cross_norm &gt; kallisto.isoform.TMM.EXPR.matrixCMD: R --no-save --no-restore --no-site-file --no-init-file -q &lt; kallisto.isoform.TPM.not_cross_norm.runTMM.R 1&gt;&amp;2 
-sh: 1: R: not found
-Error, cmd: R --no-save --no-restore --no-site-file --no-init-file -q &lt; kallisto.isoform.TPM.not_cross_norm.runTMM.R 1&gt;&amp;2  died with ret (32512)  at /home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl line 105.
-Error, CMD: /home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl --matrix kallisto.isoform.TPM.not_cross_norm &gt; kallisto.isoform.TMM.EXPR.matrix died with ret 6400 at /home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl line 385.
-total 1.5G
--rw-r--r-- 1 shedurkin labmembers 1.5G Mar 18 16:08 G_macrocephalus_kallisto_index.idx
--rw-r--r-- 1 shedurkin labmembers  20M May  3 15:02 kallisto.isoform.counts.matrix
--rw-r--r-- 1 shedurkin labmembers    0 May  3 15:02 kallisto.isoform.TMM.EXPR.matrix
--rw-r--r-- 1 shedurkin labmembers  24M May  3 15:02 kallisto.isoform.TPM.not_cross_norm
--rw-r--r-- 1 shedurkin labmembers  532 May  3 15:02 kallisto.isoform.TPM.not_cross_norm.runTMM.R
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:46 kallisto_quant_1
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:11 kallisto_quant_10
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:03 kallisto_quant_100
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:04 kallisto_quant_100.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:05 kallisto_quant_107
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:05 kallisto_quant_107.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:07 kallisto_quant_108
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:08 kallisto_quant_108.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:09 kallisto_quant_109
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:10 kallisto_quant_109.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:12 kallisto_quant_10.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:22 kallisto_quant_11
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:13 kallisto_quant_110
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:14 kallisto_quant_110.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:15 kallisto_quant_117
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:16 kallisto_quant_117.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:18 kallisto_quant_118
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:18 kallisto_quant_118.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:20 kallisto_quant_119
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:20 kallisto_quant_119.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:22 kallisto_quant_11.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:33 kallisto_quant_12
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:24 kallisto_quant_120
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:24 kallisto_quant_120.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:26 kallisto_quant_121
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:27 kallisto_quant_121.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:28 kallisto_quant_127
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:29 kallisto_quant_127.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:30 kallisto_quant_128
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:30 kallisto_quant_128.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:31 kallisto_quant_129
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:31 kallisto_quant_129.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:33 kallisto_quant_12.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:39 kallisto_quant_13
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:34 kallisto_quant_131
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:34 kallisto_quant_131.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:35 kallisto_quant_137
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:35 kallisto_quant_137.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:36 kallisto_quant_138
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:36 kallisto_quant_138.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:37 kallisto_quant_139
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:37 kallisto_quant_139.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:39 kallisto_quant_13.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:40 kallisto_quant_140
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:40 kallisto_quant_140.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:41 kallisto_quant_147
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:41 kallisto_quant_147.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:43 kallisto_quant_148
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:44 kallisto_quant_148.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:51 kallisto_quant_149
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:52 kallisto_quant_149.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:52 kallisto_quant_150
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 22:53 kallisto_quant_150.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:37 kallisto_quant_18
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:37 kallisto_quant_18.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:41 kallisto_quant_19
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:39 kallisto_quant_19-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:40 kallisto_quant_19-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:41 kallisto_quant_19.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:43 kallisto_quant_19-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:44 kallisto_quant_19-S.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:46 kallisto_quant_1.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:59 kallisto_quant_2
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:50 kallisto_quant_20
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:48 kallisto_quant_20-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:49 kallisto_quant_20-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:50 kallisto_quant_20.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:52 kallisto_quant_20-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:52 kallisto_quant_20-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:54 kallisto_quant_21
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:54 kallisto_quant_21.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:56 kallisto_quant_28
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:56 kallisto_quant_28.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:57 kallisto_quant_29
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:58 kallisto_quant_29.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:00 kallisto_quant_2.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:53 kallisto_quant_3
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:01 kallisto_quant_30
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:02 kallisto_quant_30.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:03 kallisto_quant_31
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:04 kallisto_quant_31.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:47 kallisto_quant_37
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:48 kallisto_quant_37.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:49 kallisto_quant_38
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:49 kallisto_quant_38.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:51 kallisto_quant_39
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:51 kallisto_quant_39.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:53 kallisto_quant_3.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:04 kallisto_quant_4
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:54 kallisto_quant_40
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:55 kallisto_quant_40.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:56 kallisto_quant_41
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:56 kallisto_quant_41.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:58 kallisto_quant_47
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:58 kallisto_quant_47.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:00 kallisto_quant_48
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:00 kallisto_quant_48.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:02 kallisto_quant_49
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:02 kallisto_quant_49.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:04 kallisto_quant_4.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:26 kallisto_quant_5
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:06 kallisto_quant_50
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:06 kallisto_quant_50.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:14 kallisto_quant_57
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:10 kallisto_quant_57-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:11 kallisto_quant_57-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:14 kallisto_quant_57.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:15 kallisto_quant_57-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:15 kallisto_quant_57-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:20 kallisto_quant_58
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:18 kallisto_quant_58-G
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:18 kallisto_quant_58-G.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:20 kallisto_quant_58.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:22 kallisto_quant_58-S
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:22 kallisto_quant_58-S.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:24 kallisto_quant_59
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:24 kallisto_quant_59.log
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:26 kallisto_quant_5.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:28 kallisto_quant_60
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:28 kallisto_quant_60.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:30 kallisto_quant_67
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:30 kallisto_quant_67.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:32 kallisto_quant_68
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:32 kallisto_quant_68.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:34 kallisto_quant_69
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:34 kallisto_quant_69.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:35 kallisto_quant_70
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:36 kallisto_quant_70.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:37 kallisto_quant_78
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:37 kallisto_quant_78.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:39 kallisto_quant_79
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:39 kallisto_quant_79.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:40 kallisto_quant_80
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:41 kallisto_quant_80.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:42 kallisto_quant_83
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:43 kallisto_quant_83.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:44 kallisto_quant_88
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:44 kallisto_quant_88.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:46 kallisto_quant_90
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:46 kallisto_quant_90.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:48 kallisto_quant_91
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:48 kallisto_quant_91.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:50 kallisto_quant_97
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:50 kallisto_quant_97.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:52 kallisto_quant_98
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:52 kallisto_quant_98.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:53 kallisto_quant_99
--rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:54 kallisto_quant_99.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:55 kallisto_quant_RESUB-116
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:55 kallisto_quant_RESUB-116.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:57 kallisto_quant_RESUB-156
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:57 kallisto_quant_RESUB-156.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:58 kallisto_quant_RESUB-36
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:59 kallisto_quant_RESUB-36.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:54 kallisto_quant_RESUB-76
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:54 kallisto_quant_RESUB-76.log
-drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:13 kallisto_quant_RESUB-94
--rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:14 kallisto_quant_RESUB-94.log</code></pre>
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiMDYtY29kLVJOQXNlcS1hbGlnbm1lbnQiCmF1dGhvcjogIkthdGhsZWVuIER1cmtpbiIKZGF0ZTogIjIwMjQtMDMtMTkiCmFsd2F5c19hbGxvd19odG1sOiB0cnVlCm91dHB1dDogCiAgYm9va2Rvd246Omh0bWxfZG9jdW1lbnQyOgogICAgdGhlbWU6IGNvc21vCiAgICB0b2M6IHRydWUKICAgIHRvY19mbG9hdDogdHJ1ZQogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgICBjb2RlX2ZvbGRpbmc6IHNob3cKICAgIGNvZGVfZG93bmxvYWQ6IHRydWUKICBnaXRodWJfZG9jdW1lbnQ6CiAgICB0b2M6IHRydWUKICAgIHRvY19kZXB0aDogMwogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgICBodG1sX3ByZXZpZXc6IHRydWUgCi0tLQoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmxpYnJhcnkoa25pdHIpCmtuaXRyOjpvcHRzX2NodW5rJHNldCgKICBlY2hvID0gVFJVRSwgICAgICAgICAjIERpc3BsYXkgY29kZSBjaHVua3MKICBldmFsID0gRkFMU0UsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKCmBgYHtyIGxvYWQtcGFja2FnZXMsIGV2YWw9VFJVRX0KbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkoZHBseXIpCmxpYnJhcnkobWFncml0dHIpCmxpYnJhcnkoa25pdHIpCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShwbG90bHkpCmBgYApDb2RlIGZvciBhbGlnbmluZyBSTkFzZXEgZGF0YSB0byByZWZlcmVuY2UgdHJhbnNjcmlwdG9tZS9nZW5vbWUsIHRvIGJlIHVzZWQgb24gW1BhY2lmaWMgY29kIFJOQXNlcSBkYXRhXShodHRwczovL3NoZWR1cmtpbi5naXRodWIuaW8vUm9iZXJ0cy1MYWJOb3RlYm9vay9wb3N0cy9wcm9qZWN0cy9wYWNpZmljX2NvZC8yMDIzXzEyXzEzX3BhY2lmaWNfY29kLmh0bWwpLiAKCi0gUmF3IHJlYWRzIGZvdW5kIFtoZXJlXShodHRwczovL293bC5maXNoLndhc2hpbmd0b24uZWR1L25pZ2h0aW5nYWxlcy9HX21hY3JvY2VwaGFsdXMvMzAtOTQzMTMzODA2LykKLSBUcmFuc2NyaXB0b21lIGRvd25sb2FkZWQgZnJvbSBbTkNCSV0oaHR0cHM6Ly93d3cubmNiaS5ubG0ubmloLmdvdi9kYXRhc2V0cy9nZW5vbWUvR0NGXzAzMTE2ODk1NS4xLyksIHN0b3JlZCBbaGVyZV0oaHR0cHM6Ly9vd2wuZmlzaC53YXNoaW5ndG9uLmVkdS9oYWxmc2hlbGwvZ2Vub21pYy1kYXRhYmFuay9HQ0ZfMDMxMTY4OTU1LjFfQVNNMzExNjg5NXYxX3JuYS5mbmEpIGFzIGEgcGFydCBvZiBsYWIgW2dlbm9taWMgcmVzb3VyY2VzXShodHRwczovL3JvYmVydHNsYWIuZ2l0aHViLmlvL3Jlc291cmNlcy9HZW5vbWljLVJlc291cmNlcy8jZ2FkdXMtbWFjcm9jZXBoYWx1cy1wYWNpZmljLWNvZCkKCk5vdGU6IEthbGxpc3RvIHBzZXVkb2FsaWdubWVudCBkb2Vzbid0IG5lY2Vzc2FyaWx5IHJlcXVpcmUgaW5wdXQgcmVhZHMgdG8gYmUgdHJpbW1lZCwgcHJvdmlkZWQgdGhleSBhcmUgb2Ygc3VmZmljaWVudCBxdWFsaXR5LgoKIyBDcmVhdGUgYSBCYXNoIHZhcmlhYmxlcyBmaWxlCgpUaGlzIGFsbG93cyB1c2FnZSBvZiBCYXNoIHZhcmlhYmxlcyAoZS5nLiBwYXRocyB0byBjb21tb24gZGlyZWN0b3JpZXMpIGFjcm9zcyBSIE1hcmtkb3duIGNodW5rcy4KYGBge3Igc2F2ZS1iYXNoLXZhcmlhYmxlcy10by1ydmFycy1maWxlLCBlbmdpbmU9J2Jhc2gnLCBldmFsPVRSVUV9CnsKZWNobyAiIyMjIyBBc3NpZ24gVmFyaWFibGVzICMjIyMiCmVjaG8gIiIKCmVjaG8gIiMgRGF0YSBkaXJlY3RvcmllcyIKZWNobyAnZXhwb3J0IGNvZF9kaXI9L2hvbWUvc2hhcmVkLzhUQl9IRERfMDIvc2hlZHVya2luL3Byb2plY3QtY29kLXRlbXBlcmF0dXJlJwplY2hvICdleHBvcnQgb3V0cHV0X2Rpcl90b3A9JHtjb2RfZGlyfS9vdXRwdXQvMDYtY29kLVJOQXNlcS1hbGlnbm1lbnQnCmVjaG8gJ2V4cG9ydCByYXdfZmFzdHFjX2Rpcj0ke2NvZF9kaXJ9L291dHB1dC8wNS1jb2QtUk5Bc2VxLXRyaW1taW5nL3Jhdy1mYXN0cWMnCmVjaG8gJ2V4cG9ydCByYXdfcmVhZHNfZGlyPSR7Y29kX2Rpcn0vZGF0YS8wNS1jb2QtUk5Bc2VxLXRyaW1taW5nL3Jhdy1yZWFkcycKZWNobyAnZXhwb3J0IHRyaW1tZWRfZmFzdHFjX2Rpcj0ke2NvZF9kaXJ9L291dHB1dC8wNS1jb2QtUk5Bc2VxLXRyaW1taW5nL3RyaW1tZWQtZmFzdHFjJwplY2hvICdleHBvcnQgdHJpbW1lZF9yZWFkc19kaXI9JHtjb2RfZGlyfS9vdXRwdXQvMDUtY29kLVJOQXNlcS10cmltbWluZy90cmltbWVkLXJlYWRzJwplY2hvICdleHBvcnQga2FsbGlzdG9fb3V0cHV0X2Rpcj0ke291dHB1dF9kaXJfdG9wfS9rYWxsaXN0bycKZWNobyAiIgoKCmVjaG8gIiMgSW5wdXQvT3V0cHV0IGZpbGVzIgplY2hvICdleHBvcnQgdHJhbnNjcmlwdG9tZV9mYXN0YV9kaXI9JHtjb2RfZGlyfS9kYXRhJwplY2hvICdleHBvcnQgdHJhbnNjcmlwdG9tZV9mYXN0YV9uYW1lPSJHQ0ZfMDMxMTY4OTU1LjFfQVNNMzExNjg5NXYxX3JuYSInCmVjaG8gJ2V4cG9ydCB0cmFuc2NyaXB0b21lX2Zhc3RhPSIke3RyYW5zY3JpcHRvbWVfZmFzdGFfZGlyfS8ke3RyYW5zY3JpcHRvbWVfZmFzdGFfbmFtZX0iJwplY2hvICdleHBvcnQga2FsbGlzdG9faW5kZXhfbmFtZT0iR19tYWNyb2NlcGhhbHVzX2thbGxpc3RvX2luZGV4LmlkeCInCgoKZWNobyAiIyBFeHRlcm5hbCBkYXRhIFVSTHMgYW5kIGNoZWNrc3VtcyIKZWNobyAnZXhwb3J0IHRyYW5zY3JpcHRvbWVfZmFzdGFfdXJsPSJodHRwczovL293bC5maXNoLndhc2hpbmd0b24uZWR1L2hhbGZzaGVsbC9nZW5vbWljLWRhdGFiYW5rL0dDRl8wMzExNjg5NTUuMV9BU00zMTE2ODk1djFfcm5hLmZuYSInCmVjaG8gJ2V4cG9ydCB0cmFuc2NyaXB0b21lX2NoZWNrc3VtPSIyYTZjN2M5ODk4MjcyN2U2ODhmMDMzYTliMjM2NzI1YiInCmVjaG8gIiIKCgplY2hvICIjIFBhdGhzIHRvIHByb2dyYW1zIgplY2hvICdleHBvcnQga2FsbGlzdG89L2hvbWUvc2hhcmVkL2thbGxpc3RvL2thbGxpc3RvJwplY2hvICdleHBvcnQgbXVsdGlxYz0vaG9tZS9zYW0vcHJvZ3JhbXMvbWFtYmFmb3JnZS9iaW4vbXVsdGlxYycKZWNobyAnZXhwb3J0IHRyaW5pdHlfYWJ1bmRfdG9fbWF0cml4PS9ob21lL3NoYXJlZC90cmluaXR5cm5hc2VxLXYyLjEyLjAvdXRpbC9hYnVuZGFuY2VfZXN0aW1hdGVzX3RvX21hdHJpeC5wbCcKZWNobyAiIgoKCmVjaG8gIiMgU2V0IG51bWJlciBvZiBDUFVzIHRvIHVzZSIKZWNobyAnZXhwb3J0IHRocmVhZHM9MjAnCmVjaG8gIiIKCgplY2hvICIjIFByb2dyYW1zIGFzc29jaWF0aXZlIGFycmF5IgplY2hvICJkZWNsYXJlIC1BIHByb2dyYW1zX2FycmF5IgplY2hvICJwcm9ncmFtc19hcnJheT0oIgplY2hvICdba2FsbGlzdG9dPSIke2thbGxpc3RvfSIgXCcKZWNobyAnW211bHRpcWNdPSIke211bHRpcWN9IiBcJwplY2hvICdbdHJpbml0eV9hYnVuZF90b19tYXRyaXhdPSIke3RyaW5pdHlfYWJ1bmRfdG9fbWF0cml4fSIgXCcKZWNobyAiKSIKfSA+IC5iYXNodmFycwoKY2F0IC5iYXNodmFycwpgYGAKClRoZXJlIGRpZG4ndCBzZWVtIHRvIGJlIGEgc2lnbmlmaWNhbnQgZGlmZmVyZW5jZSBpbiBzZXF1ZW5jZSBxdWFsaXR5IGZvbGxvd2luZyB0cmltbWluZywgc28gZm9yIG5vdyBJJ20gcHJvY2VlZGluZyB3aXRoIHRoZSByYXcgcmVhZHMgKHRob3VnaCBJJ2xsIGxpa2VseSBldmVudHVhbGx5IHJlcnVuIHRoZSBrYWxsaXN0byB3aXRoIHRyaW1tZWQpCgojIEFsaWduIHRvIHJlZmVyZW5jZSB0cmFuc2NyaXB0b21lIChLYWxsaXN0byBwc2V1ZG9hbGlnbm1lbnQpCgoKIyMgUmV0cmlldmluZyB0aGUgcmVmZXJlbmNlIHRyYW5zY3JpcHRvbWUKCmBgYHtyIGRvd25sb2FkLXRyYW5zY3JpcHRvbWUtZmFzdGEsIGVuZ2luZT0nYmFzaCcsIGV2YWw9RkFMU0V9CiMgTG9hZCBiYXNoIHZhcmlhYmxlcyBpbnRvIG1lbW9yeQpzb3VyY2UgLmJhc2h2YXJzCgp3Z2V0IFwKLS1kaXJlY3RvcnktcHJlZml4ICR7dHJhbnNjcmlwdG9tZV9mYXN0YV9kaXJ9IFwKLS1yZWN1cnNpdmUgXAotLW5vLWNoZWNrLWNlcnRpZmljYXRlIFwKLS1jb250aW51ZSBcCi0tbm8taG9zdC1kaXJlY3RvcmllcyBcCi0tbm8tZGlyZWN0b3JpZXMgXAotLW5vLXBhcmVudCBcCi0tcXVpZXQgXAotLWV4ZWN1dGUgcm9ib3RzPW9mZiBcCi0tYWNjZXB0ICIke3RyYW5zY3JpcHRvbWVfZmFzdGFfbmFtZX0uZm5hIiAke3RyYW5zY3JpcHRvbWVfZmFzdGFfdXJsfQpgYGAKCmBgYHtyIGNoZWNrLXRyYW5zY3JpcHRvbWUtZGlyLCBlbmdpbmU9J2Jhc2gnLCBldmFsPVRSVUV9CiMgTG9hZCBiYXNoIHZhcmlhYmxlcyBpbnRvIG1lbW9yeQpzb3VyY2UgLmJhc2h2YXJzCgpscyAtbGggIiR7dHJhbnNjcmlwdG9tZV9mYXN0YV9kaXJ9IgpgYGAKCgojIyBWZXJpZnkgdHJhbnNjcmlwdG9tZSBGYXN0QSBNRDUgY2hlY2tzdW0KCmBgYHtyIHZlcmlmeS10cmFuc2NyaXB0b21lLWZhc3RhLWNoZWNrc3VtLCBlbmdpbmU9J2Jhc2gnLCBldmFsPVRSVUV9CiMgTG9hZCBiYXNoIHZhcmlhYmxlcyBpbnRvIG1lbW9yeQpzb3VyY2UgLmJhc2h2YXJzCgpjZCAiJHt0cmFuc2NyaXB0b21lX2Zhc3RhX2Rpcn0iCgojIENoZWNrc3VtcyBmaWxlIGNvbnRhaW5zIG90aGVyIGZpbGVzLCBzbyB0aGlzIGp1c3QgbG9va3MgZm9yIHRoZSBzUk5Bc2VxIGZpbGVzLgptZDVzdW0gLS1jaGVjayA8PDwgIiR7dHJhbnNjcmlwdG9tZV9jaGVja3N1bX0gICR7dHJhbnNjcmlwdG9tZV9mYXN0YV9uYW1lfS5mbmEiCgpgYGAKCgojIyBCdWlsZGluZyBJbmRleAoKYGBge3Iga2FsbGlzdG8taW5kZXhpbmcsIGVuZ2luZT0nYmFzaCcsIGV2YWw9RkFMU0V9CiMgTG9hZCBiYXNoIHZhcmlhYmxlcyBpbnRvIG1lbW9yeQpzb3VyY2UgLmJhc2h2YXJzCgpjZCAiJHtrYWxsaXN0b19vdXRwdXRfZGlyfSIKCiR7cHJvZ3JhbXNfYXJyYXlba2FsbGlzdG9dfSBpbmRleCBcCi0tdGhyZWFkcz0ke3RocmVhZHN9IFwKLS1pbmRleD0iJHtrYWxsaXN0b19pbmRleF9uYW1lfSIgXAoiJHt0cmFuc2NyaXB0b21lX2Zhc3RhfS5mbmEiCmBgYAoKYGBge3IgY2hlY2staW5kZXgtZmlsZSwgZW5naW5lPSdiYXNoJywgZXZhbD1UUlVFfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKbHMgLWxoICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0KYGBgCgoKIyMgU2FtcGxlIFF1YW50aWZpY2F0aW9uCgpLYWxsaXN0byBjYW4gcnVuIHF1YW50aWZpY2F0aW9uIG9uIGVpdGhlciBzaW5nbGUtIG9yIHBhaXJlZC1lbmQgcmVhZHMuIFRoZSBkZWZhdWx0IG9wdGlvbiBpcyBwYWlyZWQtZW5kLCB3aGljaCByZXF1aXJlcyB0aGUgaW5wdXQgb2YgYW4gZXZlbiBudW1iZXIgb2YgcGFpcmVkIGZhc3RxIGZpbGVzIChlLmcuLCBwYWlyQV9SMS5mYXN0cSwgcGFpckFfUjIuZmFzdHEpLiAKVG8gdXNlIHNpbmdsZS1lbmQgbW9kZSwgaW5jbHVkZSB0aGUgLS1zaW5nbGUgZmxhZywgYXMgd2VsbCBhcyAtbCAoLS1mcmFnbWVudC1sZW5ndGg9RE9VQkxFLCBlc3RpbWF0ZWQgYXZnLiBmcmFnbWVudCBsZW5ndGgpIGFuZCAtcyAoLS1zZD1ET1VCTEUsIGVzdGltYXRlcyBzdGFuZC4gZGV2LiBvZiBmcmFnbWVudCBsZW5ndGgpLCBhbmQgYSBudW1iZXIgb2YgZmFzdHEgZmlsZXMuCkFnYWluLCBnemlwcGVkIGZpbGVzIGFyZSBhY2NlcHRhYmxlLgoKS2FsbGlzdG8gcXVhbnQgaXMgcmF0aGVyIGZpbmlja3kgYWJvdXQgaG93IHlvdSBpbnB1dCBzZXRzIG9mIHBhaXJlZCByZWFkcywgYW5kIHlvdSBjYW4gb25seSBpbnB1dCBhIHNpbmdsZSBwYWlyIGF0IGEgdGltZS4gVG8gY2lyY3VtdmVudCwgSSdsbCBjcmVhdGUgYSBxdWFudGlmaWNhdGlvbiBmdW5jdGlvbiBhbmQgYXBwbHkgaXQgaXRlcmF0aXZlbHkgdG8gZWFjaCBwYWlyIG9mIHJlYWRzIHVzaW5nIGEgbG9vcC4KCmBgYHtyIGthbGxpc3RvLXF1YW50aWZpY2F0aW9uLCBlbmdpbmU9J2Jhc2gnLCBldmFsPUZBTFNFfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKIyBGdW5jdGlvbiB0byBydW4ga2FsbGlzdG8gcXVhbnQuIFRha2VzIHR3byAocGFpcmVkKSByZWFkcyBhcyBpbnB1dCwgb3V0cHV0cyB0byBzYW1wbGUtYXNzb2NpYXRlZCBkaXJlY3RvcnkKcnVuX2thbGxpc3RvX3F1YW50KCkgewogICAgc291cmNlIC5iYXNodmFycyAgIyBTb3VyY2UgLmJhc2h2YXJzIGluc2lkZSB0aGUgZnVuY3Rpb24gdG8gbWFrZSBpdHMgdmFyaWFibGVzIGFjY2Vzc2libGUKICAgIGxvY2FsIFIxX2Zhc3RxPSR7MX0KICAgIGxvY2FsIFIyX2Zhc3RxPSR7Mn0KICAgIAogICAgY2QgJHtrYWxsaXN0b19vdXRwdXRfZGlyfQogICAgc2FtcGxlX251bT0kKGJhc2VuYW1lICIke1IxX2Zhc3RxfSIgIl9SMV8wMDEuZmFzdHEuZ3oiKQogICAgbWtkaXIga2FsbGlzdG9fcXVhbnRfJHtzYW1wbGVfbnVtfQoKICAgICR7cHJvZ3JhbXNfYXJyYXlba2FsbGlzdG9dfSBxdWFudCBcCiAgICAgICAgLS10aHJlYWRzPSR7dGhyZWFkc30gXAogICAgICAgIC0taW5kZXg9IiR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0vJHtrYWxsaXN0b19pbmRleF9uYW1lfSIgXAogICAgICAgIC0tb3V0cHV0LWRpcj0iJHtrYWxsaXN0b19vdXRwdXRfZGlyfS9rYWxsaXN0b19xdWFudF8ke3NhbXBsZV9udW19IiBcCiAgICAgICAgLS1ib290c3RyYXAtc2FtcGxlcz0xMDAgXAogICAgICAgICR7cmF3X3JlYWRzX2Rpcn0vJHtSMV9mYXN0cX0gJHtyYXdfcmVhZHNfZGlyfS8ke1IyX2Zhc3RxfSBcCiAgICAgICAgJj4gIiR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0va2FsbGlzdG9fcXVhbnRfJHtzYW1wbGVfbnVtfS5sb2ciCn0KCgoKIyBJdGVyYXRpdmVseSBhcHBseSBydW5fa2FsbGlzdG9fcXVhbnQgb24gZWFjaCBwYWlyIG9mIGlucHV0IHJlYWRzCmZvciBmaWxlX3IxIGluICIke3Jhd19yZWFkc19kaXJ9Ii8qX1IxXzAwMS5mYXN0cS5nejsgZG8KICAgICMgRXh0cmFjdCB0aGUgc2FtcGxlIG5hbWUgZnJvbSB0aGUgZmlsZSBuYW1lCiAgICBzYW1wbGVfbmFtZT0kKGJhc2VuYW1lICIke2ZpbGVfcjF9IiAiX1IxXzAwMS5mYXN0cS5neiIpCgogICAgIyBGb3JtIHRoZSBmaWxlIG5hbWVzIChmdW5jdGlvbiB0YWtlcyBpbnB1dCBmaWxlIG5hbWVzLCBub3QgcGF0aHMpCiAgICBmaWxlX3IxX25hbWU9IiR7c2FtcGxlX25hbWV9X1IxXzAwMS5mYXN0cS5neiIKICAgIGZpbGVfcjJfbmFtZT0iJHtzYW1wbGVfbmFtZX1fUjJfMDAxLmZhc3RxLmd6IgoKICAgICMgQ2hlY2sgdGhhdCB0aGUgc2FtcGxlIGhhc24ndCBhbHJlYWR5IGJlZW4gcXVhbnRpZmllZAogICAgaWYgWyAhIC1kICIke2thbGxpc3RvX291dHB1dF9kaXJ9L2thbGxpc3RvX3F1YW50XyR7c2FtcGxlX25hbWV9IiBdOyB0aGVuCiAgICAKICAgICAgICAjIENoZWNrIGlmIHRoZSBjb3JyZXNwb25kaW5nIFIyIGZpbGUgZXhpc3RzCiAgICAgICAgaWYgWyAtZSAiJHtyYXdfcmVhZHNfZGlyfS8ke2ZpbGVfcjJ9IiBdOyB0aGVuCiAgICAgICAgICAgICMgUnVuIGthbGxpc3RvIHF1YW50IG9uIHRoZSBmaWxlIHBhaXIKICAgICAgICAgICAgcnVuX2thbGxpc3RvX3F1YW50ICIke2ZpbGVfcjFfbmFtZX0iICIke2ZpbGVfcjJfbmFtZX0iIAoKICAgICAgICAgICAgZWNobyAiUHJvY2Vzc2VkIHNhbXBsZTogJHtzYW1wbGVfbmFtZX0iCiAgICAgICAgZmkKICAgIGVsc2UKICAgICAgICBlY2hvICJTYW1wbGUgYWxyZWFkeSBwcm9jZXNzZWQ6ICR7c2FtcGxlX25hbWV9IgogICAgZmkKZG9uZQpgYGAKCkNoZWNrIHRoYXQgd2UgaGF2ZSB0aGUgYXBwcm9wcmlhdGUgbnVtYmVyIG9mIG91dHB1dCBmb2xkZXJzLiBXZSBzaG91bGQgaGF2ZSBvbmUgbG9nIGZpbGUgZm9yIGVhY2ggcGFpciBvZiByZWFkcwpgYGB7ciBjaGVjay1rYWxsaXN0by1vdXRwdXQsIGVuZ2luZT0nYmFzaCcsIGV2YWw9VFJVRX0KIyBMb2FkIGJhc2ggdmFyaWFibGVzIGludG8gbWVtb3J5CnNvdXJjZSAuYmFzaHZhcnMKCiMgQ291bnQgbnVtYmVyIG9mIHJhdyByZWFkIGZpbGVzCmNkICR7cmF3X3JlYWRzX2Rpcn0KZWNobyAiTnVtYmVyIG9mIHJhdyByZWFkczoiCmxzIC0xIHwgd2MgLWwKCiMgQ291bnQgbnVtYmVyIG9mIGthbGxpc3RvIG91dHB1dCAKY2QgJHtrYWxsaXN0b19vdXRwdXRfZGlyfQplY2hvICJOdW1iZXIgb2Ygb3V0cHV0IGxvZyBmaWxlcyIKZmluZCAuIC10eXBlIGYgLW5hbWUgIioubG9nIiB8IHdjIC1sCmBgYAoKIyMgTXVsdGlRQyBvbiBLYWxsaXN0byBvdXRwdXQgbG9ncwoKYGBge3IgcmF3LWZhc3RxYy1tdWx0aXFjLCBlbmdpbmU9J2Jhc2gnfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKIyMjIyMjIyMjIyMjIFJVTiBNVUxUSVFDICMjIyMjIyMjIyMjIwplY2hvICJCZWdpbm5pbmcgTXVsdGlRQyBvbiByYXcgRmFzdFFDLi4uIgplY2hvICIiCgoke3Byb2dyYW1zX2FycmF5W211bHRpcWNdfSAke2thbGxpc3RvX291dHB1dF9kaXJ9LyoubG9nIC1vICR7b3V0cHV0X2Rpcl90b3B9CgplY2hvICIiCmVjaG8gIk11bHRpUUMgb24gcmF3IEZhc3RRcyBjb21wbGV0ZS4iCmVjaG8gIiIKCiMjIyMjIyMjIyMjIyBFTkQgTVVMVElRQyAjIyMjIyMjIyMjIyMKCmVjaG8gIlJlbW92aW5nIEZhc3RRQyB6aXAgZmlsZXMuIgplY2hvICIiCnJtICR7b3V0cHV0X2Rpcl90b3B9LyouemlwCmVjaG8gIkZhc3RRQyB6aXAgZmlsZXMgcmVtb3ZlZC4iCmVjaG8gIiIKCiMgVmlldyBkaXJlY3RvcnkgY29udGVudHMKbHMgLWxoICR7b3V0cHV0X2Rpcl90b3B9CgpgYGAKCgpJIGFsc28gd2FudCB0byBpbmNsdWRlIHRoZSB0cmVhdG1lbnQvdGFuayBpbmZvIHdoZW4gcGxvdHRpbmcgYWxpZ25tZW50IHJhdGVzIGFjcm9zcyBzYW1wbGVzCmBgYHtyIHBsb3QtYWxpZ25tZW50LXJhdGVzLCBldmFsPVRSVUV9CiMgTG9hZCBtdWx0aXFjIHN0YXRzCmthbGxpc3RvX211bHRpcWMgPC0gcmVhZC5jc3YoIi4uL291dHB1dC8wNi1jb2QtUk5Bc2VxLWFsaWdubWVudC9tdWx0aXFjX2RhdGEvbXVsdGlxY19rYWxsaXN0by50eHQiLCBzZXAgPSAnXHQnKQojIEFkanVzdCBzYW1wbGUgbmFtZSBmb3JtYXR0aW5nICh0byBwcmVwIGZvciBqb2luKQprYWxsaXN0b19tdWx0aXFjJFNhbXBsZSA8LSBnc3ViKCJfUjFfMDAxIiwgIiIsIGthbGxpc3RvX211bHRpcWMkU2FtcGxlKSAKa2FsbGlzdG9fbXVsdGlxYyRTYW1wbGUgPC0gcGFzdGUoInNhbXBsZV8iLCBrYWxsaXN0b19tdWx0aXFjJFNhbXBsZSwgc2VwID0gIiIpCiMgTG9hZCBleHBlcmltZW50YWwgZGF0YQpjb2Rfc2FtcGxlX2luZm9fT0cgPC0gcmVhZC5jc3YoIi4uL2RhdGEvREVTZXEyX1NhbXBsZV9JbmZvcm1hdGlvbi5jc3YiKQoKa2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50IDwtIGxlZnRfam9pbihjb2Rfc2FtcGxlX2luZm9fT0csIGthbGxpc3RvX211bHRpcWMsIGJ5ID0gYygic2FtcGxlX25hbWUiID0gIlNhbXBsZSIpKSAlPiUgCiAgbmEub21pdCgpCmthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudCA8LSBrYWxsaXN0b19tdWx0aXFjX3BsdXN0cmVhdG1lbnRbb3JkZXIoa2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50JHNhbXBsZV9udW1iZXIpLF0KCmdncGxvdChrYWxsaXN0b19tdWx0aXFjX3BsdXN0cmVhdG1lbnQsCiAgICAgICBhZXMoeD1yZW9yZGVyKHNhbXBsZV9uYW1lLCBzYW1wbGVfbnVtYmVyKSwgeT1wZXJjZW50X2FsaWduZWQsIGZpbGw9YXMuZmFjdG9yKHRlbXBfdHJlYXRtZW50KSkpICsKICBnZW9tX2JhcihzdGF0PSJpZGVudGl0eSIpICsKICB0aGVtZShheGlzLnRleHQueCA9IGVsZW1lbnRfdGV4dChhbmdsZSA9IDYwLCB2anVzdCA9IDEsIGhqdXN0PTEsIHNpemU9NykpCgpnZ3Bsb3Qoa2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50LAogICAgICAgYWVzKHg9cmVvcmRlcihzYW1wbGVfbmFtZSwgc2FtcGxlX251bWJlciksIHk9dG90YWxfcmVhZHMsIGZpbGw9YXMuZmFjdG9yKHRlbXBfdHJlYXRtZW50KSkpICsKICBnZW9tX2JhcihzdGF0PSJpZGVudGl0eSIpICsKICB0aGVtZShheGlzLnRleHQueCA9IGVsZW1lbnRfdGV4dChhbmdsZSA9IDYwLCB2anVzdCA9IDEsIGhqdXN0PTEsIHNpemU9NykpCgojIHNhbXBsZTE0OSBpcyBraW5kIG9mIHRocm93aW5nIG9mZiB0aGUgdmlzdWFsaXphdGlvbiwgc28gbGV0cyByZW1vdmUgYW5kIHJlZG8KZ2dwbG90KGthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudFtrYWxsaXN0b19tdWx0aXFjX3BsdXN0cmVhdG1lbnQkc2FtcGxlX25hbWUgIT0gInNhbXBsZV8xNDkiLCBdLAogICAgICAgYWVzKHg9cmVvcmRlcihzYW1wbGVfbmFtZSwgc2FtcGxlX251bWJlciksIHk9dG90YWxfcmVhZHMsIGZpbGw9YXMuZmFjdG9yKHRlbXBfdHJlYXRtZW50KSkpICsKICBnZW9tX2JhcihzdGF0PSJpZGVudGl0eSIpICsKICB0aGVtZShheGlzLnRleHQueCA9IGVsZW1lbnRfdGV4dChhbmdsZSA9IDYwLCB2anVzdCA9IDEsIGhqdXN0PTEsIHNpemU9NykpCgpnZ3Bsb3Qoa2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50LAogICAgICAgYWVzKHg9cmVvcmRlcihzYW1wbGVfbmFtZSwgc2FtcGxlX251bWJlciksIHk9ZnJhZ21lbnRfbGVuZ3RoLCBmaWxsPWFzLmZhY3Rvcih0ZW1wX3RyZWF0bWVudCkpKSArCiAgZ2VvbV9iYXIoc3RhdD0iaWRlbnRpdHkiKSArCiAgdGhlbWUoYXhpcy50ZXh0LnggPSBlbGVtZW50X3RleHQoYW5nbGUgPSA2MCwgdmp1c3QgPSAxLCBoanVzdD0xLCBzaXplPTcpKQoKYGBgCgojIyBUcmluaXR5IE1hdHJpeCB3aXRoIEthbGxpc3RvIE91dHB1dAoKYGBge3Iga2FsbGlzdG8tdHJpbml0eS1tYXRyaXgsIGVuZ2luZT0nYmFzaCcsIGV2YWw9VFJVRX0KIyBMb2FkIGJhc2ggdmFyaWFibGVzIGludG8gbWVtb3J5CnNvdXJjZSAuYmFzaHZhcnMKCmNkICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0KCiR7cHJvZ3JhbXNfYXJyYXlbdHJpbml0eV9hYnVuZF90b19tYXRyaXhdfSBcCi0tZXN0X21ldGhvZCAna2FsbGlzdG8nIFwKLS1nZW5lX3RyYW5zX21hcCAnbm9uZScgXAotLW91dF9wcmVmaXggJ2thbGxpc3RvJyBcCi0tbmFtZV9zYW1wbGVfYnlfYmFzZWRpciAke2thbGxpc3RvX291dHB1dF9kaXJ9L2thbGxpc3RvX3F1YW50XyovYWJ1bmRhbmNlLnRzdgoKbHMgLWxoICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0KYGBgCgo=</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiMDYtY29kLVJOQXNlcS1hbGlnbm1lbnQiCmF1dGhvcjogIkthdGhsZWVuIER1cmtpbiIKZGF0ZTogIjIwMjQtMDMtMTkiCmFsd2F5c19hbGxvd19odG1sOiB0cnVlCm91dHB1dDogCiAgYm9va2Rvd246Omh0bWxfZG9jdW1lbnQyOgogICAgdGhlbWU6IGNvc21vCiAgICB0b2M6IHRydWUKICAgIHRvY19mbG9hdDogdHJ1ZQogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgICBjb2RlX2ZvbGRpbmc6IHNob3cKICAgIGNvZGVfZG93bmxvYWQ6IHRydWUKICBnaXRodWJfZG9jdW1lbnQ6CiAgICB0b2M6IHRydWUKICAgIHRvY19kZXB0aDogMwogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgICBodG1sX3ByZXZpZXc6IHRydWUgCi0tLQoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmxpYnJhcnkoa25pdHIpCmtuaXRyOjpvcHRzX2NodW5rJHNldCgKICBlY2hvID0gVFJVRSwgICAgICAgICAjIERpc3BsYXkgY29kZSBjaHVua3MKICBldmFsID0gRkFMU0UsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKCmBgYHtyIGxvYWQtcGFja2FnZXMsIGV2YWw9VFJVRX0KbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkoZHBseXIpCmxpYnJhcnkobWFncml0dHIpCmxpYnJhcnkoa25pdHIpCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShwbG90bHkpCmBgYApDb2RlIGZvciBhbGlnbmluZyBSTkFzZXEgZGF0YSB0byByZWZlcmVuY2UgdHJhbnNjcmlwdG9tZS9nZW5vbWUsIHRvIGJlIHVzZWQgb24gW1BhY2lmaWMgY29kIFJOQXNlcSBkYXRhXShodHRwczovL3NoZWR1cmtpbi5naXRodWIuaW8vUm9iZXJ0cy1MYWJOb3RlYm9vay9wb3N0cy9wcm9qZWN0cy9wYWNpZmljX2NvZC8yMDIzXzEyXzEzX3BhY2lmaWNfY29kLmh0bWwpLiAKCi0gdHJpbW1lZCByZWFkcyBnZW5lcmF0ZWQgaW4gYDA1LWNvZC1STkFzZXEtdHJpbW1pbmdgCi0gVHJhbnNjcmlwdG9tZSBkb3dubG9hZGVkIGZyb20gW05DQkldKGh0dHBzOi8vd3d3Lm5jYmkubmxtLm5paC5nb3YvZGF0YXNldHMvZ2Vub21lL0dDRl8wMzExNjg5NTUuMS8pLCBzdG9yZWQgW2hlcmVdKGh0dHBzOi8vb3dsLmZpc2gud2FzaGluZ3Rvbi5lZHUvaGFsZnNoZWxsL2dlbm9taWMtZGF0YWJhbmsvR0NGXzAzMTE2ODk1NS4xX0FTTTMxMTY4OTV2MV9ybmEuZm5hKSBhcyBhIHBhcnQgb2YgbGFiIFtnZW5vbWljIHJlc291cmNlc10oaHR0cHM6Ly9yb2JlcnRzbGFiLmdpdGh1Yi5pby9yZXNvdXJjZXMvR2Vub21pYy1SZXNvdXJjZXMvI2dhZHVzLW1hY3JvY2VwaGFsdXMtcGFjaWZpYy1jb2QpCgpOb3RlOiBLYWxsaXN0byBwc2V1ZG9hbGlnbm1lbnQgZG9lc24ndCBuZWNlc3NhcmlseSByZXF1aXJlIGlucHV0IHJlYWRzIHRvIGJlIHRyaW1tZWQsIHByb3ZpZGVkIHRoZXkgYXJlIG9mIHN1ZmZpY2llbnQgcXVhbGl0eS4KCiMgQ3JlYXRlIGEgQmFzaCB2YXJpYWJsZXMgZmlsZQoKVGhpcyBhbGxvd3MgdXNhZ2Ugb2YgQmFzaCB2YXJpYWJsZXMgKGUuZy4gcGF0aHMgdG8gY29tbW9uIGRpcmVjdG9yaWVzKSBhY3Jvc3MgUiBNYXJrZG93biBjaHVua3MuCmBgYHtyIHNhdmUtYmFzaC12YXJpYWJsZXMtdG8tcnZhcnMtZmlsZSwgZW5naW5lPSdiYXNoJywgZXZhbD1UUlVFfQp7CmVjaG8gIiMjIyMgQXNzaWduIFZhcmlhYmxlcyAjIyMjIgplY2hvICIiCgplY2hvICIjIERhdGEgZGlyZWN0b3JpZXMiCmVjaG8gJ2V4cG9ydCBjb2RfZGlyPS9ob21lL3NoYXJlZC84VEJfSEREXzAyL3NoZWR1cmtpbi9wcm9qZWN0LWNvZC10ZW1wZXJhdHVyZScKZWNobyAnZXhwb3J0IG91dHB1dF9kaXJfdG9wPSR7Y29kX2Rpcn0vb3V0cHV0LzA2LWNvZC1STkFzZXEtYWxpZ25tZW50JwplY2hvICdleHBvcnQgdHJpbW1lZF9mYXN0cWNfZGlyPSR7Y29kX2Rpcn0vb3V0cHV0LzA1LWNvZC1STkFzZXEtdHJpbW1pbmcvdHJpbW1lZC1mYXN0cWMnCmVjaG8gJ2V4cG9ydCB0cmltbWVkX3JlYWRzX2Rpcj0ke2NvZF9kaXJ9L291dHB1dC8wNS1jb2QtUk5Bc2VxLXRyaW1taW5nL3RyaW1tZWQtcmVhZHMnCmVjaG8gJ2V4cG9ydCBrYWxsaXN0b19vdXRwdXRfZGlyPSR7b3V0cHV0X2Rpcl90b3B9L2thbGxpc3RvJwplY2hvICIiCgoKZWNobyAiIyBJbnB1dC9PdXRwdXQgZmlsZXMiCmVjaG8gJ2V4cG9ydCB0cmFuc2NyaXB0b21lX2Zhc3RhX2Rpcj0ke2NvZF9kaXJ9L2RhdGEnCmVjaG8gJ2V4cG9ydCB0cmFuc2NyaXB0b21lX2Zhc3RhX25hbWU9IkdDRl8wMzExNjg5NTUuMV9BU00zMTE2ODk1djFfcm5hIicKZWNobyAnZXhwb3J0IHRyYW5zY3JpcHRvbWVfZmFzdGE9IiR7dHJhbnNjcmlwdG9tZV9mYXN0YV9kaXJ9LyR7dHJhbnNjcmlwdG9tZV9mYXN0YV9uYW1lfSInCmVjaG8gJ2V4cG9ydCBrYWxsaXN0b19pbmRleF9uYW1lPSJHX21hY3JvY2VwaGFsdXNfa2FsbGlzdG9faW5kZXguaWR4IicKCgplY2hvICIjIEV4dGVybmFsIGRhdGEgVVJMcyBhbmQgY2hlY2tzdW1zIgplY2hvICdleHBvcnQgdHJhbnNjcmlwdG9tZV9mYXN0YV91cmw9Imh0dHBzOi8vb3dsLmZpc2gud2FzaGluZ3Rvbi5lZHUvaGFsZnNoZWxsL2dlbm9taWMtZGF0YWJhbmsvR0NGXzAzMTE2ODk1NS4xX0FTTTMxMTY4OTV2MV9ybmEuZm5hIicKZWNobyAnZXhwb3J0IHRyYW5zY3JpcHRvbWVfY2hlY2tzdW09IjJhNmM3Yzk4OTgyNzI3ZTY4OGYwMzNhOWIyMzY3MjViIicKZWNobyAiIgoKCmVjaG8gIiMgUGF0aHMgdG8gcHJvZ3JhbXMiCmVjaG8gJ2V4cG9ydCBrYWxsaXN0bz0vaG9tZS9zaGFyZWQva2FsbGlzdG8va2FsbGlzdG8nCmVjaG8gJ2V4cG9ydCBtdWx0aXFjPS9ob21lL3NhbS9wcm9ncmFtcy9tYW1iYWZvcmdlL2Jpbi9tdWx0aXFjJwplY2hvICdleHBvcnQgdHJpbml0eV9hYnVuZF90b19tYXRyaXg9L2hvbWUvc2hhcmVkL3RyaW5pdHlybmFzZXEtdjIuMTIuMC91dGlsL2FidW5kYW5jZV9lc3RpbWF0ZXNfdG9fbWF0cml4LnBsJwplY2hvICIiCgoKZWNobyAiIyBTZXQgbnVtYmVyIG9mIENQVXMgdG8gdXNlIgplY2hvICdleHBvcnQgdGhyZWFkcz0yMCcKZWNobyAiIgoKCmVjaG8gIiMgUHJvZ3JhbXMgYXNzb2NpYXRpdmUgYXJyYXkiCmVjaG8gImRlY2xhcmUgLUEgcHJvZ3JhbXNfYXJyYXkiCmVjaG8gInByb2dyYW1zX2FycmF5PSgiCmVjaG8gJ1trYWxsaXN0b109IiR7a2FsbGlzdG99IiBcJwplY2hvICdbbXVsdGlxY109IiR7bXVsdGlxY30iIFwnCmVjaG8gJ1t0cmluaXR5X2FidW5kX3RvX21hdHJpeF09IiR7dHJpbml0eV9hYnVuZF90b19tYXRyaXh9IiBcJwplY2hvICIpIgp9ID4gLmJhc2h2YXJzCgpjYXQgLmJhc2h2YXJzCmBgYAoKSSB3aWxsIGJlIHJ1bm5pbmcga2FsbGlzdG8gd2l0aCB0cmltbWVkL1FDZCByZWFkcwoKIyBBbGlnbiB0byByZWZlcmVuY2UgdHJhbnNjcmlwdG9tZSAoS2FsbGlzdG8gcHNldWRvYWxpZ25tZW50KQoKCiMjIFJldHJpZXZpbmcgdGhlIHJlZmVyZW5jZSB0cmFuc2NyaXB0b21lCgpgYGB7ciBkb3dubG9hZC10cmFuc2NyaXB0b21lLWZhc3RhLCBlbmdpbmU9J2Jhc2gnfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKd2dldCBcCi0tZGlyZWN0b3J5LXByZWZpeCAke3RyYW5zY3JpcHRvbWVfZmFzdGFfZGlyfSBcCi0tcmVjdXJzaXZlIFwKLS1uby1jaGVjay1jZXJ0aWZpY2F0ZSBcCi0tY29udGludWUgXAotLW5vLWhvc3QtZGlyZWN0b3JpZXMgXAotLW5vLWRpcmVjdG9yaWVzIFwKLS1uby1wYXJlbnQgXAotLXF1aWV0IFwKLS1leGVjdXRlIHJvYm90cz1vZmYgXAotLWFjY2VwdCAiJHt0cmFuc2NyaXB0b21lX2Zhc3RhX25hbWV9LmZuYSIgJHt0cmFuc2NyaXB0b21lX2Zhc3RhX3VybH0KYGBgCgpgYGB7ciBjaGVjay10cmFuc2NyaXB0b21lLWRpciwgZW5naW5lPSdiYXNoJywgZXZhbD1UUlVFfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKbHMgLWxoICIke3RyYW5zY3JpcHRvbWVfZmFzdGFfZGlyfSIKYGBgCgoKIyMgVmVyaWZ5IHRyYW5zY3JpcHRvbWUgRmFzdEEgTUQ1IGNoZWNrc3VtCgpgYGB7ciB2ZXJpZnktdHJhbnNjcmlwdG9tZS1mYXN0YS1jaGVja3N1bSwgZW5naW5lPSdiYXNoJywgZXZhbD1UUlVFfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKY2QgIiR7dHJhbnNjcmlwdG9tZV9mYXN0YV9kaXJ9IgoKIyBDaGVja3N1bXMgZmlsZSBjb250YWlucyBvdGhlciBmaWxlcywgc28gdGhpcyBqdXN0IGxvb2tzIGZvciB0aGUgc1JOQXNlcSBmaWxlcy4KbWQ1c3VtIC0tY2hlY2sgPDw8ICIke3RyYW5zY3JpcHRvbWVfY2hlY2tzdW19ICAke3RyYW5zY3JpcHRvbWVfZmFzdGFfbmFtZX0uZm5hIgoKYGBgCgoKIyMgQnVpbGRpbmcgSW5kZXgKCmBgYHtyIGthbGxpc3RvLWluZGV4aW5nLCBlbmdpbmU9J2Jhc2gnfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKY2QgIiR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0iCgoke3Byb2dyYW1zX2FycmF5W2thbGxpc3RvXX0gaW5kZXggXAotLXRocmVhZHM9JHt0aHJlYWRzfSBcCi0taW5kZXg9IiR7a2FsbGlzdG9faW5kZXhfbmFtZX0iIFwKIiR7dHJhbnNjcmlwdG9tZV9mYXN0YX0uZm5hIgpgYGAKCmBgYHtyIGNoZWNrLWluZGV4LWZpbGUsIGVuZ2luZT0nYmFzaCcsIGV2YWw9VFJVRX0KIyBMb2FkIGJhc2ggdmFyaWFibGVzIGludG8gbWVtb3J5CnNvdXJjZSAuYmFzaHZhcnMKCmxzIC1saCAke2thbGxpc3RvX291dHB1dF9kaXJ9CmBgYAoKCiMjIFNhbXBsZSBRdWFudGlmaWNhdGlvbgoKS2FsbGlzdG8gY2FuIHJ1biBxdWFudGlmaWNhdGlvbiBvbiBlaXRoZXIgc2luZ2xlLSBvciBwYWlyZWQtZW5kIHJlYWRzLiBUaGUgZGVmYXVsdCBvcHRpb24gaXMgcGFpcmVkLWVuZCwgd2hpY2ggcmVxdWlyZXMgdGhlIGlucHV0IG9mIGFuIGV2ZW4gbnVtYmVyIG9mIHBhaXJlZCBmYXN0cSBmaWxlcyAoZS5nLiwgcGFpckFfUjEuZmFzdHEsIHBhaXJBX1IyLmZhc3RxKS4gClRvIHVzZSBzaW5nbGUtZW5kIG1vZGUsIGluY2x1ZGUgdGhlIC0tc2luZ2xlIGZsYWcsIGFzIHdlbGwgYXMgLWwgKC0tZnJhZ21lbnQtbGVuZ3RoPURPVUJMRSwgZXN0aW1hdGVkIGF2Zy4gZnJhZ21lbnQgbGVuZ3RoKSBhbmQgLXMgKC0tc2Q9RE9VQkxFLCBlc3RpbWF0ZXMgc3RhbmQuIGRldi4gb2YgZnJhZ21lbnQgbGVuZ3RoKSwgYW5kIGEgbnVtYmVyIG9mIGZhc3RxIGZpbGVzLgpBZ2FpbiwgZ3ppcHBlZCBmaWxlcyBhcmUgYWNjZXB0YWJsZS4KCkthbGxpc3RvIHF1YW50IGlzIHJhdGhlciBmaW5pY2t5IGFib3V0IGhvdyB5b3UgaW5wdXQgc2V0cyBvZiBwYWlyZWQgcmVhZHMsIGFuZCB5b3UgY2FuIG9ubHkgaW5wdXQgYSBzaW5nbGUgcGFpciBhdCBhIHRpbWUuIFRvIGNpcmN1bXZlbnQsIEknbGwgY3JlYXRlIGEgcXVhbnRpZmljYXRpb24gZnVuY3Rpb24gYW5kIGFwcGx5IGl0IGl0ZXJhdGl2ZWx5IHRvIGVhY2ggcGFpciBvZiByZWFkcyB1c2luZyBhIGxvb3AuCgpgYGB7ciBrYWxsaXN0by1xdWFudGlmaWNhdGlvbiwgZW5naW5lPSdiYXNoJ30KIyBMb2FkIGJhc2ggdmFyaWFibGVzIGludG8gbWVtb3J5CnNvdXJjZSAuYmFzaHZhcnMKCiMgRnVuY3Rpb24gdG8gcnVuIGthbGxpc3RvIHF1YW50LiBUYWtlcyB0d28gKHBhaXJlZCkgcmVhZHMgYXMgaW5wdXQsIG91dHB1dHMgdG8gc2FtcGxlLWFzc29jaWF0ZWQgZGlyZWN0b3J5CnJ1bl9rYWxsaXN0b19xdWFudCgpIHsKICAgIHNvdXJjZSAuYmFzaHZhcnMgICMgU291cmNlIC5iYXNodmFycyBpbnNpZGUgdGhlIGZ1bmN0aW9uIHRvIG1ha2UgaXRzIHZhcmlhYmxlcyBhY2Nlc3NpYmxlCiAgICBsb2NhbCBSMV9mYXN0cT0kezF9CiAgICBsb2NhbCBSMl9mYXN0cT0kezJ9CiAgICAKICAgIGNkICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0KICAgIHNhbXBsZV9udW09JChiYXNlbmFtZSAiJHtSMV9mYXN0cX0iICIuZmxleGJhcl90cmltLlJfMS5mYXN0cS5neiIpCiAgICBta2RpciBrYWxsaXN0b19xdWFudF8ke3NhbXBsZV9udW19CgogICAgJHtwcm9ncmFtc19hcnJheVtrYWxsaXN0b119IHF1YW50IFwKICAgICAgICAtLXRocmVhZHM9JHt0aHJlYWRzfSBcCiAgICAgICAgLS1pbmRleD0iJHtrYWxsaXN0b19vdXRwdXRfZGlyfS8ke2thbGxpc3RvX2luZGV4X25hbWV9IiBcCiAgICAgICAgLS1vdXRwdXQtZGlyPSIke2thbGxpc3RvX291dHB1dF9kaXJ9L2thbGxpc3RvX3F1YW50XyR7c2FtcGxlX251bX0iIFwKICAgICAgICAtLWJvb3RzdHJhcC1zYW1wbGVzPTEwMCBcCiAgICAgICAgJHt0cmltbWVkX3JlYWRzX2Rpcn0vJHtSMV9mYXN0cX0gJHt0cmltbWVkX3JlYWRzX2Rpcn0vJHtSMl9mYXN0cX0gXAogICAgICAgICY+ICIke2thbGxpc3RvX291dHB1dF9kaXJ9L2thbGxpc3RvX3F1YW50XyR7c2FtcGxlX251bX0ubG9nIgp9CgoKCiMgSXRlcmF0aXZlbHkgYXBwbHkgcnVuX2thbGxpc3RvX3F1YW50IG9uIGVhY2ggcGFpciBvZiBpbnB1dCByZWFkcwpmb3IgZmlsZV9yMSBpbiAiJHt0cmltbWVkX3JlYWRzX2Rpcn0iLyouZmxleGJhcl90cmltLlJfMS5mYXN0cS5nejsgZG8KICAgICMgRXh0cmFjdCB0aGUgc2FtcGxlIG5hbWUgZnJvbSB0aGUgZmlsZSBuYW1lCiAgICBzYW1wbGVfbmFtZT0kKGJhc2VuYW1lICIke2ZpbGVfcjF9IiAiLmZsZXhiYXJfdHJpbS5SXzEuZmFzdHEuZ3oiKQoKICAgICMgRm9ybSB0aGUgZmlsZSBuYW1lcyAoZnVuY3Rpb24gdGFrZXMgaW5wdXQgZmlsZSBuYW1lcywgbm90IHBhdGhzKQogICAgZmlsZV9yMV9uYW1lPSIke3NhbXBsZV9uYW1lfS5mbGV4YmFyX3RyaW0uUl8xLmZhc3RxLmd6IgogICAgZmlsZV9yMl9uYW1lPSIke3NhbXBsZV9uYW1lfS5mbGV4YmFyX3RyaW0uUl8yLmZhc3RxLmd6IgoKICAgICMgQ2hlY2sgdGhhdCB0aGUgc2FtcGxlIGhhc24ndCBhbHJlYWR5IGJlZW4gcXVhbnRpZmllZAogICAgaWYgWyAhIC1kICIke2thbGxpc3RvX291dHB1dF9kaXJ9L2thbGxpc3RvX3F1YW50XyR7c2FtcGxlX25hbWV9IiBdOyB0aGVuCiAgICAKICAgICAgICAjIENoZWNrIGlmIHRoZSBjb3JyZXNwb25kaW5nIFIyIGZpbGUgZXhpc3RzCiAgICAgICAgaWYgWyAtZSAiJHt0cmltbWVkX3JlYWRzX2Rpcn0vJHtmaWxlX3IyfSIgXTsgdGhlbgogICAgICAgICAgICAjIFJ1biBrYWxsaXN0byBxdWFudCBvbiB0aGUgZmlsZSBwYWlyCiAgICAgICAgICAgIHJ1bl9rYWxsaXN0b19xdWFudCAiJHtmaWxlX3IxX25hbWV9IiAiJHtmaWxlX3IyX25hbWV9IiAKCiAgICAgICAgICAgIGVjaG8gIlByb2Nlc3NlZCBzYW1wbGU6ICR7c2FtcGxlX25hbWV9IgogICAgICAgIGZpCiAgICBlbHNlCiAgICAgICAgZWNobyAiU2FtcGxlIGFscmVhZHkgcHJvY2Vzc2VkOiAke3NhbXBsZV9uYW1lfSIKICAgIGZpCmRvbmUKYGBgCgpDaGVjayB0aGF0IHdlIGhhdmUgdGhlIGFwcHJvcHJpYXRlIG51bWJlciBvZiBvdXRwdXQgZm9sZGVycy4gV2Ugc2hvdWxkIGhhdmUgb25lIGxvZyBmaWxlIGZvciBlYWNoIHBhaXIgb2YgcmVhZHMKYGBge3IgY2hlY2sta2FsbGlzdG8tb3V0cHV0LCBlbmdpbmU9J2Jhc2gnLCBldmFsPVRSVUV9CiMgTG9hZCBiYXNoIHZhcmlhYmxlcyBpbnRvIG1lbW9yeQpzb3VyY2UgLmJhc2h2YXJzCgojIENvdW50IG51bWJlciBvZiByYXcgcmVhZCBmaWxlcwpjZCAke3RyaW1tZWRfcmVhZHNfZGlyfQplY2hvICJOdW1iZXIgb2YgcmF3IHJlYWRzOiIKbHMgLTEgKi5mYXN0cS5neiB8IHdjIC1sCgojIENvdW50IG51bWJlciBvZiBrYWxsaXN0byBvdXRwdXQgCmNkICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0KZWNobyAiTnVtYmVyIG9mIG91dHB1dCBsb2cgZmlsZXMiCmZpbmQgLiAtdHlwZSBmIC1uYW1lICIqLmxvZyIgfCB3YyAtbApgYGAKCiMjIE11bHRpUUMgb24gS2FsbGlzdG8gb3V0cHV0IGxvZ3MKCmBgYHtyIHJhdy1mYXN0cWMtbXVsdGlxYywgZW5naW5lPSdiYXNoJ30KIyBMb2FkIGJhc2ggdmFyaWFibGVzIGludG8gbWVtb3J5CnNvdXJjZSAuYmFzaHZhcnMKCiMjIyMjIyMjIyMjIyBSVU4gTVVMVElRQyAjIyMjIyMjIyMjIyMKZWNobyAiQmVnaW5uaW5nIE11bHRpUUMgb24gcmF3IEZhc3RRQy4uLiIKZWNobyAiIgoKJHtwcm9ncmFtc19hcnJheVttdWx0aXFjXX0gJHtrYWxsaXN0b19vdXRwdXRfZGlyfS8qLmxvZyAtbyAke291dHB1dF9kaXJfdG9wfQoKZWNobyAiIgplY2hvICJNdWx0aVFDIG9uIHJhdyBGYXN0UXMgY29tcGxldGUuIgplY2hvICIiCgojIyMjIyMjIyMjIyMgRU5EIE1VTFRJUUMgIyMjIyMjIyMjIyMjCgplY2hvICJSZW1vdmluZyBGYXN0UUMgemlwIGZpbGVzLiIKZWNobyAiIgpybSAke291dHB1dF9kaXJfdG9wfS8qLnppcAplY2hvICJGYXN0UUMgemlwIGZpbGVzIHJlbW92ZWQuIgplY2hvICIiCgojIFZpZXcgZGlyZWN0b3J5IGNvbnRlbnRzCmxzIC1saCAke291dHB1dF9kaXJfdG9wfQoKYGBgCgoKSSBhbHNvIHdhbnQgdG8gaW5jbHVkZSB0aGUgdHJlYXRtZW50L3RhbmsgaW5mbyB3aGVuIHBsb3R0aW5nIGFsaWdubWVudCByYXRlcyBhY3Jvc3Mgc2FtcGxlcwpgYGB7ciBwbG90LWFsaWdubWVudC1yYXRlcywgZXZhbD1UUlVFfQojIExvYWQgbXVsdGlxYyBzdGF0cwprYWxsaXN0b19tdWx0aXFjIDwtIHJlYWQuY3N2KCIuLi9vdXRwdXQvMDYtY29kLVJOQXNlcS1hbGlnbm1lbnQvbXVsdGlxY19kYXRhL211bHRpcWNfa2FsbGlzdG8udHh0Iiwgc2VwID0gJ1x0JykKIyBBZGp1c3Qgc2FtcGxlIG5hbWUgZm9ybWF0dGluZyAodG8gcHJlcCBmb3Igam9pbikKa2FsbGlzdG9fbXVsdGlxYyRTYW1wbGUgPC0gZ3N1YigiX1IxXzAwMSIsICIiLCBrYWxsaXN0b19tdWx0aXFjJFNhbXBsZSkgCmthbGxpc3RvX211bHRpcWMkU2FtcGxlIDwtIHBhc3RlKCJzYW1wbGVfIiwga2FsbGlzdG9fbXVsdGlxYyRTYW1wbGUsIHNlcCA9ICIiKQojIExvYWQgZXhwZXJpbWVudGFsIGRhdGEKY29kX3NhbXBsZV9pbmZvX09HIDwtIHJlYWQuY3N2KCIuLi9kYXRhL0RFU2VxMl9TYW1wbGVfSW5mb3JtYXRpb24uY3N2IikKCmthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudCA8LSBsZWZ0X2pvaW4oY29kX3NhbXBsZV9pbmZvX09HLCBrYWxsaXN0b19tdWx0aXFjLCBieSA9IGMoInNhbXBsZV9uYW1lIiA9ICJTYW1wbGUiKSkgJT4lIAogIG5hLm9taXQoKQprYWxsaXN0b19tdWx0aXFjX3BsdXN0cmVhdG1lbnQgPC0ga2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50W29yZGVyKGthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudCRzYW1wbGVfbnVtYmVyKSxdCgpnZ3Bsb3Qoa2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50LAogICAgICAgYWVzKHg9cmVvcmRlcihzYW1wbGVfbmFtZSwgc2FtcGxlX251bWJlciksIHk9cGVyY2VudF9hbGlnbmVkLCBmaWxsPWFzLmZhY3Rvcih0ZW1wX3RyZWF0bWVudCkpKSArCiAgZ2VvbV9iYXIoc3RhdD0iaWRlbnRpdHkiKSArCiAgdGhlbWUoYXhpcy50ZXh0LnggPSBlbGVtZW50X3RleHQoYW5nbGUgPSA2MCwgdmp1c3QgPSAxLCBoanVzdD0xLCBzaXplPTcpKQoKZ2dwbG90KGthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudCwKICAgICAgIGFlcyh4PXJlb3JkZXIoc2FtcGxlX25hbWUsIHNhbXBsZV9udW1iZXIpLCB5PXRvdGFsX3JlYWRzLCBmaWxsPWFzLmZhY3Rvcih0ZW1wX3RyZWF0bWVudCkpKSArCiAgZ2VvbV9iYXIoc3RhdD0iaWRlbnRpdHkiKSArCiAgdGhlbWUoYXhpcy50ZXh0LnggPSBlbGVtZW50X3RleHQoYW5nbGUgPSA2MCwgdmp1c3QgPSAxLCBoanVzdD0xLCBzaXplPTcpKQoKIyBzYW1wbGUxNDkgaXMga2luZCBvZiB0aHJvd2luZyBvZmYgdGhlIHZpc3VhbGl6YXRpb24sIHNvIGxldHMgcmVtb3ZlIGFuZCByZWRvCmdncGxvdChrYWxsaXN0b19tdWx0aXFjX3BsdXN0cmVhdG1lbnRba2FsbGlzdG9fbXVsdGlxY19wbHVzdHJlYXRtZW50JHNhbXBsZV9uYW1lICE9ICJzYW1wbGVfMTQ5IiwgXSwKICAgICAgIGFlcyh4PXJlb3JkZXIoc2FtcGxlX25hbWUsIHNhbXBsZV9udW1iZXIpLCB5PXRvdGFsX3JlYWRzLCBmaWxsPWFzLmZhY3Rvcih0ZW1wX3RyZWF0bWVudCkpKSArCiAgZ2VvbV9iYXIoc3RhdD0iaWRlbnRpdHkiKSArCiAgdGhlbWUoYXhpcy50ZXh0LnggPSBlbGVtZW50X3RleHQoYW5nbGUgPSA2MCwgdmp1c3QgPSAxLCBoanVzdD0xLCBzaXplPTcpKQoKZ2dwbG90KGthbGxpc3RvX211bHRpcWNfcGx1c3RyZWF0bWVudCwKICAgICAgIGFlcyh4PXJlb3JkZXIoc2FtcGxlX25hbWUsIHNhbXBsZV9udW1iZXIpLCB5PWZyYWdtZW50X2xlbmd0aCwgZmlsbD1hcy5mYWN0b3IodGVtcF90cmVhdG1lbnQpKSkgKwogIGdlb21fYmFyKHN0YXQ9ImlkZW50aXR5IikgKwogIHRoZW1lKGF4aXMudGV4dC54ID0gZWxlbWVudF90ZXh0KGFuZ2xlID0gNjAsIHZqdXN0ID0gMSwgaGp1c3Q9MSwgc2l6ZT03KSkKCmBgYAoKIyMgVHJpbml0eSBNYXRyaXggd2l0aCBLYWxsaXN0byBPdXRwdXQKCmBgYHtyIGthbGxpc3RvLXRyaW5pdHktbWF0cml4LCBlbmdpbmU9J2Jhc2gnfQojIExvYWQgYmFzaCB2YXJpYWJsZXMgaW50byBtZW1vcnkKc291cmNlIC5iYXNodmFycwoKY2QgJHtrYWxsaXN0b19vdXRwdXRfZGlyfQoKJHtwcm9ncmFtc19hcnJheVt0cmluaXR5X2FidW5kX3RvX21hdHJpeF19IFwKLS1lc3RfbWV0aG9kICdrYWxsaXN0bycgXAotLWdlbmVfdHJhbnNfbWFwICdub25lJyBcCi0tb3V0X3ByZWZpeCAna2FsbGlzdG8nIFwKLS1uYW1lX3NhbXBsZV9ieV9iYXNlZGlyICR7a2FsbGlzdG9fb3V0cHV0X2Rpcn0va2FsbGlzdG9fcXVhbnRfKi9hYnVuZGFuY2UudHN2CgpscyAtbGggJHtrYWxsaXN0b19vdXRwdXRfZGlyfQpgYGAKCg==</div>
 
 
 </div>

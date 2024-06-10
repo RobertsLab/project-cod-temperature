@@ -39,8 +39,7 @@ Code for aligning RNAseq data to reference transcriptome/genome, to be
 used on [Pacific cod RNAseq
 data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html).
 
-- Raw reads found
-  [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
+- trimmed reads generated in `05-cod-RNAseq-trimming`
 - Transcriptome downloaded from
   [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/),
   stored
@@ -64,8 +63,6 @@ echo ""
 echo "# Data directories"
 echo 'export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature'
 echo 'export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment'
-echo 'export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc'
-echo 'export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads'
 echo 'export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc'
 echo 'export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads'
 echo 'export kallisto_output_dir=${output_dir_top}/kallisto'
@@ -114,8 +111,6 @@ cat .bashvars
     # Data directories
     export cod_dir=/home/shared/8TB_HDD_02/shedurkin/project-cod-temperature
     export output_dir_top=${cod_dir}/output/06-cod-RNAseq-alignment
-    export raw_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/raw-fastqc
-    export raw_reads_dir=${cod_dir}/data/05-cod-RNAseq-trimming/raw-reads
     export trimmed_fastqc_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-fastqc
     export trimmed_reads_dir=${cod_dir}/output/05-cod-RNAseq-trimming/trimmed-reads
     export kallisto_output_dir=${output_dir_top}/kallisto
@@ -145,9 +140,7 @@ cat .bashvars
     [trinity_abund_to_matrix]="${trinity_abund_to_matrix}" \
     )
 
-There didn’t seem to be a significant difference in sequence quality
-following trimming, so for now I’m proceeding with the raw reads (though
-I’ll likely eventually rerun the kallisto with trimmed)
+I will be running kallisto with trimmed/QCd reads
 
 # 2 Align to reference transcriptome (Kallisto pseudoalignment)
 
@@ -177,21 +170,28 @@ source .bashvars
 ls -lh "${transcriptome_fasta_dir}"
 ```
 
-    total 1.9G
+    total 5.2G
     drwxr-xr-x 3 shedurkin labmembers 4.0K Mar  4 11:05 05-cod-RNAseq-trimming
     -rw-r--r-- 1 shedurkin labmembers  13K Dec 27 15:45 Cod_RNAseq_NGS_Template_File.xlsx
+    -rw-r--r-- 1 shedurkin labmembers  253 May 22 11:36 conditions.txt
     -rw-r--r-- 1 shedurkin labmembers 2.1K Mar 20 20:55 DESeq2_Sample_Information.csv
     -rw-r--r-- 1 shedurkin labmembers  38M Oct 25  2023 Gadus_macrocephalus.coding.gene.V1.cds
     -rw-r--r-- 1 shedurkin labmembers 537M Oct 16  2023 GCF_031168955.1_ASM3116895v1_genomic.fna
+    -rw-r--r-- 1 shedurkin labmembers  875 May  7 14:05 GCF_031168955.1_ASM3116895v1_genomic.fna.fai
     -rw-r--r-- 1 shedurkin labmembers 351M Oct 16  2023 GCF_031168955.1_ASM3116895v1.gff
     -rw-r--r-- 1 shedurkin labmembers 169M Oct 16  2023 GCF_031168955.1_ASM3116895v1_rna.fna
     -rw-r--r-- 1 shedurkin labmembers 404M Apr 23 14:29 genomic.gtf
+    -rw-r--r-- 1 shedurkin labmembers 1.5G May  8 15:44 Gmac_genes_fasta.fasta
+    -rw-r--r-- 1 shedurkin labmembers 1.5G May  8 16:14 Gmac_genes_fasta.tab
+    -rw-r--r-- 1 shedurkin labmembers 1.3K May 22 11:36 list01.txt
     -rw-r--r-- 1 shedurkin labmembers  47K Oct 25  2023 Pcod Temp Growth experiment 2022-23 DATA.xlsx
+    -rw-r--r-- 1 shedurkin labmembers 1.6K May 22 11:36 README.md
     -rw-r--r-- 1 shedurkin labmembers 231K Mar  4 17:41 Sample.QC.report.of_30-943133806_240118025106.pdf
     -rw-r--r-- 1 shedurkin labmembers  12K Mar  4 17:41 Sample.QC.report.of_30-943133806_240118025106.xlsx
     -rw-r--r-- 1 shedurkin labmembers  12K Oct 25  2023 temp-experiment.csv
     -rw-r--r-- 1 shedurkin labmembers 271M Oct 25  2023 uniprot_sprot_r2023_04.fasta
-    -rw-r--r-- 1 shedurkin labmembers  88M Apr 17 11:54 uniprot_sprot_r2023_04.fasta.gz
+    -rw-r--r-- 1 shedurkin labmembers  88M May  8 10:57 uniprot_sprot_r2023_04.fasta.gz
+    -rw-r--r-- 1 shedurkin labmembers 415M May  8 10:57 uniprot_table_r2023_01.tab
 
 ## 2.2 Verify transcriptome FastA MD5 checksum
 
@@ -230,168 +230,170 @@ ls -lh ${kallisto_output_dir}
 
     total 1.5G
     -rw-r--r-- 1 shedurkin labmembers 1.5G Mar 18 16:08 G_macrocephalus_kallisto_index.idx
-    -rw-r--r-- 1 shedurkin labmembers  20M Apr 29 23:25 kallisto.isoform.counts.matrix
-    -rw-r--r-- 1 shedurkin labmembers    0 Apr 29 23:25 kallisto.isoform.TMM.EXPR.matrix
-    -rw-r--r-- 1 shedurkin labmembers  24M Apr 29 23:25 kallisto.isoform.TPM.not_cross_norm
-    -rw-r--r-- 1 shedurkin labmembers  532 Apr 29 23:25 kallisto.isoform.TPM.not_cross_norm.runTMM.R
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:46 kallisto_quant_1
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:11 kallisto_quant_10
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:03 kallisto_quant_100
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:04 kallisto_quant_100.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:05 kallisto_quant_107
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:05 kallisto_quant_107.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:07 kallisto_quant_108
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:08 kallisto_quant_108.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:09 kallisto_quant_109
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:10 kallisto_quant_109.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:12 kallisto_quant_10.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:22 kallisto_quant_11
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:13 kallisto_quant_110
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:14 kallisto_quant_110.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:15 kallisto_quant_117
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:16 kallisto_quant_117.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:18 kallisto_quant_118
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:18 kallisto_quant_118.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:20 kallisto_quant_119
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:20 kallisto_quant_119.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:22 kallisto_quant_11.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:33 kallisto_quant_12
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:24 kallisto_quant_120
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:24 kallisto_quant_120.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:26 kallisto_quant_121
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:27 kallisto_quant_121.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:28 kallisto_quant_127
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:29 kallisto_quant_127.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:30 kallisto_quant_128
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:30 kallisto_quant_128.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:31 kallisto_quant_129
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:31 kallisto_quant_129.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:33 kallisto_quant_12.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:39 kallisto_quant_13
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:34 kallisto_quant_131
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:34 kallisto_quant_131.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:35 kallisto_quant_137
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:35 kallisto_quant_137.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:36 kallisto_quant_138
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:36 kallisto_quant_138.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:37 kallisto_quant_139
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:37 kallisto_quant_139.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:39 kallisto_quant_13.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:40 kallisto_quant_140
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:40 kallisto_quant_140.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:41 kallisto_quant_147
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:41 kallisto_quant_147.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:43 kallisto_quant_148
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:44 kallisto_quant_148.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:51 kallisto_quant_149
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:52 kallisto_quant_149.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:52 kallisto_quant_150
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 22:53 kallisto_quant_150.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:37 kallisto_quant_18
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:37 kallisto_quant_18.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:41 kallisto_quant_19
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:39 kallisto_quant_19-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:40 kallisto_quant_19-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:41 kallisto_quant_19.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:43 kallisto_quant_19-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:44 kallisto_quant_19-S.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:46 kallisto_quant_1.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:59 kallisto_quant_2
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:50 kallisto_quant_20
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:48 kallisto_quant_20-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:49 kallisto_quant_20-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:50 kallisto_quant_20.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:52 kallisto_quant_20-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:52 kallisto_quant_20-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:54 kallisto_quant_21
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:54 kallisto_quant_21.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:56 kallisto_quant_28
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:56 kallisto_quant_28.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:57 kallisto_quant_29
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:58 kallisto_quant_29.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:00 kallisto_quant_2.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:53 kallisto_quant_3
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:01 kallisto_quant_30
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:02 kallisto_quant_30.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:03 kallisto_quant_31
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:04 kallisto_quant_31.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:47 kallisto_quant_37
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:48 kallisto_quant_37.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:49 kallisto_quant_38
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:49 kallisto_quant_38.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:51 kallisto_quant_39
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:51 kallisto_quant_39.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:53 kallisto_quant_3.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:04 kallisto_quant_4
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:54 kallisto_quant_40
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:55 kallisto_quant_40.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:56 kallisto_quant_41
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:56 kallisto_quant_41.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:58 kallisto_quant_47
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:58 kallisto_quant_47.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:00 kallisto_quant_48
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:00 kallisto_quant_48.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:02 kallisto_quant_49
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:02 kallisto_quant_49.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:04 kallisto_quant_4.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:26 kallisto_quant_5
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:06 kallisto_quant_50
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:06 kallisto_quant_50.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:14 kallisto_quant_57
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:10 kallisto_quant_57-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:11 kallisto_quant_57-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:14 kallisto_quant_57.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:15 kallisto_quant_57-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:15 kallisto_quant_57-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:20 kallisto_quant_58
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:18 kallisto_quant_58-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:18 kallisto_quant_58-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:20 kallisto_quant_58.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:22 kallisto_quant_58-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:22 kallisto_quant_58-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:24 kallisto_quant_59
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:24 kallisto_quant_59.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:26 kallisto_quant_5.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:28 kallisto_quant_60
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:28 kallisto_quant_60.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:30 kallisto_quant_67
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:30 kallisto_quant_67.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:32 kallisto_quant_68
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:32 kallisto_quant_68.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:34 kallisto_quant_69
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:34 kallisto_quant_69.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:35 kallisto_quant_70
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:36 kallisto_quant_70.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:37 kallisto_quant_78
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:37 kallisto_quant_78.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:39 kallisto_quant_79
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:39 kallisto_quant_79.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:40 kallisto_quant_80
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:41 kallisto_quant_80.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:42 kallisto_quant_83
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:43 kallisto_quant_83.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:44 kallisto_quant_88
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:44 kallisto_quant_88.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:46 kallisto_quant_90
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:46 kallisto_quant_90.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:48 kallisto_quant_91
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:48 kallisto_quant_91.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:50 kallisto_quant_97
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:50 kallisto_quant_97.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:52 kallisto_quant_98
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:52 kallisto_quant_98.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:53 kallisto_quant_99
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:54 kallisto_quant_99.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:55 kallisto_quant_RESUB-116
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:55 kallisto_quant_RESUB-116.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:57 kallisto_quant_RESUB-156
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:57 kallisto_quant_RESUB-156.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:58 kallisto_quant_RESUB-36
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:59 kallisto_quant_RESUB-36.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:54 kallisto_quant_RESUB-76
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:54 kallisto_quant_RESUB-76.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:13 kallisto_quant_RESUB-94
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:14 kallisto_quant_RESUB-94.log
+    -rw-r--r-- 1 shedurkin labmembers  20M Jun 10 16:12 kallisto.isoform.counts.matrix
+    -rw-r--r-- 1 shedurkin labmembers    0 Jun 10 16:12 kallisto.isoform.TMM.EXPR.matrix
+    -rw-r--r-- 1 shedurkin labmembers  25M Jun 10 16:12 kallisto.isoform.TPM.not_cross_norm
+    -rw-r--r-- 1 shedurkin labmembers  532 Jun 10 16:12 kallisto.isoform.TPM.not_cross_norm.runTMM.R
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:50 kallisto_quant_1
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:43 kallisto_quant_10
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:34 kallisto_quant_100
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:35 kallisto_quant_100.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:36 kallisto_quant_107
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:36 kallisto_quant_107.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:38 kallisto_quant_108
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:39 kallisto_quant_108.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:41 kallisto_quant_109
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:41 kallisto_quant_109.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:43 kallisto_quant_10.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:54 kallisto_quant_11
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:45 kallisto_quant_110
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:45 kallisto_quant_110.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:47 kallisto_quant_117
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:48 kallisto_quant_117.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:49 kallisto_quant_118
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:50 kallisto_quant_118.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:52 kallisto_quant_119
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:52 kallisto_quant_119.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:55 kallisto_quant_11.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:06 kallisto_quant_12
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:56 kallisto_quant_120
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:57 kallisto_quant_120.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 12:59 kallisto_quant_121
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 12:59 kallisto_quant_121.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:01 kallisto_quant_127
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:02 kallisto_quant_127.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:03 kallisto_quant_128
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:03 kallisto_quant_128.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:04 kallisto_quant_129
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:04 kallisto_quant_129.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:07 kallisto_quant_12.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:15 kallisto_quant_13
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:08 kallisto_quant_131
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:08 kallisto_quant_131.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:09 kallisto_quant_137
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:09 kallisto_quant_137.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:11 kallisto_quant_138
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:11 kallisto_quant_138.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:12 kallisto_quant_139
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:13 kallisto_quant_139.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:15 kallisto_quant_13.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:16 kallisto_quant_140
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:17 kallisto_quant_140.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:18 kallisto_quant_147
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:18 kallisto_quant_147.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:20 kallisto_quant_148
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:21 kallisto_quant_148.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:29 kallisto_quant_149
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:31 kallisto_quant_149.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:34 kallisto_quant_150
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:34 kallisto_quant_150.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:36 kallisto_quant_18
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:37 kallisto_quant_18.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:39 kallisto_quant_19
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:42 kallisto_quant_19-G
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:43 kallisto_quant_19-G.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:40 kallisto_quant_19.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:46 kallisto_quant_19-S
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:47 kallisto_quant_19-S.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:51 kallisto_quant_1.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:11 kallisto_quant_2
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:53 kallisto_quant_20
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:56 kallisto_quant_20-G
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:57 kallisto_quant_20-G.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 13:53 kallisto_quant_20.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 13:59 kallisto_quant_20-S
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:00 kallisto_quant_20-S.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:02 kallisto_quant_21
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:03 kallisto_quant_21.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:05 kallisto_quant_28
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:06 kallisto_quant_28.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:08 kallisto_quant_29
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:09 kallisto_quant_29.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:12 kallisto_quant_2.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:28 kallisto_quant_3
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:14 kallisto_quant_30
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:15 kallisto_quant_30.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:17 kallisto_quant_31
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:18 kallisto_quant_31.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:20 kallisto_quant_37
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:20 kallisto_quant_37.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:22 kallisto_quant_38
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:23 kallisto_quant_38.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:25 kallisto_quant_39
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:26 kallisto_quant_39.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:29 kallisto_quant_3.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:45 kallisto_quant_4
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:31 kallisto_quant_40
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:32 kallisto_quant_40.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:33 kallisto_quant_41
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:34 kallisto_quant_41.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:36 kallisto_quant_47
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:37 kallisto_quant_47.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:39 kallisto_quant_48
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:39 kallisto_quant_48.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:42 kallisto_quant_49
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:43 kallisto_quant_49.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:46 kallisto_quant_4.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:13 kallisto_quant_5
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:48 kallisto_quant_50
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:49 kallisto_quant_50.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:51 kallisto_quant_57
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:55 kallisto_quant_57-G
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:56 kallisto_quant_57-G.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:51 kallisto_quant_57.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 14:57 kallisto_quant_57-S
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 14:58 kallisto_quant_57-S.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:00 kallisto_quant_58
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:04 kallisto_quant_58-G
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:06 kallisto_quant_58-G.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:01 kallisto_quant_58.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:07 kallisto_quant_58-S
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:08 kallisto_quant_58-S.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:10 kallisto_quant_59
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:11 kallisto_quant_59.log
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:14 kallisto_quant_5.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:16 kallisto_quant_60
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:17 kallisto_quant_60.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:19 kallisto_quant_67
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:20 kallisto_quant_67.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:22 kallisto_quant_68
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:23 kallisto_quant_68.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:25 kallisto_quant_69
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:26 kallisto_quant_69.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:27 kallisto_quant_70
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:28 kallisto_quant_70.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:30 kallisto_quant_78
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:31 kallisto_quant_78.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:33 kallisto_quant_79
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:33 kallisto_quant_79.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:35 kallisto_quant_80
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:36 kallisto_quant_80.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:38 kallisto_quant_83
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:38 kallisto_quant_83.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:40 kallisto_quant_88
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:41 kallisto_quant_88.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:43 kallisto_quant_90
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:43 kallisto_quant_90.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:46 kallisto_quant_91
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:46 kallisto_quant_91.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:48 kallisto_quant_92
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:48 kallisto_quant_92.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:50 kallisto_quant_97
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:51 kallisto_quant_97.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:53 kallisto_quant_98
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:54 kallisto_quant_98.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:55 kallisto_quant_99
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:56 kallisto_quant_99.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 15:58 kallisto_quant_RESUB-116
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 15:58 kallisto_quant_RESUB-116.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:00 kallisto_quant_RESUB-156
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:01 kallisto_quant_RESUB-156.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:02 kallisto_quant_RESUB-36
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:03 kallisto_quant_RESUB-36.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:04 kallisto_quant_RESUB-76
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:05 kallisto_quant_RESUB-76.log
+    drwxr-xr-x 2 shedurkin labmembers 4.0K Jun 10 16:07 kallisto_quant_RESUB-94
+    -rw-r--r-- 1 shedurkin labmembers 5.3K Jun 10 16:07 kallisto_quant_RESUB-94.log
 
 ## 2.4 Sample Quantification
 
@@ -419,7 +421,7 @@ run_kallisto_quant() {
     local R2_fastq=${2}
     
     cd ${kallisto_output_dir}
-    sample_num=$(basename "${R1_fastq}" "_R1_001.fastq.gz")
+    sample_num=$(basename "${R1_fastq}" ".flexbar_trim.R_1.fastq.gz")
     mkdir kallisto_quant_${sample_num}
 
     ${programs_array[kallisto]} quant \
@@ -427,26 +429,26 @@ run_kallisto_quant() {
         --index="${kallisto_output_dir}/${kallisto_index_name}" \
         --output-dir="${kallisto_output_dir}/kallisto_quant_${sample_num}" \
         --bootstrap-samples=100 \
-        ${raw_reads_dir}/${R1_fastq} ${raw_reads_dir}/${R2_fastq} \
+        ${trimmed_reads_dir}/${R1_fastq} ${trimmed_reads_dir}/${R2_fastq} \
         &> "${kallisto_output_dir}/kallisto_quant_${sample_num}.log"
 }
 
 
 
 # Iteratively apply run_kallisto_quant on each pair of input reads
-for file_r1 in "${raw_reads_dir}"/*_R1_001.fastq.gz; do
+for file_r1 in "${trimmed_reads_dir}"/*.flexbar_trim.R_1.fastq.gz; do
     # Extract the sample name from the file name
-    sample_name=$(basename "${file_r1}" "_R1_001.fastq.gz")
+    sample_name=$(basename "${file_r1}" ".flexbar_trim.R_1.fastq.gz")
 
     # Form the file names (function takes input file names, not paths)
-    file_r1_name="${sample_name}_R1_001.fastq.gz"
-    file_r2_name="${sample_name}_R2_001.fastq.gz"
+    file_r1_name="${sample_name}.flexbar_trim.R_1.fastq.gz"
+    file_r2_name="${sample_name}.flexbar_trim.R_2.fastq.gz"
 
     # Check that the sample hasn't already been quantified
     if [ ! -d "${kallisto_output_dir}/kallisto_quant_${sample_name}" ]; then
     
         # Check if the corresponding R2 file exists
-        if [ -e "${raw_reads_dir}/${file_r2}" ]; then
+        if [ -e "${trimmed_reads_dir}/${file_r2}" ]; then
             # Run kallisto quant on the file pair
             run_kallisto_quant "${file_r1_name}" "${file_r2_name}" 
 
@@ -466,9 +468,9 @@ have one log file for each pair of reads
 source .bashvars
 
 # Count number of raw read files
-cd ${raw_reads_dir}
+cd ${trimmed_reads_dir}
 echo "Number of raw reads:"
-ls -1 | wc -l
+ls -1 *.fastq.gz | wc -l
 
 # Count number of kallisto output 
 cd ${kallisto_output_dir}
@@ -477,9 +479,9 @@ find . -type f -name "*.log" | wc -l
 ```
 
     Number of raw reads:
-    158
+    160
     Number of output log files
-    79
+    80
 
 ## 2.5 MultiQC on Kallisto output logs
 
@@ -577,255 +579,3 @@ ${programs_array[trinity_abund_to_matrix]} \
 
 ls -lh ${kallisto_output_dir}
 ```
-
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_100/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_107/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_108/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_109/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_10/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_110/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_117/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_118/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_119/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_11/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_120/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_121/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_127/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_128/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_129/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_12/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_131/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_137/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_138/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_139/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_13/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_140/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_147/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_148/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_149/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_150/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_18/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19-G/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_19-S/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_1/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20-G/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_20-S/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_21/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_28/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_29/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_2/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_30/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_31/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_37/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_38/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_39/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_3/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_40/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_41/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_47/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_48/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_49/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_4/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_50/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57-G/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_57-S/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58-G/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_58-S/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_59/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_5/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_60/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_67/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_68/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_69/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_70/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_78/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_79/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_80/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_83/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_88/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_90/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_91/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_97/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_98/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_99/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-116/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-156/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-36/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-76/abundance.tsv
-    -reading file: /home/shared/8TB_HDD_02/shedurkin/project-cod-temperature/output/06-cod-RNAseq-alignment/kallisto/kallisto_quant_RESUB-94/abundance.tsv
-
-
-    * Outputting combined matrix.
-
-    /home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl --matrix kallisto.isoform.TPM.not_cross_norm > kallisto.isoform.TMM.EXPR.matrixCMD: R --no-save --no-restore --no-site-file --no-init-file -q < kallisto.isoform.TPM.not_cross_norm.runTMM.R 1>&2 
-    sh: 1: R: not found
-    Error, cmd: R --no-save --no-restore --no-site-file --no-init-file -q < kallisto.isoform.TPM.not_cross_norm.runTMM.R 1>&2  died with ret (32512)  at /home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl line 105.
-    Error, CMD: /home/shared/trinityrnaseq-v2.12.0/util/support_scripts/run_TMM_scale_matrix.pl --matrix kallisto.isoform.TPM.not_cross_norm > kallisto.isoform.TMM.EXPR.matrix died with ret 6400 at /home/shared/trinityrnaseq-v2.12.0/util/abundance_estimates_to_matrix.pl line 385.
-    total 1.5G
-    -rw-r--r-- 1 shedurkin labmembers 1.5G Mar 18 16:08 G_macrocephalus_kallisto_index.idx
-    -rw-r--r-- 1 shedurkin labmembers  20M May  3 15:01 kallisto.isoform.counts.matrix
-    -rw-r--r-- 1 shedurkin labmembers    0 May  3 15:01 kallisto.isoform.TMM.EXPR.matrix
-    -rw-r--r-- 1 shedurkin labmembers  24M May  3 15:01 kallisto.isoform.TPM.not_cross_norm
-    -rw-r--r-- 1 shedurkin labmembers  532 May  3 15:01 kallisto.isoform.TPM.not_cross_norm.runTMM.R
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:46 kallisto_quant_1
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:11 kallisto_quant_10
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:03 kallisto_quant_100
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:04 kallisto_quant_100.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:05 kallisto_quant_107
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:05 kallisto_quant_107.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:07 kallisto_quant_108
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:08 kallisto_quant_108.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:09 kallisto_quant_109
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:10 kallisto_quant_109.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:12 kallisto_quant_10.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:22 kallisto_quant_11
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:13 kallisto_quant_110
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:14 kallisto_quant_110.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:15 kallisto_quant_117
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:16 kallisto_quant_117.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:18 kallisto_quant_118
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:18 kallisto_quant_118.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:20 kallisto_quant_119
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:20 kallisto_quant_119.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:22 kallisto_quant_11.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:33 kallisto_quant_12
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:24 kallisto_quant_120
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:24 kallisto_quant_120.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:26 kallisto_quant_121
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:27 kallisto_quant_121.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:28 kallisto_quant_127
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:29 kallisto_quant_127.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:30 kallisto_quant_128
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:30 kallisto_quant_128.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:31 kallisto_quant_129
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:31 kallisto_quant_129.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:33 kallisto_quant_12.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:39 kallisto_quant_13
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:34 kallisto_quant_131
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:34 kallisto_quant_131.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:35 kallisto_quant_137
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:35 kallisto_quant_137.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:36 kallisto_quant_138
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:36 kallisto_quant_138.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:37 kallisto_quant_139
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:37 kallisto_quant_139.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:39 kallisto_quant_13.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:40 kallisto_quant_140
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:40 kallisto_quant_140.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:41 kallisto_quant_147
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:41 kallisto_quant_147.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:43 kallisto_quant_148
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:44 kallisto_quant_148.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 15:51 kallisto_quant_149
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 15:52 kallisto_quant_149.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:52 kallisto_quant_150
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 22:53 kallisto_quant_150.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:37 kallisto_quant_18
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:37 kallisto_quant_18.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:41 kallisto_quant_19
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:39 kallisto_quant_19-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:40 kallisto_quant_19-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:41 kallisto_quant_19.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:43 kallisto_quant_19-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:44 kallisto_quant_19-S.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:46 kallisto_quant_1.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:59 kallisto_quant_2
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:50 kallisto_quant_20
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:48 kallisto_quant_20-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:49 kallisto_quant_20-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:50 kallisto_quant_20.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:52 kallisto_quant_20-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:52 kallisto_quant_20-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:54 kallisto_quant_21
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:54 kallisto_quant_21.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:56 kallisto_quant_28
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:56 kallisto_quant_28.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 17:57 kallisto_quant_29
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 17:58 kallisto_quant_29.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:00 kallisto_quant_2.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:53 kallisto_quant_3
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:01 kallisto_quant_30
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:02 kallisto_quant_30.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 18:03 kallisto_quant_31
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 18:04 kallisto_quant_31.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:47 kallisto_quant_37
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:48 kallisto_quant_37.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:49 kallisto_quant_38
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:49 kallisto_quant_38.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:51 kallisto_quant_39
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:51 kallisto_quant_39.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:53 kallisto_quant_3.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:04 kallisto_quant_4
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:54 kallisto_quant_40
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:55 kallisto_quant_40.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:56 kallisto_quant_41
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:56 kallisto_quant_41.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 20:58 kallisto_quant_47
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 20:58 kallisto_quant_47.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:00 kallisto_quant_48
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:00 kallisto_quant_48.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:02 kallisto_quant_49
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:02 kallisto_quant_49.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:04 kallisto_quant_4.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:26 kallisto_quant_5
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:06 kallisto_quant_50
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:06 kallisto_quant_50.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:14 kallisto_quant_57
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:10 kallisto_quant_57-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:11 kallisto_quant_57-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:14 kallisto_quant_57.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:15 kallisto_quant_57-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:15 kallisto_quant_57-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:20 kallisto_quant_58
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:18 kallisto_quant_58-G
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:18 kallisto_quant_58-G.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:20 kallisto_quant_58.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:22 kallisto_quant_58-S
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:22 kallisto_quant_58-S.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:24 kallisto_quant_59
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:24 kallisto_quant_59.log
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:26 kallisto_quant_5.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:28 kallisto_quant_60
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:28 kallisto_quant_60.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:30 kallisto_quant_67
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:30 kallisto_quant_67.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:32 kallisto_quant_68
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:32 kallisto_quant_68.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:34 kallisto_quant_69
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:34 kallisto_quant_69.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:35 kallisto_quant_70
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:36 kallisto_quant_70.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:37 kallisto_quant_78
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:37 kallisto_quant_78.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:39 kallisto_quant_79
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:39 kallisto_quant_79.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:40 kallisto_quant_80
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:41 kallisto_quant_80.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:42 kallisto_quant_83
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:43 kallisto_quant_83.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:44 kallisto_quant_88
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:44 kallisto_quant_88.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:46 kallisto_quant_90
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:46 kallisto_quant_90.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:48 kallisto_quant_91
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:48 kallisto_quant_91.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:50 kallisto_quant_97
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:50 kallisto_quant_97.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:52 kallisto_quant_98
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:52 kallisto_quant_98.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:53 kallisto_quant_99
-    -rw-r--r-- 1 shedurkin labmembers 5.2K Apr 29 21:54 kallisto_quant_99.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:55 kallisto_quant_RESUB-116
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:55 kallisto_quant_RESUB-116.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:57 kallisto_quant_RESUB-156
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:57 kallisto_quant_RESUB-156.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 21:58 kallisto_quant_RESUB-36
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 21:59 kallisto_quant_RESUB-36.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:54 kallisto_quant_RESUB-76
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:54 kallisto_quant_RESUB-76.log
-    drwxr-xr-x 2 shedurkin labmembers 4.0K Apr 29 22:13 kallisto_quant_RESUB-94
-    -rw-r--r-- 1 shedurkin labmembers 5.3K Apr 29 22:14 kallisto_quant_RESUB-94.log
