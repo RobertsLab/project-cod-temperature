@@ -22,7 +22,8 @@ output:
 library(knitr)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
-  eval = TRUE,        # Evaluate code chunks
+  eval = TRUE,         # Evaluate code chunks
+  cache = TRUE,        # Cache code chunk results to speed up document render
   warning = FALSE,     # Hide warnings
   message = FALSE,     # Hide messages
   comment = ""         # Prevents appending '##' to beginning of lines in code output
@@ -31,7 +32,8 @@ knitr::opts_chunk$set(
 
 Differential gene expression analysis for [Pacific cod RNAseq data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html).
 
--   Raw reads found [here](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
+-   trimmed reads generated in `05-cod-RNAseq-trimming`
+
 -   Reads aligned to transcriptome downloaded from [NCBI](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/), stored [here](https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_rna.fna) as a part of lab [genomic resources](https://robertslab.github.io/resources/Genomic-Resources/#gadus-macrocephalus-pacific-cod).
 
 ### Install and load packages
@@ -148,11 +150,10 @@ cod_sample_info$temp_treatment <- factor(cod_sample_info$temp_treatment)
 cod_sample_info$tank <- factor(cod_sample_info$tank)
 cod_sample_info$tissue_type <- factor(cod_sample_info$tissue_type)
 
-# Remove bad/missing samples
-# Missing data: 92
+# Remove bad samples
 # MuliQC report: 149, 129
 # PCA outliers: 31, 41 (per Laura)
-cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_92", "sample_149", "sample_129", "sample_31", "sample_41")),]
+cod_sample_info <- cod_sample_info[!(row.names(cod_sample_info) %in% c("sample_149", "sample_129", "sample_31", "sample_41")),]
 cod_counts_data <- as.matrix(subset(cod_counts_data, select=-c(sample_149, sample_129, sample_31, sample_41)))
 
 # Check that the column names of our count data match the row names of our sample info sheet
@@ -421,11 +422,20 @@ res_table_L.9.16_norm_tb <- res_table_L.9.16_norm %>%
   as_tibble()
 
 # subset that table to only keep the significant genes using our pre-defined thresholds:
-sig_L.9.16_norm <- res_table_L.9.16_norm_tb %>%
-        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+sig_L.9.16_norm_noLFCcutoff <- res_table_L.9.16_norm_tb %>%
+  filter(padj < padj.cutoff)
+
+sig_L.9.16_norm <- sig_L.9.16_norm_noLFCcutoff %>% 
+  filter(abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.16_norm_noLFCcutoff)
+paste("Number of significant DEGs for 9C v 16C:", nrow(sig_L.9.16_norm_noLFCcutoff), "(padj<", padj.cutoff, ")")
 
 head(sig_L.9.16_norm)
 paste("Number of significant DEGs for 9C v 16C:", nrow(sig_L.9.16_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.16_norm_noLFCcutoff, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.16_norm_noLFCcutoff.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 
 write.table(sig_L.9.16_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.16_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
@@ -433,6 +443,7 @@ write.table(sig_L.9.16_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_si
 
 ## Heatmap
 
+For DEGs based on adjusted p-value *and* log fold-change
 ```{r}
 # Retrieve normalized counts matrix
 dds_L.9.16_norm_counts <- counts(dds_L.9.16, normalized=TRUE)
@@ -446,7 +457,7 @@ head(norm_sig_L.9.16)
 
 # Annotate heatmap
 annotation <- infosub_L.9.16 %>% 
-	select(temp_treatment)
+	dplyr::select(temp_treatment)
 
 # Set a color palette
 heat_colors <- rev(brewer.pal(12, "RdYlBu"))
@@ -466,6 +477,45 @@ h.L.9.16 <- pheatmap(norm_sig_L.9.16,
 
 # Save plot
 ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.16_norm_sig.png",
+         plot   = h.L.9.16,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
+
+Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+For DEGs based on adjusted p-value *only*
+```{r}
+# Extract normalized expression for significant genes
+norm_sig_L.9.16_noLFCcutoff <- dds_L.9.16_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.16_norm_counts) %in% sig_L.9.16_norm_noLFCcutoff$gene)
+
+head(norm_sig_L.9.16_noLFCcutoff)
+
+# Annotate heatmap
+annotation <- infosub_L.9.16 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.16 <- pheatmap(norm_sig_L.9.16_noLFCcutoff, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 16*C")
+
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.16_norm_sig_noLFCcutoff.png",
          plot   = h.L.9.16,
          res    = 600,
          width  = 5000,
@@ -595,11 +645,20 @@ res_table_L.9.0_norm_tb <- res_table_L.9.0_norm %>%
   as_tibble()
 
 # subset that table to only keep the significant genes using our pre-defined thresholds:
-sig_L.9.0_norm <- res_table_L.9.0_norm_tb %>%
-        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+sig_L.9.0_norm_noLFCcutoff <- res_table_L.9.0_norm_tb %>%
+  filter(padj < padj.cutoff)
+
+sig_L.9.0_norm <- sig_L.9.0_norm_noLFCcutoff %>% 
+  filter(abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.0_norm_noLFCcutoff)
+paste("Number of significant DEGs for 9C v 0C:", nrow(sig_L.9.0_norm_noLFCcutoff), "(padj<", padj.cutoff, ")")
 
 head(sig_L.9.0_norm)
 paste("Number of significant DEGs for 9C v 0C:", nrow(sig_L.9.0_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.0_norm_noLFCcutoff, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.0_norm_noLFCcutoff.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 
 write.table(sig_L.9.0_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.0_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
@@ -607,6 +666,7 @@ write.table(sig_L.9.0_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig
 
 ## Heatmap
 
+For DEGs based on adjusted p-value *and* LFC cutoff
 ```{r}
 # Retrieve normalized counts matrix
 dds_L.9.0_norm_counts <- counts(dds_L.9.0, normalized=TRUE)
@@ -620,7 +680,7 @@ head(norm_sig_L.9.0)
 
 # Annotate heatmap
 annotation <- infosub_L.9.0 %>% 
-	select(temp_treatment)
+	dplyr::select(temp_treatment)
 
 # Set a color palette
 heat_colors <- rev(brewer.pal(12, "RdYlBu"))
@@ -647,6 +707,43 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.0_norm_sig.png",
 ```
 
 Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+For DEGs based on adjusted p-value *only*
+```{r}
+# Extract normalized expression for significant genes
+norm_sig_L.9.0_noLFCcutoff <- dds_L.9.0_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.0_norm_counts) %in% sig_L.9.0_norm_noLFCcutoff$gene)
+
+head(norm_sig_L.9.0_noLFCcutoff)
+
+# Annotate heatmap
+annotation <- infosub_L.9.0 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.0 <- pheatmap(norm_sig_L.9.0_noLFCcutoff, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 0*C")
+
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.0_norm_sig_noLFCcutoff.png",
+         plot   = h.L.9.0,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
 
 ## Volcano plot
 
@@ -769,11 +866,20 @@ res_table_L.9.5_norm_tb <- res_table_L.9.5_norm %>%
   as_tibble()
 
 # subset that table to only keep the significant genes using our pre-defined thresholds:
-sig_L.9.5_norm <- res_table_L.9.5_norm_tb %>%
-        filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+sig_L.9.5_norm_noLFCcutoff <- res_table_L.9.5_norm_tb %>%
+  filter(padj < padj.cutoff)
+
+sig_L.9.5_norm <- sig_L.9.5_norm_noLFCcutoff %>% 
+  filter(abs(log2FoldChange) > lfc.cutoff)
+
+head(sig_L.9.5_norm)
+paste("Number of significant DEGs for 9C v 5C:", nrow(sig_L.9.5_norm_noLFCcutoff), "(padj<", padj.cutoff, ")")
 
 head(sig_L.9.5_norm)
 paste("Number of significant DEGs for 9C v 5C:", nrow(sig_L.9.5_norm), "(padj<", padj.cutoff, ", log-fold change >", lfc.cutoff, ")")
+
+write.table(sig_L.9.5_norm_noLFCcutoff, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.5_norm_noLFCcutoff.tab", sep = "\t",
+            row.names = TRUE, col.names = NA)
 
 write.table(sig_L.9.5_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig_L.9.5_norm.tab", sep = "\t",
             row.names = TRUE, col.names = NA)
@@ -781,6 +887,7 @@ write.table(sig_L.9.5_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig
 
 ## Heatmap
 
+For DEGs based on adjusted p-value *and* LFC cutoff
 ```{r}
 # Retrieve normalized counts matrix
 dds_L.9.5_norm_counts <- counts(dds_L.9.5, normalized=TRUE)
@@ -794,7 +901,7 @@ head(norm_sig_L.9.5)
 
 # Annotate heatmap
 annotation <- infosub_L.9.5 %>% 
-	select(temp_treatment)
+	dplyr::select(temp_treatment)
 
 # Set a color palette
 heat_colors <- rev(brewer.pal(12, "RdYlBu"))
@@ -821,6 +928,43 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.5_norm_sig.png",
 ```
 
 Note the argument `scale="row"` was included, so the values plotted in the heat map are *Z-scores*, rather thn the normalized count value. This vastly improves the color visualization.
+
+For DEGs based on adjusted p-value *only*
+```{r}
+# Extract normalized expression for significant genes
+norm_sig_L.9.5_noLFCcutoff <- dds_L.9.5_norm_counts %>% 
+  data.frame() %>%
+  filter(row.names(dds_L.9.5_norm_counts) %in% sig_L.9.5_norm_noLFCcutoff$gene)
+
+head(norm_sig_L.9.5_noLFCcutoff)
+
+# Annotate heatmap
+annotation <- infosub_L.9.5 %>% 
+	dplyr::select(temp_treatment)
+
+# Set a color palette
+heat_colors <- rev(brewer.pal(12, "RdYlBu"))
+
+# Run pheatmap
+h.L.9.5 <- pheatmap(norm_sig_L.9.5_noLFCcutoff, 
+                     color = heat_colors, 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = annotation, 
+                     border_color = NA, 
+                     fontsize = 10,
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 30,
+                     main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 5*C")
+
+# Save plot
+ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.5_norm_sig_noLFCcutoff.png",
+         plot   = h.L.9.5,
+         res    = 600,
+         width  = 5000,
+         height = 5000)
+```
 
 ## Volcano plot
 
