@@ -174,7 +174,8 @@ summary(decideTests(object = exact_test_genes, p.value = 0.05))
 
 ```{r deg-statistics, eval=TRUE}
 top_degs_table <-  topTags(object = exact_test_genes, n = "Inf", adjust.method = "fdr", p.value = 0.05)$table
-top_degs_table
+
+str(top_degs_table)
 
 ```
 
@@ -199,3 +200,5 @@ ggplot(data=top_degs_table, aes(x=logFC, y=-log10(FDR), color = topDE)) +
   theme_minimal() +
   scale_colour_discrete(type = ghibli_subset, breaks = c("Up", "Down"))
 ```
+
+# CITATIONS
