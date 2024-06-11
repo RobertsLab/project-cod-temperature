@@ -79,7 +79,7 @@ print(temperatures)
 
 ### Reformat header
 
-```{r reformat-counts-header}
+```{r reformat-counts-header, eval=TRUE}
 # Read the entire CSV file
 csv_file <- readLines("../output/10.1-hisat-deseq2/gene_count_matrix.csv")
 
@@ -101,18 +101,23 @@ csv_file[1] <- modified_header
 # Convert the modified CSV content to a data frame
 csv_content <- read.csv(textConnection(csv_file), row.names = 1)
 
+```
+
+### Convert to matrix
+```{r convert-gene-counts-to-matrix, eval=TRUE}
 # Convert the data frame to a matrix
 gene_count_matrix <- as.matrix(csv_content)
 
-# Print the modified header and the matrix to verify
-print(modified_header)
+# Print the matrix
 print(head(gene_count_matrix))
 
 ```
 
-```{r load-gene-count-matrix, eval=TRUE}
-# Load transcript) count matrix and labels
-gene_count_matrix <- as.matrix(read.csv("../output/10.1-hisat-deseq2/gene_count_matrix.csv", row.names="gene_id"))
 
-str(countData)
+### Load matrix into edgeR
+```{r load-gene-count-matrix, eval=TRUE}
+dge <- DGEList(counts = gene_count_matrix, group = factor(temperatures))
+
+dge
+
 ```
