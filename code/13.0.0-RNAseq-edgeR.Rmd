@@ -36,3 +36,38 @@ knitr::opts_chunk$set(
   comment = ""         # Prevents appending '##' to beginning of lines in code output
 )
 ```
+
+# Create edgeR grouping vector
+
+## Check sample info
+
+Only looking at 9<sup>o</sup>C and 16<sup>o</sup>C
+```{r check-sample-info, engine='bash', eval=TRUE}
+echo "Header for ../data/DESeq2_Sample_Information.csv:"
+echo ""
+
+head -n 1 ../data/DESeq2_Sample_Information.csv
+
+echo ""
+echo "---------------------------------------------"
+echo ""
+awk -F"," '$4 == 16 || $4 == 9 {print $2, $4}' ../data/DESeq2_Sample_Information.csv | sort -n -k1,1
+```
+
+## Create edgeR grouping vector
+
+Since all sample IDs `<=` to `36` are part of the 16<sup>o</sup>C treatment, we can use this to create vector which matches sample ordering in `../output/10.1-hisat-deseq2/gene_count_matrix.csv`
+
+```{r edgeR-grouping, eval=TRUE}
+# Read the first line of the CSV file
+header <- readLines("../output/10.1-hisat-deseq2/gene_count_matrix.csv", n = 1)
+
+# Split the header to extract the values
+values <- as.numeric(unlist(strsplit(header, ","))[-1]) # Remove the first element which is "gene_id"
+
+# Apply the conditional logic to generate the temperatures vector
+temperatures <- ifelse(values <= 36, "16C", "9C")
+
+# Print the resulting vector
+print(temperatures)
+```
