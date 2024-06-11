@@ -126,7 +126,7 @@ dge
 ### Filter low counts
 
 Filters for genes with at >= `10` reads across at least 3 samples.
-```{r filter-low-gene-counts}
+```{r filter-low-gene-counts, eval=TRUE}
 keep <- filterByExpr(dge)
 
 dge <- dge[keep, , keep.lib.sizes=FALSE]
@@ -134,21 +134,21 @@ dge <- dge[keep, , keep.lib.sizes=FALSE]
 dge
 ```
 ### Normalization
-```{r normalize-gene-read-counts}
+```{r normalize-gene-read-counts, eval=TRUE}
 dge <- calcNormFactors(object = dge)
 
 dge
 ```
 
 ### Model fitting and estimating dispersions
-```{r model-dispersion-genes}
+```{r model-dispersion-genes, eval=TRUE}
 dge <- estimateDisp(dge)
 
 dge
 ```
 
 ### Exact test (Gene expression)
-```{r }
+```{r differential-expression, eval=TRUE}
 exact_test_genes <- exactTest(dge)
 
 exact_test_genes
@@ -156,19 +156,19 @@ exact_test_genes
 ```
 
 ### Differential gene expression summary
-```{r }
+```{r deg-counts, , eval=TRUE}
 summary(decideTests(object = exact_test_genes, p.value = 0.05))
 ```
 
 ### Peek at DEGs
-```{r }
+```{r deg-statistics, eval=TRUE}
 top_degs_table <-  topTags(object = exact_test_genes, n = "Inf", adjust.method = "fdr", p.value = 0.05)$table
 top_degs_table
 
 ```
 
 ### Volcano plot
-```{r }
+```{r plot-volcano-degs, eval=TRUE}
 ghibli_colors <- ghibli_palette("PonyoMedium", type = "discrete")
 
 ghibli_subset <- c(ghibli_colors[3], ghibli_colors[6], ghibli_colors[4])
