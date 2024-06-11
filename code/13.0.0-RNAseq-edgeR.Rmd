@@ -37,7 +37,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Create edgeR grouping vector
+# EDGER GROUPING VECTOR
 
 ## Check sample info
 
@@ -70,4 +70,49 @@ temperatures <- ifelse(values <= 36, "16C", "9C")
 
 # Print the resulting vector
 print(temperatures)
+```
+
+
+# DEGs
+
+## Load count matrix
+
+### Reformat header
+
+```{r reformat-counts-header}
+# Read the entire CSV file
+csv_file <- readLines("../output/10.1-hisat-deseq2/gene_count_matrix.csv")
+
+# Extract the header line
+header <- csv_file[1]
+
+# Split the header to extract the values
+header_values <- unlist(strsplit(header, ","))
+
+# Prepend 'sample_' to each value (excluding 'gene_id')
+header_values[-1] <- paste0("sample_", header_values[-1])
+
+# Combine the modified header back into a single string
+modified_header <- paste(header_values, collapse = ",")
+
+# Replace the old header with the new modified header in the CSV content
+csv_file[1] <- modified_header
+
+# Convert the modified CSV content to a data frame
+csv_content <- read.csv(textConnection(csv_file), row.names = 1)
+
+# Convert the data frame to a matrix
+gene_count_matrix <- as.matrix(csv_content)
+
+# Print the modified header and the matrix to verify
+print(modified_header)
+print(head(gene_count_matrix))
+
+```
+
+```{r load-gene-count-matrix, eval=TRUE}
+# Load transcript) count matrix and labels
+gene_count_matrix <- as.matrix(read.csv("../output/10.1-hisat-deseq2/gene_count_matrix.csv", row.names="gene_id"))
+
+str(countData)
 ```
