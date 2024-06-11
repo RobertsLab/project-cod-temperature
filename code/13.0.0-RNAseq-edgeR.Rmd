@@ -28,6 +28,8 @@ link-citations: true
 library(knitr)
 library(dplyr)
 library(edgeR)
+library(ggplot2)
+library(ghibli)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
   eval = FALSE,        # Evaluate code chunks
@@ -120,4 +122,68 @@ dge <- DGEList(counts = gene_count_matrix, group = factor(temperatures))
 
 dge
 
+```
+### Filter low counts
+
+Filters for genes with at >= `10` reads across at least 3 samples.
+```{r filter-low-gene-counts}
+keep <- filterByExpr(dge)
+
+dge <- dge[keep, , keep.lib.sizes=FALSE]
+
+dge
+```
+### Normalization
+```{r normalize-gene-read-counts}
+dge <- calcNormFactors(object = dge)
+
+dge
+```
+
+### Model fitting and estimating dispersions
+```{r model-dispersion-genes}
+dge <- estimateDisp(dge)
+
+dge
+```
+
+### Exact test (Gene expression)
+```{r }
+exact_test_genes <- exactTest(dge)
+
+exact_test_genes
+
+```
+
+### Differential gene expression summary
+```{r }
+summary(decideTests(object = exact_test_genes, p.value = 0.05))
+```
+
+### Peek at DEGs
+```{r }
+top_degs_table <-  topTags(object = exact_test_genes, n = "Inf", adjust.method = "fdr", p.value = 0.05)$table
+top_degs_table
+
+```
+
+### Volcano plot
+```{r }
+ghibli_colors <- ghibli_palette("PonyoMedium", type = "discrete")
+
+ghibli_subset <- c(ghibli_colors[3], ghibli_colors[6], ghibli_colors[4])
+
+# Create new column and fill with `NA`
+top_degs_table$topDE <- "NA"
+
+# Set value of "Up" for genes with FC > 1 and FDR < 0.05
+top_degs_table$topDE[top_degs_table$logFC > 1 & top_degs_table$FDR < 0.05] <- "Up"
+
+# Set value of "Down" for genes with FC < -1 and FDR < 0.05
+top_degs_table$topDE[top_degs_table$logFC < -1 & top_degs_table$FDR < 0.05] <- "Down"
+
+ggplot(data=top_degs_table, aes(x=logFC, y=-log10(FDR), color = topDE)) + 
+  geom_point() +
+  theme_minimal() +
+  scale_colour_discrete(type = ghibli_subset, breaks = c("Up", "Down"))
 ```
