@@ -24,10 +24,14 @@ bibliography: references.bib
 link-citations: true
 ---
 
+Differential gene expression of 9<sup>o</sup>C vs 16<sup>o</sup>C liver RNA-seq using [edgeR](https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf) [@chen2024; @mccarthy2012; @chen2016; @robinson2009]
+
 ```{r setup, include=FALSE}
 library(knitr)
 library(dplyr)
 library(edgeR)
+library(ggplot2)
+library(ghibli)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
   eval = FALSE,        # Evaluate code chunks
@@ -37,11 +41,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-# EDGER GROUPING VECTOR
+# edgeR GROUPING VECTOR
 
 ## Check sample info
 
 Only looking at 9<sup>o</sup>C and 16<sup>o</sup>C
+
 ```{r check-sample-info, engine='bash', eval=TRUE}
 echo "Header for ../data/DESeq2_Sample_Information.csv:"
 echo ""
@@ -71,7 +76,6 @@ temperatures <- ifelse(values <= 36, "16C", "9C")
 # Print the resulting vector
 print(temperatures)
 ```
-
 
 # DEGs
 
@@ -104,6 +108,7 @@ csv_content <- read.csv(textConnection(csv_file), row.names = 1)
 ```
 
 ### Convert to matrix
+
 ```{r convert-gene-counts-to-matrix, eval=TRUE}
 # Convert the data frame to a matrix
 gene_count_matrix <- as.matrix(csv_content)
@@ -113,11 +118,87 @@ print(head(gene_count_matrix))
 
 ```
 
-
 ### Load matrix into edgeR
+
 ```{r load-gene-count-matrix, eval=TRUE}
 dge <- DGEList(counts = gene_count_matrix, group = factor(temperatures))
 
 dge
 
 ```
+
+### Filter low counts
+
+Filters for genes with at \>= `10` reads across at least 3 samples.
+
+```{r filter-low-gene-counts, eval=TRUE}
+keep <- filterByExpr(dge)
+
+dge <- dge[keep, , keep.lib.sizes=FALSE]
+
+dge
+```
+
+### Normalization
+
+```{r normalize-gene-read-counts, eval=TRUE}
+dge <- calcNormFactors(object = dge)
+
+dge
+```
+
+### Model fitting and estimating dispersions
+
+```{r model-dispersion-genes, eval=TRUE}
+dge <- estimateDisp(dge)
+
+dge
+```
+
+### Exact test (Gene expression)
+
+```{r differential-expression, eval=TRUE}
+exact_test_genes <- exactTest(dge)
+
+exact_test_genes
+
+```
+
+### Differential gene expression summary
+
+```{r deg-counts, , eval=TRUE}
+summary(decideTests(object = exact_test_genes, p.value = 0.05))
+```
+
+### Peek at DEGs
+
+```{r deg-statistics, eval=TRUE}
+top_degs_table <-  topTags(object = exact_test_genes, n = "Inf", adjust.method = "fdr", p.value = 0.05)$table
+
+str(top_degs_table)
+
+```
+
+### Volcano plot
+
+```{r plot-volcano-degs, eval=TRUE}
+ghibli_colors <- ghibli_palette("PonyoMedium", type = "discrete")
+
+ghibli_subset <- c(ghibli_colors[3], ghibli_colors[6], ghibli_colors[4])
+
+# Create new column and fill with `NA`
+top_degs_table$topDE <- "NA"
+
+# Set value of "Up" for genes with FC > 1 and FDR < 0.05
+top_degs_table$topDE[top_degs_table$logFC > 1 & top_degs_table$FDR < 0.05] <- "Up"
+
+# Set value of "Down" for genes with FC < -1 and FDR < 0.05
+top_degs_table$topDE[top_degs_table$logFC < -1 & top_degs_table$FDR < 0.05] <- "Down"
+
+ggplot(data=top_degs_table, aes(x=logFC, y=-log10(FDR), color = topDE)) + 
+  geom_point() +
+  theme_minimal() +
+  scale_colour_discrete(type = ghibli_subset, breaks = c("Up", "Down"))
+```
+
+# CITATIONS
