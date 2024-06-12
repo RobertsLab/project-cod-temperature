@@ -24,25 +24,34 @@ Kathleen Durkin
     visualization</a>
 - <a href="#3-liver-tissue-9c-v-16c" id="toc-3-liver-tissue-9c-v-16c">3
   Liver tissue, 9<em>C v. 16</em>C</a>
-- <a href="#4-extracting-significantly-expressed-genes"
-  id="toc-4-extracting-significantly-expressed-genes">4 Extracting
-  significantly expressed genes</a>
-  - <a href="#41-heatmap" id="toc-41-heatmap">4.1 Heatmap</a>
-  - <a href="#42-volcano-plot" id="toc-42-volcano-plot">4.2 Volcano plot</a>
-- <a href="#5-liver-tissue-9c-v-0c" id="toc-5-liver-tissue-9c-v-0c">5
+  - <a href="#31-extracting-significantly-expressed-genes"
+    id="toc-31-extracting-significantly-expressed-genes">3.1 Extracting
+    significantly expressed genes</a>
+  - <a href="#32-heatmap" id="toc-32-heatmap">3.2 Heatmap</a>
+  - <a href="#33-volcano-plot" id="toc-33-volcano-plot">3.3 Volcano plot</a>
+  - <a href="#34-plot-expression-of-top-degs-across-treatments"
+    id="toc-34-plot-expression-of-top-degs-across-treatments">3.4 Plot
+    expression of top DEGs across treatments</a>
+- <a href="#4-liver-tissue-9c-v-0c" id="toc-4-liver-tissue-9c-v-0c">4
   Liver tissue, 9<em>C v. 0</em>C</a>
-- <a href="#6-extracting-significantly-expressed-genes"
-  id="toc-6-extracting-significantly-expressed-genes">6 Extracting
-  significantly expressed genes</a>
-  - <a href="#61-heatmap" id="toc-61-heatmap">6.1 Heatmap</a>
-  - <a href="#62-volcano-plot" id="toc-62-volcano-plot">6.2 Volcano plot</a>
-- <a href="#7-liver-tissue-9c-v-5c" id="toc-7-liver-tissue-9c-v-5c">7
+  - <a href="#41-extracting-significantly-expressed-genes"
+    id="toc-41-extracting-significantly-expressed-genes">4.1 Extracting
+    significantly expressed genes</a>
+  - <a href="#42-heatmap" id="toc-42-heatmap">4.2 Heatmap</a>
+  - <a href="#43-volcano-plot" id="toc-43-volcano-plot">4.3 Volcano plot</a>
+  - <a href="#44-plot-expression-of-top-degs-across-treatments"
+    id="toc-44-plot-expression-of-top-degs-across-treatments">4.4 Plot
+    expression of top DEGs across treatments</a>
+- <a href="#5-liver-tissue-9c-v-5c" id="toc-5-liver-tissue-9c-v-5c">5
   Liver tissue, 9<em>C v. 5</em>C</a>
-- <a href="#8-extracting-significantly-expressed-genes"
-  id="toc-8-extracting-significantly-expressed-genes">8 Extracting
-  significantly expressed genes</a>
-  - <a href="#81-heatmap" id="toc-81-heatmap">8.1 Heatmap</a>
-  - <a href="#82-volcano-plot" id="toc-82-volcano-plot">8.2 Volcano plot</a>
+  - <a href="#51-extracting-significantly-expressed-genes"
+    id="toc-51-extracting-significantly-expressed-genes">5.1 Extracting
+    significantly expressed genes</a>
+  - <a href="#52-heatmap" id="toc-52-heatmap">5.2 Heatmap</a>
+  - <a href="#53-volcano-plot" id="toc-53-volcano-plot">5.3 Volcano plot</a>
+  - <a href="#54-plot-expression-of-top-degs-across-treatments"
+    id="toc-54-plot-expression-of-top-degs-across-treatments">5.4 Plot
+    expression of top DEGs across treatments</a>
 
 Differential gene expression analysis for [Pacific cod RNAseq
 data](https://shedurkin.github.io/Roberts-LabNotebook/posts/projects/pacific_cod/2023_12_13_pacific_cod.html).
@@ -362,36 +371,36 @@ cod_sample_info <- cod_sample_info[order(cod_sample_info$sample_name), ]
 # Again, we need to reformat so that the data in the first column becomes the row names
 rownames(cod_sample_info) <- cod_sample_info$sample_name
 
-# Remove duplicate columns (artifact of merging data frames with multiple shared columns and of maing sample_name the rownames instead of a variable)
+# Remove duplicate columns (artifact of merging data frames with multiple shared columns and of making sample_name the rownames instead of a variable)
 cod_sample_info <- subset(cod_sample_info, select=-Temperature)
 cod_sample_info <- subset(cod_sample_info, select=-Tank)
-cod_sample_info <- subset(cod_sample_info, select=-sample_name)
+#cod_sample_info <- subset(cod_sample_info, select=-sample_name)
 
 
 head(cod_sample_info)
 ```
 
-               sample_number tank temp_treatment tissue_type Microchip.ID
-    sample_1               1    1             16       Liver         9443
-    sample_10             10    2             16       Liver         9518
-    sample_100           100   15              9       Liver         9483
-    sample_107           107   16              9       Liver         4236
-    sample_108           108   16              9       Liver         9416
-    sample_109           109   16              9       Liver         9481
-               SL_11212022 WWT_11212022 SL_12272022 WWT_12272022 MortDate
-    sample_1            99        10.54         108        12.94         
-    sample_10           95         9.45         105        12.67         
-    sample_100          70         4.54          78         5.23         
-    sample_107          94         9.15         104        11.44         
-    sample_108          81         6.26          91         7.87         
-    sample_109          89         7.77          95         9.49         
-               DissectionDate SL_mm WholeBodyWW_g TOTAL_Liver_WW_mg
-    sample_1           2/8/23   114         14.39            0.0896
-    sample_10          2/8/23   120         16.22            0.3854
-    sample_100         2/9/23    93          8.33            0.2558
-    sample_107         2/9/23   119         16.41            0.5612
-    sample_108         2/9/23   106         11.67            0.3650
-    sample_109         2/9/23   116         11.45            0.3088
+               sample_number sample_name tank temp_treatment tissue_type
+    sample_1               1    sample_1    1             16       Liver
+    sample_10             10   sample_10    2             16       Liver
+    sample_100           100  sample_100   15              9       Liver
+    sample_107           107  sample_107   16              9       Liver
+    sample_108           108  sample_108   16              9       Liver
+    sample_109           109  sample_109   16              9       Liver
+               Microchip.ID SL_11212022 WWT_11212022 SL_12272022 WWT_12272022
+    sample_1           9443          99        10.54         108        12.94
+    sample_10          9518          95         9.45         105        12.67
+    sample_100         9483          70         4.54          78         5.23
+    sample_107         4236          94         9.15         104        11.44
+    sample_108         9416          81         6.26          91         7.87
+    sample_109         9481          89         7.77          95         9.49
+               MortDate DissectionDate SL_mm WholeBodyWW_g TOTAL_Liver_WW_mg
+    sample_1                    2/8/23   114         14.39            0.0896
+    sample_10                   2/8/23   120         16.22            0.3854
+    sample_100                  2/9/23    93          8.33            0.2558
+    sample_107                  2/9/23   119         16.41            0.5612
+    sample_108                  2/9/23   106         11.67            0.3650
+    sample_109                  2/9/23   116         11.45            0.3088
                LiverforLipids_WW_mg MuscleWWforLipids_mg DissectionComments
     sample_1                 0.0704               0.3899      lipid inserts
     sample_10                0.1285               0.2967                   
@@ -445,6 +454,39 @@ all(colnames(cod_counts_data) == rownames(cod_sample_info))
 
     [1] TRUE
 
+Combine counts data and sample metadata for later analyses
+
+``` r
+# Melt cod_counts_data to long format
+cod_counts_data_long <- as.data.frame(cod_counts_data)
+cod_counts_data_long$gene <- rownames(cod_counts_data_long)
+cod_counts_data_long <- cod_counts_data_long %>% 
+  pivot_longer(cols = starts_with("sample"), 
+               names_to = "sample_name", 
+               values_to = "count")
+
+colnames(cod_counts_data_long)
+```
+
+    [1] "gene"        "sample_name" "count"      
+
+``` r
+colnames(cod_sample_info)
+```
+
+     [1] "sample_number"        "sample_name"          "tank"                
+     [4] "temp_treatment"       "tissue_type"          "Microchip.ID"        
+     [7] "SL_11212022"          "WWT_11212022"         "SL_12272022"         
+    [10] "WWT_12272022"         "MortDate"             "DissectionDate"      
+    [13] "SL_mm"                "WholeBodyWW_g"        "TOTAL_Liver_WW_mg"   
+    [16] "LiverforLipids_WW_mg" "MuscleWWforLipids_mg" "DissectionComments"  
+    [19] "SL_diff_mm"           "WWT_diff_g"          
+
+``` r
+# Merge cod_counts_data_long with df_C to get treatment info
+cod_countsdata_plus_sampleinfo <- left_join(cod_counts_data_long, cod_sample_info, by = "sample_name")
+```
+
 # 2 Preliminary PCA visualization (liver tissue)
 
 ## 2.1 DESeq object
@@ -474,7 +516,7 @@ resultsNames(dds_L) # lists the coefficients
 plotDispEsts(dds_L)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ## 2.2 PCA visualization
 
@@ -600,55 +642,55 @@ p.L.all.WWTdiff <- ggplot(pca_L_all, aes(PC1, PC2, color=temp_treatment, size=WW
 p.L.500
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 p.L.500.SLdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
 
 ``` r
 p.L.500.WWTdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-3.png)<!-- -->
 
 ``` r
 p.L.1000
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-4.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-4.png)<!-- -->
 
 ``` r
 p.L.1000.SLdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-5.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-5.png)<!-- -->
 
 ``` r
 p.L.1000.WWTdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-6.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-6.png)<!-- -->
 
 ``` r
 p.L.all
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-7.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-7.png)<!-- -->
 
 ``` r
 p.L.all.SLdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-8.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-8.png)<!-- -->
 
 ``` r
 p.L.all.WWTdiff
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-7-9.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-8-9.png)<!-- -->
 
 ``` r
 # Export PCAs as pngs
@@ -699,7 +741,7 @@ resultsNames(dds_L.9.16) # lists the coefficients
 plotDispEsts(dds_L.9.16)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ``` r
 # Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
@@ -731,7 +773,7 @@ DESeq2::plotMA(res_table_L.9.16_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
 DESeq2::plotMA(res_table_L.9.16_ashr, xlim=xlim, ylim=ylim, main="ashr")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
 # Examine results formatting
@@ -814,7 +856,7 @@ summary(res_table_L.9.16_ashr)
     [1] see 'cooksCutoff' argument of ?results
     [2] see 'independentFiltering' argument of ?results
 
-# 4 Extracting significantly expressed genes
+## 3.1 Extracting significantly expressed genes
 
 ``` r
 padj.cutoff <- 0.05
@@ -880,7 +922,7 @@ write.table(sig_L.9.16_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_si
             row.names = TRUE, col.names = NA)
 ```
 
-## 4.1 Heatmap
+## 3.2 Heatmap
 
 For DEGs based on adjusted p-value *and* log fold-change
 
@@ -968,7 +1010,7 @@ h.L.9.16 <- pheatmap(norm_sig_L.9.16,
                      main = "Normalized Significant Expression, Liver, 9*C and 16*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1066,7 +1108,7 @@ h.L.9.16 <- pheatmap(norm_sig_L.9.16_noLFCcutoff,
                      main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 16*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1081,7 +1123,7 @@ Note the argument `scale="row"` was included, so the values plotted in
 the heat map are *Z-scores*, rather thn the normalized count value. This
 vastly improves the color visualization.
 
-## 4.2 Volcano plot
+## 3.3 Volcano plot
 
 ``` r
 # Generate plot
@@ -1113,7 +1155,7 @@ v.L.9.16 <-
 v.L.9.16
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1124,7 +1166,164 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.16.png",
          height = 4000)
 ```
 
-# 5 Liver tissue, 9*C v. 0*C
+## 3.4 Plot expression of top DEGs across treatments
+
+``` r
+top15DEGs_L.9.16 <- sig_L.9.16_norm_noLFCcutoff %>%
+  arrange(padj) %>%
+  slice_head(n=15)
+
+plot_gene_data <- function(geneName) {
+  gene_data <- cod_countsdata_plus_sampleinfo %>%
+    filter(gene == geneName)
+  
+  ggplot(data = gene_data, 
+         aes(x = temp_treatment, y = count, color = factor(temp_treatment))) +
+    geom_boxplot() +
+    geom_point(position = position_jitter(width = 0.1), size = 2) +
+    labs(title = geneName, x = "Sample", y = "Count", color = "Treatment") +
+  scale_color_manual(values = temp_colors) +
+    theme_minimal()
+}
+
+
+L.9.16_DEG1 <- plot_gene_data(top15DEGs_L.9.16[1, ]$gene)
+L.9.16_DEG1
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG1.",top15DEGs_L.9.16[1, ]$gene,".png"), plot = L.9.16_DEG1, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG2 <- plot_gene_data(top15DEGs_L.9.16[2, ]$gene)
+L.9.16_DEG2
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-2.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG2.",top15DEGs_L.9.16[2, ]$gene,".png"), plot = L.9.16_DEG2, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG3 <- plot_gene_data(top15DEGs_L.9.16[3, ]$gene)
+L.9.16_DEG3
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-3.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG3.",top15DEGs_L.9.16[3, ]$gene,".png"), plot = L.9.16_DEG3, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG4 <- plot_gene_data(top15DEGs_L.9.16[4, ]$gene)
+L.9.16_DEG4
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-4.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG4.",top15DEGs_L.9.16[4, ]$gene,".png"), plot = L.9.16_DEG4, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG5 <- plot_gene_data(top15DEGs_L.9.16[5, ]$gene)
+L.9.16_DEG5
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-5.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG5.",top15DEGs_L.9.16[5, ]$gene,".png"), plot = L.9.16_DEG5, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG6 <- plot_gene_data(top15DEGs_L.9.16[6, ]$gene)
+L.9.16_DEG6
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-6.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG6.",top15DEGs_L.9.16[6, ]$gene,".png"), plot = L.9.16_DEG6, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG7 <- plot_gene_data(top15DEGs_L.9.16[7, ]$gene)
+L.9.16_DEG7
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-7.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG7.",top15DEGs_L.9.16[7, ]$gene,".png"), plot = L.9.16_DEG7, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG8 <- plot_gene_data(top15DEGs_L.9.16[8, ]$gene)
+L.9.16_DEG8
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-8.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG8.",top15DEGs_L.9.16[8, ]$gene,".png"), plot = L.9.16_DEG8, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG9 <- plot_gene_data(top15DEGs_L.9.16[9, ]$gene)
+L.9.16_DEG9
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-9.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG9.",top15DEGs_L.9.16[9, ]$gene,".png"), plot = L.9.16_DEG9, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG10 <- plot_gene_data(top15DEGs_L.9.16[10, ]$gene)
+L.9.16_DEG10
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-10.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG10.",top15DEGs_L.9.16[10, ]$gene,".png"), plot = L.9.16_DEG10, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG11 <- plot_gene_data(top15DEGs_L.9.16[11, ]$gene)
+L.9.16_DEG11
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-11.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG11.",top15DEGs_L.9.16[11, ]$gene,".png"), plot = L.9.16_DEG11, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG12 <- plot_gene_data(top15DEGs_L.9.16[12, ]$gene)
+L.9.16_DEG12
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-12.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG12.",top15DEGs_L.9.16[12, ]$gene,".png"), plot = L.9.16_DEG12, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG13 <- plot_gene_data(top15DEGs_L.9.16[13, ]$gene)
+L.9.16_DEG13
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-13.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG13.",top15DEGs_L.9.16[13, ]$gene,".png"), plot = L.9.16_DEG13, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG14 <- plot_gene_data(top15DEGs_L.9.16[14, ]$gene)
+L.9.16_DEG14
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-14.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG14.",top15DEGs_L.9.16[14, ]$gene,".png"), plot = L.9.16_DEG14, res = 600, width = 5000, height = 5000)
+
+L.9.16_DEG15 <- plot_gene_data(top15DEGs_L.9.16[15, ]$gene)
+L.9.16_DEG15
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-15.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.16_DEG15.",top15DEGs_L.9.16[15, ]$gene,".png"), plot = L.9.16_DEG15, res = 600, width = 5000, height = 5000)
+```
+
+# 4 Liver tissue, 9*C v. 0*C
 
 The 9\*C temperature treatment is effectively our “control,” as it
 represents the ambient temperature that wild juvenile Pacific cod would
@@ -1152,7 +1351,7 @@ resultsNames(dds_L.9.0) # lists the coefficients
 plotDispEsts(dds_L.9.0)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
 ``` r
 # Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
@@ -1184,7 +1383,7 @@ DESeq2::plotMA(res_table_L.9.0_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
 DESeq2::plotMA(res_table_L.9.0_ashr, xlim=xlim, ylim=ylim, main="ashr")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 ``` r
 # Examine results formatting
@@ -1267,7 +1466,7 @@ summary(res_table_L.9.0_ashr)
     [1] see 'cooksCutoff' argument of ?results
     [2] see 'independentFiltering' argument of ?results
 
-# 6 Extracting significantly expressed genes
+## 4.1 Extracting significantly expressed genes
 
 ``` r
 padj.cutoff <- 0.05
@@ -1333,7 +1532,7 @@ write.table(sig_L.9.0_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig
             row.names = TRUE, col.names = NA)
 ```
 
-## 6.1 Heatmap
+## 4.2 Heatmap
 
 For DEGs based on adjusted p-value *and* LFC cutoff
 
@@ -1421,7 +1620,7 @@ h.L.9.0 <- pheatmap(norm_sig_L.9.0,
                      main = "Normalized Significant Expression, Liver, 9*C and 0*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1519,7 +1718,7 @@ h.L.9.0 <- pheatmap(norm_sig_L.9.0_noLFCcutoff,
                      main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 0*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1530,7 +1729,7 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.0_norm_sig_noLFC
          height = 5000)
 ```
 
-## 6.2 Volcano plot
+## 4.3 Volcano plot
 
 ``` r
 # Generate plot
@@ -1562,7 +1761,7 @@ v.L.9.0 <-
 v.L.9.0
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1573,7 +1772,150 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.0.png",
          height = 4000)
 ```
 
-# 7 Liver tissue, 9*C v. 5*C
+## 4.4 Plot expression of top DEGs across treatments
+
+``` r
+top15DEGs_L.9.0 <- sig_L.9.0_norm_noLFCcutoff %>%
+  arrange(padj) %>%
+  slice_head(n=15)
+
+L.9.0_DEG1 <- plot_gene_data(top15DEGs_L.9.0[1, ]$gene)
+L.9.0_DEG1
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG1.",top15DEGs_L.9.0[1, ]$gene,".png"), plot = L.9.0_DEG1, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG2 <- plot_gene_data(top15DEGs_L.9.0[2, ]$gene)
+L.9.0_DEG2
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-2.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG2.",top15DEGs_L.9.0[2, ]$gene,".png"), plot = L.9.0_DEG2, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG3 <- plot_gene_data(top15DEGs_L.9.0[3, ]$gene)
+L.9.0_DEG3
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-3.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG3.",top15DEGs_L.9.0[3, ]$gene,".png"), plot = L.9.0_DEG3, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG4 <- plot_gene_data(top15DEGs_L.9.0[4, ]$gene)
+L.9.0_DEG4
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-4.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG4.",top15DEGs_L.9.0[4, ]$gene,".png"), plot = L.9.0_DEG4, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG5 <- plot_gene_data(top15DEGs_L.9.0[5, ]$gene)
+L.9.0_DEG5
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-5.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG5.",top15DEGs_L.9.0[5, ]$gene,".png"), plot = L.9.0_DEG5, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG6 <- plot_gene_data(top15DEGs_L.9.0[6, ]$gene)
+L.9.0_DEG6
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-6.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG6.",top15DEGs_L.9.0[6, ]$gene,".png"), plot = L.9.0_DEG6, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG7 <- plot_gene_data(top15DEGs_L.9.0[7, ]$gene)
+L.9.0_DEG7
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-7.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG7.",top15DEGs_L.9.0[7, ]$gene,".png"), plot = L.9.0_DEG7, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG8 <- plot_gene_data(top15DEGs_L.9.0[8, ]$gene)
+L.9.0_DEG8
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-8.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG8.",top15DEGs_L.9.0[8, ]$gene,".png"), plot = L.9.0_DEG8, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG9 <- plot_gene_data(top15DEGs_L.9.0[9, ]$gene)
+L.9.0_DEG9
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-9.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG9.",top15DEGs_L.9.0[9, ]$gene,".png"), plot = L.9.0_DEG9, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG10 <- plot_gene_data(top15DEGs_L.9.0[10, ]$gene)
+L.9.0_DEG10
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-10.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG10.",top15DEGs_L.9.0[10, ]$gene,".png"), plot = L.9.0_DEG10, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG11 <- plot_gene_data(top15DEGs_L.9.0[11, ]$gene)
+L.9.0_DEG11
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-11.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG11.",top15DEGs_L.9.0[11, ]$gene,".png"), plot = L.9.0_DEG11, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG12 <- plot_gene_data(top15DEGs_L.9.0[12, ]$gene)
+L.9.0_DEG12
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-12.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG12.",top15DEGs_L.9.0[12, ]$gene,".png"), plot = L.9.0_DEG12, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG13 <- plot_gene_data(top15DEGs_L.9.0[13, ]$gene)
+L.9.0_DEG13
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-13.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG13.",top15DEGs_L.9.0[13, ]$gene,".png"), plot = L.9.0_DEG13, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG14 <- plot_gene_data(top15DEGs_L.9.0[14, ]$gene)
+L.9.0_DEG14
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-14.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG14.",top15DEGs_L.9.0[14, ]$gene,".png"), plot = L.9.0_DEG14, res = 600, width = 5000, height = 5000)
+
+L.9.0_DEG15 <- plot_gene_data(top15DEGs_L.9.0[15, ]$gene)
+L.9.0_DEG15
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-30-15.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.0_DEG15.",top15DEGs_L.9.0[15, ]$gene,".png"), plot = L.9.0_DEG15, res = 600, width = 5000, height = 5000)
+```
+
+# 5 Liver tissue, 9*C v. 5*C
 
 The 9\*C temperature treatment is effectively our “control,” as it
 represents the ambient temperature that wild juvenile Pacific cod would
@@ -1601,7 +1943,7 @@ resultsNames(dds_L.9.5) # lists the coefficients
 plotDispEsts(dds_L.9.5)
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
 ``` r
 # Filtering: keep genes that have at least 10 counts across 1/3 of the samples - https://support.bioconductor.org/p/110307/
@@ -1633,7 +1975,7 @@ DESeq2::plotMA(res_table_L.9.5_apeglm, xlim=xlim, ylim=ylim, main="apeglm")
 DESeq2::plotMA(res_table_L.9.5_ashr, xlim=xlim, ylim=ylim, main="ashr")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
 
 ``` r
 # Examine results formatting
@@ -1716,7 +2058,7 @@ summary(res_table_L.9.5_ashr)
     [1] see 'cooksCutoff' argument of ?results
     [2] see 'independentFiltering' argument of ?results
 
-# 8 Extracting significantly expressed genes
+## 5.1 Extracting significantly expressed genes
 
 ``` r
 padj.cutoff <- 0.05
@@ -1782,7 +2124,7 @@ write.table(sig_L.9.5_norm, file = "../output/07-cod-RNAseq-DESeq2/Gmac_DEGs_sig
             row.names = TRUE, col.names = NA)
 ```
 
-## 8.1 Heatmap
+## 5.2 Heatmap
 
 For DEGs based on adjusted p-value *and* LFC cutoff
 
@@ -1870,7 +2212,7 @@ h.L.9.5 <- pheatmap(norm_sig_L.9.5,
                      main = "Normalized Significant Expression, Liver, 9*C and 5*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-35-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-38-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1968,7 +2310,7 @@ h.L.9.5 <- pheatmap(norm_sig_L.9.5_noLFCcutoff,
                      main = "Normalized Significant Expression (no LFC cutoff), Liver, 9*C and 5*C")
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-36-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-39-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -1979,7 +2321,7 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/heatmap_L.9.5_norm_sig_noLFC
          height = 5000)
 ```
 
-## 8.2 Volcano plot
+## 5.3 Volcano plot
 
 ``` r
 # Generate plot
@@ -1996,7 +2338,7 @@ v.L.9.5 <-
   geom_point(data = sig_L.9.5_norm[sig_L.9.5_norm$log2FoldChange < 0, ], 
              aes(x=log2FoldChange, y=-log10(padj), color="downregulated"), 
              size=.5) +
-  ggtitle("Liver, 9*C and 0*C") +
+  ggtitle("Liver, 9*C and 5*C") +
   xlab("log2 fold change") + 
   ylab("-log10 adjusted p-value") +
   scale_x_continuous(limits = c(-4,4)) +
@@ -2011,7 +2353,7 @@ v.L.9.5 <-
 v.L.9.5
 ```
 
-![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-40-1.png)<!-- -->
 
 ``` r
 # Save plot
@@ -2020,4 +2362,147 @@ ggexport(filename = "../output/07-cod-RNAseq-DESeq2/volcano_L.9.5.png",
          res    = 600,
          width  = 6000,
          height = 4000)
+```
+
+## 5.4 Plot expression of top DEGs across treatments
+
+``` r
+top15DEGs_L.9.5 <- sig_L.9.5_norm_noLFCcutoff %>%
+  arrange(padj) %>%
+  slice_head(n=15)
+
+L.9.5_DEG1 <- plot_gene_data(top15DEGs_L.9.5[1, ]$gene)
+L.9.5_DEG1
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-1.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG1.",top15DEGs_L.9.5[1, ]$gene,".png"), plot = L.9.5_DEG1, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG2 <- plot_gene_data(top15DEGs_L.9.5[2, ]$gene)
+L.9.5_DEG2
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-2.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG2.",top15DEGs_L.9.5[2, ]$gene,".png"), plot = L.9.5_DEG2, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG3 <- plot_gene_data(top15DEGs_L.9.5[3, ]$gene)
+L.9.5_DEG3
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-3.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG3.",top15DEGs_L.9.5[3, ]$gene,".png"), plot = L.9.5_DEG3, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG4 <- plot_gene_data(top15DEGs_L.9.5[4, ]$gene)
+L.9.5_DEG4
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-4.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG4.",top15DEGs_L.9.5[4, ]$gene,".png"), plot = L.9.5_DEG4, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG5 <- plot_gene_data(top15DEGs_L.9.5[5, ]$gene)
+L.9.5_DEG5
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-5.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG5.",top15DEGs_L.9.5[5, ]$gene,".png"), plot = L.9.5_DEG5, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG6 <- plot_gene_data(top15DEGs_L.9.5[6, ]$gene)
+L.9.5_DEG6
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-6.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG6.",top15DEGs_L.9.5[6, ]$gene,".png"), plot = L.9.5_DEG6, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG7 <- plot_gene_data(top15DEGs_L.9.5[7, ]$gene)
+L.9.5_DEG7
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-7.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG7.",top15DEGs_L.9.5[7, ]$gene,".png"), plot = L.9.5_DEG7, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG8 <- plot_gene_data(top15DEGs_L.9.5[8, ]$gene)
+L.9.5_DEG8
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-8.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG8.",top15DEGs_L.9.5[8, ]$gene,".png"), plot = L.9.5_DEG8, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG9 <- plot_gene_data(top15DEGs_L.9.5[9, ]$gene)
+L.9.5_DEG9
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-9.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG9.",top15DEGs_L.9.5[9, ]$gene,".png"), plot = L.9.5_DEG9, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG10 <- plot_gene_data(top15DEGs_L.9.5[10, ]$gene)
+L.9.5_DEG10
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-10.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG10.",top15DEGs_L.9.5[10, ]$gene,".png"), plot = L.9.5_DEG10, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG11 <- plot_gene_data(top15DEGs_L.9.5[11, ]$gene)
+L.9.5_DEG11
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-11.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG11.",top15DEGs_L.9.5[11, ]$gene,".png"), plot = L.9.5_DEG11, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG12 <- plot_gene_data(top15DEGs_L.9.5[12, ]$gene)
+L.9.5_DEG12
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-12.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG12.",top15DEGs_L.9.5[12, ]$gene,".png"), plot = L.9.5_DEG12, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG13 <- plot_gene_data(top15DEGs_L.9.5[13, ]$gene)
+L.9.5_DEG13
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-13.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG13.",top15DEGs_L.9.5[13, ]$gene,".png"), plot = L.9.5_DEG13, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG14 <- plot_gene_data(top15DEGs_L.9.5[14, ]$gene)
+L.9.5_DEG14
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-14.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG14.",top15DEGs_L.9.5[14, ]$gene,".png"), plot = L.9.5_DEG14, res = 600, width = 5000, height = 5000)
+
+L.9.5_DEG15 <- plot_gene_data(top15DEGs_L.9.5[15, ]$gene)
+L.9.5_DEG15
+```
+
+![](07-cod-RNAseq-DESeq2_files/figure-gfm/unnamed-chunk-41-15.png)<!-- -->
+
+``` r
+ggexport(filename = paste("../output/07-cod-RNAseq-DESeq2/L.9.5_DEG15.",top15DEGs_L.9.5[15, ]$gene,".png"), plot = L.9.5_DEG15, res = 600, width = 5000, height = 5000)
 ```
