@@ -114,6 +114,8 @@ csv_file[1] <- modified_header
 # Convert the modified CSV content to a data frame
 csv_content <- read.csv(textConnection(csv_file), row.names = 1)
 
+str(csv_content)
+
 ```
 
 ### Convert to matrix
