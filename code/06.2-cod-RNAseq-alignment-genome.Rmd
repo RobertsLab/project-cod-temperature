@@ -108,7 +108,7 @@ cat .bashvars
 
 # Align to reference genome (Hisat2)
 
-## Retrieving the reference genome and gff
+## Retrieving the reference genome and gtf
 
 ```{r download-genome-fasta, engine='bash'}
 # Load bash variables into memory
@@ -162,7 +162,7 @@ md5sum --check <<< "${genome_fasta_checksum}  ${genome_fasta_name}.fna"
 
 ```
 
-```{r verify-genome-gff-checksum, engine='bash'}
+```{r verify-genome-gtf-checksum, engine='bash'}
 # Load bash variables into memory
 source .bashvars
 
@@ -210,7 +210,7 @@ source .bashvars
 --exon ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_exon.tab \
 --ss ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_splice_sites.tab \
 -p 20 \
-2> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/hisat2-build_stats.txt
+&> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/hisat2-build_stats.txt
 
 #"${programs_array[hisat2_build]}" \
 #"${genome_fasta}.fna" \
@@ -238,14 +238,14 @@ source .bashvars
 ## Sample Quantification
 
 # Hisat2 alignments
-find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
-| xargs basename -s .flexbar_trim.R_1.fastq.gz | xargs -I{} \
+find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz | \
+xargs basename -s .flexbar_trim.R_1.fastq.gz | xargs -I{} \
 /home/shared/hisat2-2.2.1/hisat2 \
 -x ../output/06.2-cod-RNAseq-alignment-genome/hisat2/G_macrocephalus_index.idx \
 -p 20 \
 -1 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_1.fastq.gz \
 -2 ../output/05-cod-RNAseq-trimming/trimmed-reads/{}.flexbar_trim.R_2.fastq.gz \
--S ../output/06.2-cod-RNAseq-alignment-genome/hisat2/{}.sam
+-S ../output/06.2-cod-RNAseq-alignment-genome/hisat2/{}.sam \
 &> ../output/06.2-cod-RNAseq-alignment-genome/hisat2/{}_hisat2.log
 
 
@@ -260,6 +260,13 @@ find ../output/05-cod-RNAseq-trimming/trimmed-reads/*.gz \
 # -2 ${trimmed_reads_dir}/{}.flexbar_trim.R_2.fastq.gz \
 # -S ${output_dir_top}/{}.sam
 # 
+```
+
+```{r check-hisat2-output, engine='bash', eval=TRUE}
+# Check we have the appropriate number of output SAM files
+# Should have 80 (one for each sample)
+
+ls -1 ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sam | wc -l
 ```
 
 ```{r sort-sam-files, engine='bash'}
@@ -284,8 +291,12 @@ done
 ```
 
 ```{r count-output-files, engine='bash', eval=TRUE}
-# Count the number of samples for which we have sorted bam files -- I should have 79 (one for each input sample)
-find ../output/06.2-cod-RNAseq-alignment-genome/hisat2/ -type f -name "*.sorted.bam" | wc -l
+# Count the number of samples for which we have sorted bam files
+# For each file type (.bam, .sorted.bam, and .sorted.bam.bai) should have 80 (one for each input sample)
+# My bam conversion stopped/started a few times while processing all my files, so I'm checking all three output file types to ensure conversion was fully completed for all samples
+ls -1 ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.bam | wc -l
+ls -1 ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sorted.bam | wc -l
+ls -1 ../output/06.2-cod-RNAseq-alignment-genome/hisat2/*.sorted.bam.bai | wc -l
 ```
 
 ```{r delete-excess-files, engine='bash'}

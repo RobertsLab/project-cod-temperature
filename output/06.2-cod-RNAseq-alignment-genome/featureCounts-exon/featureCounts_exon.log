@@ -9,7 +9,7 @@
 
 //========================== featureCounts setting ===========================\\
 ||                                                                            ||
-||             Input files : 79 BAM files                                     ||
+||             Input files : 80 BAM files                                     ||
 ||                                                                            ||
 ||                           100.sorted.bam                                   ||
 ||                           107.sorted.bam                                   ||
@@ -82,6 +82,7 @@
 ||                           88.sorted.bam                                    ||
 ||                           90.sorted.bam                                    ||
 ||                           91.sorted.bam                                    ||
+||                           92.sorted.bam                                    ||
 ||                           97.sorted.bam                                    ||
 ||                           98.sorted.bam                                    ||
 ||                           99.sorted.bam                                    ||
@@ -91,12 +92,12 @@
 ||                           RESUB-76.sorted.bam                              ||
 ||                           RESUB-94.sorted.bam                              ||
 ||                                                                            ||
-||             Output file : featureCounts_matrix.txt                         ||
-||                 Summary : featureCounts_matrix.txt.summary                 ||
+||             Output file : featureCounts_exon_matrix.txt                    ||
+||                 Summary : featureCounts_exon_matrix.txt.summary            ||
 ||              Paired-end : yes                                              ||
 ||        Count read pairs : yes                                              ||
 ||              Annotation : genomic.gtf (GTF)                                ||
-||      Dir for temp files : ../output/06.2-cod-RNAseq-alignment-genome       ||
+||      Dir for temp files : ../output/06.2-cod-RNAseq-alignment-genome/f ... ||
 ||                                                                            ||
 ||                 Threads : 5                                                ||
 ||                   Level : meta-feature level                               ||
@@ -116,482 +117,489 @@
 || Process BAM file 100.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19056065                                             ||
-||    Successfully assigned alignments : 12785884 (67.1%)                     ||
-||    Running time : 0.24 minutes                                             ||
+||    Successfully assigned alignments : 11967914 (62.8%)                     ||
+||    Running time : 0.29 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 107.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 17448988                                             ||
-||    Successfully assigned alignments : 11851525 (67.9%)                     ||
-||    Running time : 0.25 minutes                                             ||
+||    Successfully assigned alignments : 11197982 (64.2%)                     ||
+||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 108.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 24175927                                             ||
-||    Successfully assigned alignments : 14080082 (58.2%)                     ||
-||    Running time : 0.33 minutes                                             ||
+||    Successfully assigned alignments : 13034831 (53.9%)                     ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 109.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 23613208                                             ||
-||    Successfully assigned alignments : 15231173 (64.5%)                     ||
+||    Successfully assigned alignments : 14316629 (60.6%)                     ||
 ||    Running time : 0.38 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 10.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20762104                                             ||
-||    Successfully assigned alignments : 12870827 (62.0%)                     ||
-||    Running time : 0.29 minutes                                             ||
+||    Successfully assigned alignments : 11860477 (57.1%)                     ||
+||    Running time : 0.28 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 110.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 22233111                                             ||
-||    Successfully assigned alignments : 15465906 (69.6%)                     ||
-||    Running time : 0.45 minutes                                             ||
+||    Successfully assigned alignments : 14540424 (65.4%)                     ||
+||    Running time : 0.34 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 117.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 23609108                                             ||
-||    Successfully assigned alignments : 15429859 (65.4%)                     ||
+||    Successfully assigned alignments : 14434753 (61.1%)                     ||
 ||    Running time : 0.33 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 118.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 22372646                                             ||
-||    Successfully assigned alignments : 15081945 (67.4%)                     ||
-||    Running time : 0.34 minutes                                             ||
+||    Successfully assigned alignments : 14051561 (62.8%)                     ||
+||    Running time : 0.33 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 119.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 23007987                                             ||
-||    Successfully assigned alignments : 16523114 (71.8%)                     ||
-||    Running time : 0.36 minutes                                             ||
+||    Successfully assigned alignments : 15575471 (67.7%)                     ||
+||    Running time : 0.35 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 11.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 22428165                                             ||
-||    Successfully assigned alignments : 15155871 (67.6%)                     ||
+||    Successfully assigned alignments : 14073690 (62.8%)                     ||
 ||    Running time : 0.34 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 120.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21694475                                             ||
-||    Successfully assigned alignments : 14475732 (66.7%)                     ||
+||    Successfully assigned alignments : 13482946 (62.1%)                     ||
 ||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 121.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21918022                                             ||
-||    Successfully assigned alignments : 11763976 (53.7%)                     ||
-||    Running time : 0.34 minutes                                             ||
+||    Successfully assigned alignments : 9544176 (43.5%)                      ||
+||    Running time : 0.32 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 127.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 24409366                                             ||
-||    Successfully assigned alignments : 15976812 (65.5%)                     ||
-||    Running time : 0.37 minutes                                             ||
+||    Successfully assigned alignments : 14885585 (61.0%)                     ||
+||    Running time : 0.42 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 128.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 10218416                                             ||
-||    Successfully assigned alignments : 6659412 (65.2%)                      ||
+||    Successfully assigned alignments : 6136550 (60.1%)                      ||
 ||    Running time : 0.15 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 129.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 16734359                                             ||
-||    Successfully assigned alignments : 2671177 (16.0%)                      ||
-||    Running time : 0.32 minutes                                             ||
+||    Successfully assigned alignments : 2515359 (15.0%)                      ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 12.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21591148                                             ||
-||    Successfully assigned alignments : 13754085 (63.7%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 12779272 (59.2%)                     ||
+||    Running time : 0.32 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 131.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 9657596                                              ||
-||    Successfully assigned alignments : 5993480 (62.1%)                      ||
+||    Successfully assigned alignments : 5489213 (56.8%)                      ||
 ||    Running time : 0.14 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 137.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 8553067                                              ||
-||    Successfully assigned alignments : 5525084 (64.6%)                      ||
+||    Successfully assigned alignments : 5148082 (60.2%)                      ||
 ||    Running time : 0.13 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 138.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 8652287                                              ||
-||    Successfully assigned alignments : 5733285 (66.3%)                      ||
+||    Successfully assigned alignments : 5390836 (62.3%)                      ||
 ||    Running time : 0.15 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 139.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 10110465                                             ||
-||    Successfully assigned alignments : 6807522 (67.3%)                      ||
+||    Successfully assigned alignments : 6311375 (62.4%)                      ||
 ||    Running time : 0.15 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 13.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19435103                                             ||
-||    Successfully assigned alignments : 11548888 (59.4%)                     ||
-||    Running time : 0.27 minutes                                             ||
+||    Successfully assigned alignments : 10686291 (55.0%)                     ||
+||    Running time : 0.28 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 140.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 9800309                                              ||
-||    Successfully assigned alignments : 6577903 (67.1%)                      ||
+||    Successfully assigned alignments : 6053129 (61.8%)                      ||
 ||    Running time : 0.14 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 147.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 8907043                                              ||
-||    Successfully assigned alignments : 5796024 (65.1%)                      ||
-||    Running time : 0.13 minutes                                             ||
+||    Successfully assigned alignments : 5362531 (60.2%)                      ||
+||    Running time : 0.12 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 148.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 25915417                                             ||
-||    Successfully assigned alignments : 15203087 (58.7%)                     ||
-||    Running time : 0.35 minutes                                             ||
+||    Successfully assigned alignments : 14323619 (55.3%)                     ||
+||    Running time : 0.33 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 149.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 131957289                                            ||
-||    Successfully assigned alignments : 47148428 (35.7%)                     ||
-||    Running time : 5.45 minutes                                             ||
+||    Successfully assigned alignments : 44389469 (33.6%)                     ||
+||    Running time : 4.53 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 150.sorted.bam...                                         ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 28770130                                             ||
-||    Successfully assigned alignments : 16582080 (57.6%)                     ||
-||    Running time : 0.38 minutes                                             ||
+||    Successfully assigned alignments : 15603794 (54.2%)                     ||
+||    Running time : 0.37 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 18.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18678898                                             ||
-||    Successfully assigned alignments : 11519670 (61.7%)                     ||
-||    Running time : 0.26 minutes                                             ||
+||    Successfully assigned alignments : 10687931 (57.2%)                     ||
+||    Running time : 0.25 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 19-G.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 23227727                                             ||
-||    Successfully assigned alignments : 14345804 (61.8%)                     ||
-||    Running time : 0.30 minutes                                             ||
+||    Successfully assigned alignments : 13090633 (56.4%)                     ||
+||    Running time : 0.29 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 19.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18482829                                             ||
-||    Successfully assigned alignments : 12075354 (65.3%)                     ||
-||    Running time : 0.27 minutes                                             ||
+||    Successfully assigned alignments : 11366507 (61.5%)                     ||
+||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 19-S.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 25521079                                             ||
-||    Successfully assigned alignments : 16367643 (64.1%)                     ||
-||    Running time : 0.35 minutes                                             ||
+||    Successfully assigned alignments : 15131571 (59.3%)                     ||
+||    Running time : 0.33 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 1.sorted.bam...                                           ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21765153                                             ||
-||    Successfully assigned alignments : 14423095 (66.3%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 13405696 (61.6%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 20-G.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 24522014                                             ||
-||    Successfully assigned alignments : 15303048 (62.4%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 14028761 (57.2%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 20.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18812942                                             ||
-||    Successfully assigned alignments : 10664805 (56.7%)                     ||
+||    Successfully assigned alignments : 9931863 (52.8%)                      ||
 ||    Running time : 0.28 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 20-S.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 17551460                                             ||
-||    Successfully assigned alignments : 10699955 (61.0%)                     ||
-||    Running time : 0.24 minutes                                             ||
+||    Successfully assigned alignments : 9790095 (55.8%)                      ||
+||    Running time : 0.23 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 21.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18598362                                             ||
-||    Successfully assigned alignments : 11420526 (61.4%)                     ||
+||    Successfully assigned alignments : 10539436 (56.7%)                     ||
 ||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 28.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19634032                                             ||
-||    Successfully assigned alignments : 12983935 (66.1%)                     ||
-||    Running time : 0.28 minutes                                             ||
+||    Successfully assigned alignments : 12141387 (61.8%)                     ||
+||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 29.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19871083                                             ||
-||    Successfully assigned alignments : 11807229 (59.4%)                     ||
-||    Running time : 0.28 minutes                                             ||
+||    Successfully assigned alignments : 10893383 (54.8%)                     ||
+||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 2.sorted.bam...                                           ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20241520                                             ||
-||    Successfully assigned alignments : 14125489 (69.8%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 13267373 (65.5%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 30.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20599422                                             ||
-||    Successfully assigned alignments : 13409757 (65.1%)                     ||
-||    Running time : 0.29 minutes                                             ||
+||    Successfully assigned alignments : 12412583 (60.3%)                     ||
+||    Running time : 0.28 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 31.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19327655                                             ||
-||    Successfully assigned alignments : 13162134 (68.1%)                     ||
-||    Running time : 0.32 minutes                                             ||
+||    Successfully assigned alignments : 12177846 (63.0%)                     ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 37.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 16548192                                             ||
-||    Successfully assigned alignments : 11027236 (66.6%)                     ||
-||    Running time : 0.23 minutes                                             ||
+||    Successfully assigned alignments : 10420014 (63.0%)                     ||
+||    Running time : 0.22 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 38.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20471986                                             ||
-||    Successfully assigned alignments : 11426770 (55.8%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 10772003 (52.6%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 39.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18384218                                             ||
-||    Successfully assigned alignments : 11682057 (63.5%)                     ||
-||    Running time : 0.26 minutes                                             ||
+||    Successfully assigned alignments : 11004851 (59.9%)                     ||
+||    Running time : 0.25 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 3.sorted.bam...                                           ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 22011011                                             ||
-||    Successfully assigned alignments : 13311366 (60.5%)                     ||
-||    Running time : 0.32 minutes                                             ||
+||    Successfully assigned alignments : 12401496 (56.3%)                     ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 40.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19169942                                             ||
-||    Successfully assigned alignments : 9933536 (51.8%)                      ||
-||    Running time : 0.30 minutes                                             ||
+||    Successfully assigned alignments : 9365762 (48.9%)                      ||
+||    Running time : 0.29 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 41.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21009298                                             ||
-||    Successfully assigned alignments : 8284903 (39.4%)                      ||
-||    Running time : 0.40 minutes                                             ||
+||    Successfully assigned alignments : 7880704 (37.5%)                      ||
+||    Running time : 0.39 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 47.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19230750                                             ||
-||    Successfully assigned alignments : 12610946 (65.6%)                     ||
+||    Successfully assigned alignments : 11795663 (61.3%)                     ||
 ||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 48.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20717574                                             ||
-||    Successfully assigned alignments : 12942663 (62.5%)                     ||
+||    Successfully assigned alignments : 12264711 (59.2%)                     ||
 ||    Running time : 0.32 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 49.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20720518                                             ||
-||    Successfully assigned alignments : 13466176 (65.0%)                     ||
+||    Successfully assigned alignments : 12438016 (60.0%)                     ||
 ||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 4.sorted.bam...                                           ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21469331                                             ||
-||    Successfully assigned alignments : 13796524 (64.3%)                     ||
+||    Successfully assigned alignments : 12729048 (59.3%)                     ||
 ||    Running time : 0.35 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 50.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19414477                                             ||
-||    Successfully assigned alignments : 12832153 (66.1%)                     ||
+||    Successfully assigned alignments : 11899474 (61.3%)                     ||
 ||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 57-G.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 29264834                                             ||
-||    Successfully assigned alignments : 19163066 (65.5%)                     ||
+||    Successfully assigned alignments : 17575987 (60.1%)                     ||
 ||    Running time : 0.36 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 57.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20397646                                             ||
-||    Successfully assigned alignments : 13780768 (67.6%)                     ||
+||    Successfully assigned alignments : 12841119 (63.0%)                     ||
 ||    Running time : 0.28 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 57-S.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 16136380                                             ||
-||    Successfully assigned alignments : 3865255 (24.0%)                      ||
-||    Running time : 0.20 minutes                                             ||
+||    Successfully assigned alignments : 3518494 (21.8%)                      ||
+||    Running time : 0.21 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 58-G.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 29735701                                             ||
-||    Successfully assigned alignments : 19510315 (65.6%)                     ||
+||    Successfully assigned alignments : 17777081 (59.8%)                     ||
 ||    Running time : 0.37 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 58.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 20487137                                             ||
-||    Successfully assigned alignments : 12498968 (61.0%)                     ||
+||    Successfully assigned alignments : 11529135 (56.3%)                     ||
 ||    Running time : 0.29 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 58-S.sorted.bam...                                        ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 16401618                                             ||
-||    Successfully assigned alignments : 8900828 (54.3%)                      ||
+||    Successfully assigned alignments : 8304815 (50.6%)                      ||
 ||    Running time : 0.20 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 59.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19048905                                             ||
-||    Successfully assigned alignments : 12976245 (68.1%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 12115971 (63.6%)                     ||
+||    Running time : 0.32 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 5.sorted.bam...                                           ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21251023                                             ||
-||    Successfully assigned alignments : 13435072 (63.2%)                     ||
+||    Successfully assigned alignments : 12504234 (58.8%)                     ||
 ||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 60.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21401853                                             ||
-||    Successfully assigned alignments : 13737507 (64.2%)                     ||
-||    Running time : 0.29 minutes                                             ||
+||    Successfully assigned alignments : 12672906 (59.2%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 67.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21630139                                             ||
-||    Successfully assigned alignments : 14120493 (65.3%)                     ||
-||    Running time : 0.31 minutes                                             ||
+||    Successfully assigned alignments : 13025276 (60.2%)                     ||
+||    Running time : 0.32 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 68.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21466687                                             ||
-||    Successfully assigned alignments : 13669203 (63.7%)                     ||
-||    Running time : 0.30 minutes                                             ||
+||    Successfully assigned alignments : 12607140 (58.7%)                     ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 69.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18046197                                             ||
-||    Successfully assigned alignments : 11708441 (64.9%)                     ||
+||    Successfully assigned alignments : 10914910 (60.5%)                     ||
 ||    Running time : 0.24 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 70.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 15964922                                             ||
-||    Successfully assigned alignments : 10064696 (63.0%)                     ||
+||    Successfully assigned alignments : 9439282 (59.1%)                      ||
 ||    Running time : 0.21 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 78.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19569864                                             ||
-||    Successfully assigned alignments : 12078556 (61.7%)                     ||
+||    Successfully assigned alignments : 11421540 (58.4%)                     ||
 ||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 79.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19833963                                             ||
-||    Successfully assigned alignments : 13288089 (67.0%)                     ||
-||    Running time : 0.29 minutes                                             ||
+||    Successfully assigned alignments : 12450490 (62.8%)                     ||
+||    Running time : 0.30 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 80.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 15559637                                             ||
-||    Successfully assigned alignments : 9854137 (63.3%)                      ||
+||    Successfully assigned alignments : 9162573 (58.9%)                      ||
 ||    Running time : 0.21 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 83.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 17069371                                             ||
-||    Successfully assigned alignments : 11595086 (67.9%)                     ||
-||    Running time : 0.21 minutes                                             ||
+||    Successfully assigned alignments : 10967059 (64.2%)                     ||
+||    Running time : 0.25 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 88.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21410137                                             ||
-||    Successfully assigned alignments : 10833097 (50.6%)                     ||
-||    Running time : 0.25 minutes                                             ||
+||    Successfully assigned alignments : 10148457 (47.4%)                     ||
+||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 90.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 19308153                                             ||
-||    Successfully assigned alignments : 11152940 (57.8%)                     ||
-||    Running time : 0.22 minutes                                             ||
+||    Successfully assigned alignments : 10471634 (54.2%)                     ||
+||    Running time : 0.27 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 91.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 21252742                                             ||
-||    Successfully assigned alignments : 13538803 (63.7%)                     ||
-||    Running time : 0.25 minutes                                             ||
+||    Successfully assigned alignments : 12551443 (59.1%)                     ||
+||    Running time : 0.31 minutes                                             ||
+||                                                                            ||
+|| Process BAM file 92.sorted.bam...                                          ||
+||    Paired-end reads are included.                                          ||
+||    Total alignments : 15408837                                             ||
+||    Successfully assigned alignments : 9436359 (61.2%)                      ||
+||    Running time : 0.21 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 97.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18633632                                             ||
-||    Successfully assigned alignments : 12058202 (64.7%)                     ||
-||    Running time : 0.26 minutes                                             ||
+||    Successfully assigned alignments : 11510555 (61.8%)                     ||
+||    Running time : 0.31 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 98.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 25211921                                             ||
-||    Successfully assigned alignments : 13169988 (52.2%)                     ||
-||    Running time : 0.37 minutes                                             ||
+||    Successfully assigned alignments : 12492375 (49.5%)                     ||
+||    Running time : 0.43 minutes                                             ||
 ||                                                                            ||
 || Process BAM file 99.sorted.bam...                                          ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 18148493                                             ||
-||    Successfully assigned alignments : 10860632 (59.8%)                     ||
-||    Running time : 0.21 minutes                                             ||
+||    Successfully assigned alignments : 10090536 (55.6%)                     ||
+||    Running time : 0.26 minutes                                             ||
 ||                                                                            ||
 || Process BAM file RESUB-116.sorted.bam...                                   ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 16796901                                             ||
-||    Successfully assigned alignments : 11345911 (67.5%)                     ||
-||    Running time : 0.19 minutes                                             ||
+||    Successfully assigned alignments : 10527517 (62.7%)                     ||
+||    Running time : 0.24 minutes                                             ||
 ||                                                                            ||
 || Process BAM file RESUB-156.sorted.bam...                                   ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 17152165                                             ||
-||    Successfully assigned alignments : 11813894 (68.9%)                     ||
-||    Running time : 0.20 minutes                                             ||
+||    Successfully assigned alignments : 11050096 (64.4%)                     ||
+||    Running time : 0.24 minutes                                             ||
 ||                                                                            ||
 || Process BAM file RESUB-36.sorted.bam...                                    ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 15464864                                             ||
-||    Successfully assigned alignments : 10939275 (70.7%)                     ||
-||    Running time : 0.20 minutes                                             ||
+||    Successfully assigned alignments : 10327659 (66.8%)                     ||
+||    Running time : 0.24 minutes                                             ||
 ||                                                                            ||
 || Process BAM file RESUB-76.sorted.bam...                                    ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 15231638                                             ||
-||    Successfully assigned alignments : 9925831 (65.2%)                      ||
-||    Running time : 0.16 minutes                                             ||
+||    Successfully assigned alignments : 9273736 (60.9%)                      ||
+||    Running time : 0.20 minutes                                             ||
 ||                                                                            ||
 || Process BAM file RESUB-94.sorted.bam...                                    ||
 ||    Paired-end reads are included.                                          ||
 ||    Total alignments : 17516764                                             ||
-||    Successfully assigned alignments : 12015596 (68.6%)                     ||
-||    Running time : 0.20 minutes                                             ||
+||    Successfully assigned alignments : 11117871 (63.5%)                     ||
+||    Running time : 0.25 minutes                                             ||
 ||                                                                            ||
 || Write the final count table.                                               ||
 || Write the read assignment summary.                                         ||
 ||                                                                            ||
 || Summary of counting results can be found in file "../output/06.2-cod-RNAs  ||
-|| eq-alignment-genome/featureCounts_matrix.txt.summary"                      ||
+|| eq-alignment-genome/featureCounts-exon/featureCounts_exon_matrix.txt.summ  ||
+|| ary"                                                                       ||
 ||                                                                            ||
 \\============================================================================//
 
