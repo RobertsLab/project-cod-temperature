@@ -1622,10 +1622,15 @@ border-radius: 0px;
 
 
 <p>Differential gene expression of 9<sup>o</sup>C vs 16<sup>o</sup>C liver RNA-seq using <a href="https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf">edgeR</a> <span class="citation">(<a href="#ref-chen2024" role="doc-biblioref">Chen et al. 2024</a>; <a href="#ref-mccarthy2012" role="doc-biblioref">McCarthy, Chen, and Smyth 2012</a>; <a href="#ref-chen2016" role="doc-biblioref">Chen, Lun, and Smyth 2016</a>; <a href="#ref-robinson2009" role="doc-biblioref">Robinson, McCarthy, and Smyth 2009</a>)</span></p>
-<div id="edger-grouping-vector" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> edgeR GROUPING VECTOR</h1>
-<div id="check-sample-info" class="section level2" number="1.1">
-<h2><span class="header-section-number">1.1</span> Check sample info</h2>
+<div id="create-output-directory" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> CREATE OUTPUT DIRECTORY</h1>
+<pre class="bash"><code># Make output directory, if it doesn&#39;t exist
+mkdir --parents ../output/13.0.0-RNAseq-edgeR</code></pre>
+</div>
+<div id="edger-grouping-vector" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> edgeR GROUPING VECTOR</h1>
+<div id="check-sample-info" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Check sample info</h2>
 <p>Only looking at 9<sup>o</sup>C and 16<sup>o</sup>C</p>
 <pre class="bash"><code>echo &quot;Header for ../data/DESeq2_Sample_Information.csv:&quot;
 echo &quot;&quot;
@@ -1635,56 +1640,60 @@ head -n 1 ../data/DESeq2_Sample_Information.csv
 echo &quot;&quot;
 echo &quot;---------------------------------------------&quot;
 echo &quot;&quot;
-awk -F&quot;,&quot; &#39;$4 == 16 || $4 == 9 {print $2, $4}&#39; ../data/DESeq2_Sample_Information.csv | sort -n -k1,1</code></pre>
+awk -F&quot;,&quot; &#39;NR==1 {header=$2 &quot; &quot; $4; print header; next} $4 == 16 || $4 == 9 {print $2, $4}&#39; ../data/DESeq2_Sample_Information.csv \
+| sort -k1,1 -n \
+| column -t
+</code></pre>
 <pre><code>Header for ../data/DESeq2_Sample_Information.csv:
 
 sample_name,sample_number,tank,temp_treatment,tissue_type
 
 ---------------------------------------------
 
-1 16
-2 16
-3 16
-4 16
-5 16
-10 16
-11 16
-12 16
-13 16
-18 16
-19 16
-19 16
-19 16
-20 16
-20 16
-20 16
-21 16
-28 16
-29 16
-30 16
-31 16
-36 16
-78 9
-79 9
-80 9
-83 9
-88 9
-90 9
-91 9
-92 9
-94 9
-97 9
-98 9
-99 9
-100 9
-107 9
-108 9
-109 9
-110 9
-116 9</code></pre>
+sample_number  temp_treatment
+1              16
+2              16
+3              16
+4              16
+5              16
+10             16
+11             16
+12             16
+13             16
+18             16
+19             16
+19             16
+19             16
+20             16
+20             16
+20             16
+21             16
+28             16
+29             16
+30             16
+31             16
+36             16
+78             9
+79             9
+80             9
+83             9
+88             9
+90             9
+91             9
+92             9
+94             9
+97             9
+98             9
+99             9
+100            9
+107            9
+108            9
+109            9
+110            9
+116            9</code></pre>
 </div>
-<div id="create-edger-grouping-vector" class="section level2" number="1.2">
-<h2><span class="header-section-number">1.2</span> Create edgeR grouping vector</h2>
+<div id="create-edger-grouping-vector" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> Create edgeR grouping vector</h2>
 <p>Since all sample IDs <code>&lt;=</code> to <code>36</code> are part of the 16<sup>o</sup>C treatment, we can use this to create vector which matches sample ordering in <code>../output/10.1-hisat-deseq2/gene_count_matrix.csv</code></p>
 <pre class="r"><code># Read the first line of the CSV file
 header &lt;- readLines(&quot;../output/10.1-hisat-deseq2/gene_count_matrix.csv&quot;, n = 1)
@@ -1702,12 +1711,12 @@ print(temperatures)</code></pre>
 [25] &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot;  &quot;9C&quot; </code></pre>
 </div>
 </div>
-<div id="degs" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> DEGs</h1>
-<div id="load-count-matrix" class="section level2" number="2.1">
-<h2><span class="header-section-number">2.1</span> Load count matrix</h2>
-<div id="reformat-header" class="section level3" number="2.1.1">
-<h3><span class="header-section-number">2.1.1</span> Reformat header</h3>
+<div id="degs" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> DEGs</h1>
+<div id="load-count-matrix" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Load count matrix</h2>
+<div id="reformat-header" class="section level3" number="3.1.1">
+<h3><span class="header-section-number">3.1.1</span> Reformat header</h3>
 <pre class="r"><code># Read the entire CSV file
 csv_file &lt;- readLines(&quot;../output/10.1-hisat-deseq2/gene_count_matrix.csv&quot;)
 
@@ -1727,10 +1736,49 @@ modified_header &lt;- paste(header_values, collapse = &quot;,&quot;)
 csv_file[1] &lt;- modified_header
 
 # Convert the modified CSV content to a data frame
-csv_content &lt;- read.csv(textConnection(csv_file), row.names = 1)</code></pre>
+csv_content &lt;- read.csv(textConnection(csv_file), row.names = 1)
+
+str(csv_content)</code></pre>
+<pre><code>&#39;data.frame&#39;:   30575 obs. of  36 variables:
+ $ sample_1  : int  360 694 0 10 0 0 0 402 3696 335 ...
+ $ sample_10 : int  464 325 10 22 9 40 3 550 2492 171 ...
+ $ sample_100: int  391 276 13 15 0 40 0 293 2615 149 ...
+ $ sample_107: int  346 77 11 19 0 29 0 182 2184 99 ...
+ $ sample_108: int  691 409 49 74 18 8 41 1082 2702 241 ...
+ $ sample_109: int  408 196 42 28 0 0 7 213 2579 149 ...
+ $ sample_11 : int  436 281 14 63 0 38 4 234 3631 286 ...
+ $ sample_110: int  509 284 36 35 0 0 0 149 3158 139 ...
+ $ sample_116: int  366 327 0 30 0 16 3 444 2121 100 ...
+ $ sample_12 : int  373 310 14 31 27 15 0 360 2673 168 ...
+ $ sample_13 : int  432 393 9 25 0 0 0 531 2893 267 ...
+ $ sample_18 : int  385 386 0 42 0 0 0 242 2210 205 ...
+ $ sample_19 : int  330 106 0 17 0 0 27 269 2324 139 ...
+ $ sample_2  : int  288 290 14 14 0 0 0 194 2384 201 ...
+ $ sample_20 : int  307 252 3 21 0 22 0 359 2561 123 ...
+ $ sample_21 : int  346 326 21 60 0 22 0 383 2654 215 ...
+ $ sample_28 : int  293 345 26 61 0 69 0 395 2887 157 ...
+ $ sample_29 : int  347 254 9 14 0 22 4 392 2250 101 ...
+ $ sample_3  : int  452 363 39 29 4 0 0 408 3143 222 ...
+ $ sample_30 : int  452 353 20 37 35 15 10 489 2830 183 ...
+ $ sample_31 : int  984 922 10 68 0 0 0 310 1297 270 ...
+ $ sample_36 : int  230 160 0 37 0 34 23 352 1981 93 ...
+ $ sample_4  : int  469 588 0 0 0 55 0 168 2971 290 ...
+ $ sample_5  : int  400 285 10 30 4 51 0 403 2651 225 ...
+ $ sample_78 : int  472 178 48 10 0 0 0 462 2669 195 ...
+ $ sample_79 : int  311 119 41 13 0 30 0 287 2671 182 ...
+ $ sample_80 : int  368 197 60 56 0 19 4 310 1790 123 ...
+ $ sample_83 : int  312 134 39 32 0 31 4 113 2173 162 ...
+ $ sample_88 : int  551 128 49 45 8 0 0 457 2603 179 ...
+ $ sample_90 : int  631 103 54 55 32 0 0 321 3260 177 ...
+ $ sample_91 : int  605 315 20 27 0 42 4 396 2186 130 ...
+ $ sample_92 : int  366 204 27 38 0 34 0 234 2451 134 ...
+ $ sample_94 : int  339 301 7 60 14 0 0 455 2464 153 ...
+ $ sample_97 : int  517 56 22 25 0 0 22 279 2768 189 ...
+ $ sample_98 : int  577 49 63 18 0 26 101 229 1935 282 ...
+ $ sample_99 : int  235 260 12 50 0 56 0 208 1991 138 ...</code></pre>
 </div>
-<div id="convert-to-matrix" class="section level3" number="2.1.2">
-<h3><span class="header-section-number">2.1.2</span> Convert to matrix</h3>
+<div id="convert-to-matrix" class="section level3" number="3.1.2">
+<h3><span class="header-section-number">3.1.2</span> Convert to matrix</h3>
 <pre class="r"><code># Convert the data frame to a matrix
 gene_count_matrix &lt;- as.matrix(csv_content)
 
@@ -1800,8 +1848,8 @@ gene-ube2v1|ube2v1                        60        25        18        50
 gene-cldn15la|cldn15la                    14         0         0         0
 gene-muc15|muc15                           0         0        26        56</code></pre>
 </div>
-<div id="load-matrix-into-edger" class="section level3" number="2.1.3">
-<h3><span class="header-section-number">2.1.3</span> Load matrix into edgeR</h3>
+<div id="load-matrix-into-edger" class="section level3" number="3.1.3">
+<h3><span class="header-section-number">3.1.3</span> Load matrix into edgeR</h3>
 <pre class="r"><code>dge &lt;- DGEList(counts = gene_count_matrix, group = factor(temperatures))
 
 dge</code></pre>
@@ -1872,8 +1920,8 @@ sample_107    9C 41991971            1
 sample_108    9C 47412580            1
 31 more rows ...</code></pre>
 </div>
-<div id="filter-low-counts" class="section level3" number="2.1.4">
-<h3><span class="header-section-number">2.1.4</span> Filter low counts</h3>
+<div id="filter-low-counts" class="section level3" number="3.1.4">
+<h3><span class="header-section-number">3.1.4</span> Filter low counts</h3>
 <p>Filters for genes with at &gt;= <code>10</code> reads across at least 3 samples.</p>
 <pre class="r"><code>keep &lt;- filterByExpr(dge)
 
@@ -1947,8 +1995,8 @@ sample_107    9C 41972179            1
 sample_108    9C 47313070            1
 31 more rows ...</code></pre>
 </div>
-<div id="normalization" class="section level3" number="2.1.5">
-<h3><span class="header-section-number">2.1.5</span> Normalization</h3>
+<div id="normalization" class="section level3" number="3.1.5">
+<h3><span class="header-section-number">3.1.5</span> Normalization</h3>
 <pre class="r"><code>dge &lt;- calcNormFactors(object = dge)
 
 dge</code></pre>
@@ -2019,8 +2067,8 @@ sample_107    9C 41972179    0.7062689
 sample_108    9C 47313070    1.5247621
 31 more rows ...</code></pre>
 </div>
-<div id="model-fitting-and-estimating-dispersions" class="section level3" number="2.1.6">
-<h3><span class="header-section-number">2.1.6</span> Model fitting and estimating dispersions</h3>
+<div id="model-fitting-and-estimating-dispersions" class="section level3" number="3.1.6">
+<h3><span class="header-section-number">3.1.6</span> Model fitting and estimating dispersions</h3>
 <pre class="r"><code>dge &lt;- estimateDisp(dge)
 
 dge</code></pre>
@@ -2118,8 +2166,8 @@ $prior.n
 $span
 [1] 0.2910468</code></pre>
 </div>
-<div id="exact-test-gene-expression" class="section level3" number="2.1.7">
-<h3><span class="header-section-number">2.1.7</span> Exact test (Gene expression)</h3>
+<div id="exact-test-gene-expression" class="section level3" number="3.1.7">
+<h3><span class="header-section-number">3.1.7</span> Exact test (Gene expression)</h3>
 <pre class="r"><code>exact_test_genes &lt;- exactTest(dge)
 
 exact_test_genes</code></pre>
@@ -2139,16 +2187,18 @@ $comparison
 $genes
 NULL</code></pre>
 </div>
-<div id="differential-gene-expression-summary" class="section level3" number="2.1.8">
-<h3><span class="header-section-number">2.1.8</span> Differential gene expression summary</h3>
+<div id="differential-gene-expression-summary" class="section level3" number="3.1.8">
+<h3><span class="header-section-number">3.1.8</span> Differential gene expression summary</h3>
 <pre class="r"><code>summary(decideTests(object = exact_test_genes, p.value = 0.05))</code></pre>
 <pre><code>       9C-16C
 Down     2071
 NotSig  11980
 Up       2642</code></pre>
 </div>
-<div id="peek-at-degs" class="section level3" number="2.1.9">
-<h3><span class="header-section-number">2.1.9</span> Peek at DEGs</h3>
+<div id="peek-at-degs" class="section level3" number="3.1.9">
+<h3><span class="header-section-number">3.1.9</span> Peek at DEGs</h3>
+<p>Selects all genes (<code>n = &quot;Inf&quot;</code>) with adjusted p-value <code>&lt; 0.05</code>, sorts by false discovery rate (<code>adjust.method = &quot;fdr&quot;</code>).</p>
+<p>Converts object to a data frame (the <code>$table</code> part).</p>
 <pre class="r"><code>top_degs_table &lt;-  topTags(object = exact_test_genes, n = &quot;Inf&quot;, adjust.method = &quot;fdr&quot;, p.value = 0.05)$table
 
 str(top_degs_table)</code></pre>
@@ -2158,8 +2208,42 @@ str(top_degs_table)</code></pre>
  $ PValue: num  1.26e-64 5.31e-37 2.15e-30 1.48e-26 4.65e-25 ...
  $ FDR   : num  2.10e-60 4.43e-33 1.19e-26 6.18e-23 1.43e-21 ...</code></pre>
 </div>
-<div id="volcano-plot" class="section level3" number="2.1.10">
-<h3><span class="header-section-number">2.1.10</span> Volcano plot</h3>
+<div id="convert-gene-id-rownames-to-column" class="section level3" number="3.1.10">
+<h3><span class="header-section-number">3.1.10</span> Convert gene ID rownames to column</h3>
+<pre class="r"><code># Step 1: Extract row names and create a new column &#39;gene_ids&#39;
+top_degs_table$gene_ids &lt;- rownames(top_degs_table)
+
+# Step 2: Reorder columns to make &#39;gene_ids&#39; the first column
+top_degs_table &lt;- top_degs_table[, c(&quot;gene_ids&quot;, names(top_degs_table)[-length(names(top_degs_table))])]
+
+# Step 3: Check the result
+head(top_degs_table)</code></pre>
+<pre><code>                                                     gene_ids     logFC
+gene-LOC132469840|LOC132469840 gene-LOC132469840|LOC132469840  1.897837
+gene-serpinh1b|serpinh1b             gene-serpinh1b|serpinh1b -2.589704
+gene-znf706|znf706                         gene-znf706|znf706 -1.450400
+gene-hacd4|hacd4                             gene-hacd4|hacd4 -3.133038
+gene-LOC132448390|LOC132448390 gene-LOC132448390|LOC132448390  1.874161
+gene-zgc:103586|zgc:103586         gene-zgc:103586|zgc:103586  1.584728
+                                 logCPM       PValue          FDR
+gene-LOC132469840|LOC132469840 6.594858 1.259480e-64 2.102450e-60
+gene-serpinh1b|serpinh1b       4.063945 5.307949e-37 4.430280e-33
+gene-znf706|znf706             4.929053 2.146565e-30 1.194420e-26
+gene-hacd4|hacd4               3.179135 1.480134e-26 6.176968e-23
+gene-LOC132448390|LOC132448390 5.570204 4.647165e-25 1.434822e-21
+gene-zgc:103586|zgc:103586     5.356047 5.157212e-25 1.434822e-21</code></pre>
+</div>
+<div id="write-degs-to-file" class="section level3" number="3.1.11">
+<h3><span class="header-section-number">3.1.11</span> Write DEGs to file</h3>
+<pre class="r"><code># Write dataframe to CSV
+write.csv(
+  top_degs_table, 
+  file = &quot;../output/13.0.0-RNAseq-edgeR/DEGs_9C-vs-16C-p-0.05.csv&quot;, 
+  quote = FALSE, 
+  row.names = FALSE)</code></pre>
+</div>
+<div id="volcano-plot" class="section level3" number="3.1.12">
+<h3><span class="header-section-number">3.1.12</span> Volcano plot</h3>
 <pre class="r"><code>ghibli_colors &lt;- ghibli_palette(&quot;PonyoMedium&quot;, type = &quot;discrete&quot;)
 
 ghibli_subset &lt;- c(ghibli_colors[3], ghibli_colors[6], ghibli_colors[4])
@@ -2199,7 +2283,7 @@ Robinson, Mark D., Davis J. McCarthy, and Gordon K. Smyth. 2009. <span>“edgeR:
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiMTMuMC4wLVJOQXNlcS1lZGdlUiIKYXV0aG9yOiAiU2FtIFdoaXRlIgpkYXRlOiAiMjAyNC0wNS0yOSIKb3V0cHV0OiAKICBib29rZG93bjo6aHRtbF9kb2N1bWVudDI6CiAgICB0aGVtZTogY29zbW8KICAgIHRvYzogdHJ1ZQogICAgdG9jX2Zsb2F0OiB0cnVlCiAgICBudW1iZXJfc2VjdGlvbnM6IHRydWUKICAgIGNvZGVfZm9sZGluZzogc2hvdwogICAgY29kZV9kb3dubG9hZDogdHJ1ZQogIGdpdGh1Yl9kb2N1bWVudDoKICAgIHRvYzogdHJ1ZQogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgaHRtbF9kb2N1bWVudDoKICAgIHRoZW1lOiBjb3NtbwogICAgdG9jOiB0cnVlCiAgICB0b2NfZmxvYXQ6IHRydWUKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgY29kZV9mb2xkaW5nOiBzaG93CiAgICBjb2RlX2Rvd25sb2FkOiB0cnVlCmJpYmxpb2dyYXBoeTogcmVmZXJlbmNlcy5iaWIKbGluay1jaXRhdGlvbnM6IHRydWUKLS0tCgpEaWZmZXJlbnRpYWwgZ2VuZSBleHByZXNzaW9uIG9mIDk8c3VwPm88L3N1cD5DIHZzIDE2PHN1cD5vPC9zdXA+QyBsaXZlciBSTkEtc2VxIHVzaW5nIFtlZGdlUl0oaHR0cHM6Ly9iaW9jb25kdWN0b3Iub3JnL3BhY2thZ2VzL3JlbGVhc2UvYmlvYy92aWduZXR0ZXMvZWRnZVIvaW5zdC9kb2MvZWRnZVJVc2Vyc0d1aWRlLnBkZikgW0BjaGVuMjAyNDsgQG1jY2FydGh5MjAxMjsgQGNoZW4yMDE2OyBAcm9iaW5zb24yMDA5XQoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmxpYnJhcnkoa25pdHIpCmxpYnJhcnkoZHBseXIpCmxpYnJhcnkoZWRnZVIpCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShnaGlibGkpCmtuaXRyOjpvcHRzX2NodW5rJHNldCgKICBlY2hvID0gVFJVRSwgICAgICAgICAjIERpc3BsYXkgY29kZSBjaHVua3MKICBldmFsID0gRkFMU0UsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKCiMgZWRnZVIgR1JPVVBJTkcgVkVDVE9SCgojIyBDaGVjayBzYW1wbGUgaW5mbwoKT25seSBsb29raW5nIGF0IDk8c3VwPm88L3N1cD5DIGFuZCAxNjxzdXA+bzwvc3VwPkMKCmBgYHtyIGNoZWNrLXNhbXBsZS1pbmZvLCBlbmdpbmU9J2Jhc2gnLCBldmFsPVRSVUV9CmVjaG8gIkhlYWRlciBmb3IgLi4vZGF0YS9ERVNlcTJfU2FtcGxlX0luZm9ybWF0aW9uLmNzdjoiCmVjaG8gIiIKCmhlYWQgLW4gMSAuLi9kYXRhL0RFU2VxMl9TYW1wbGVfSW5mb3JtYXRpb24uY3N2CgplY2hvICIiCmVjaG8gIi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSIKZWNobyAiIgphd2sgLUYiLCIgJyQ0ID09IDE2IHx8ICQ0ID09IDkge3ByaW50ICQyLCAkNH0nIC4uL2RhdGEvREVTZXEyX1NhbXBsZV9JbmZvcm1hdGlvbi5jc3YgfCBzb3J0IC1uIC1rMSwxCmBgYAoKIyMgQ3JlYXRlIGVkZ2VSIGdyb3VwaW5nIHZlY3RvcgoKU2luY2UgYWxsIHNhbXBsZSBJRHMgYDw9YCB0byBgMzZgIGFyZSBwYXJ0IG9mIHRoZSAxNjxzdXA+bzwvc3VwPkMgdHJlYXRtZW50LCB3ZSBjYW4gdXNlIHRoaXMgdG8gY3JlYXRlIHZlY3RvciB3aGljaCBtYXRjaGVzIHNhbXBsZSBvcmRlcmluZyBpbiBgLi4vb3V0cHV0LzEwLjEtaGlzYXQtZGVzZXEyL2dlbmVfY291bnRfbWF0cml4LmNzdmAKCmBgYHtyIGVkZ2VSLWdyb3VwaW5nLCBldmFsPVRSVUV9CiMgUmVhZCB0aGUgZmlyc3QgbGluZSBvZiB0aGUgQ1NWIGZpbGUKaGVhZGVyIDwtIHJlYWRMaW5lcygiLi4vb3V0cHV0LzEwLjEtaGlzYXQtZGVzZXEyL2dlbmVfY291bnRfbWF0cml4LmNzdiIsIG4gPSAxKQoKIyBTcGxpdCB0aGUgaGVhZGVyIHRvIGV4dHJhY3QgdGhlIHZhbHVlcwp2YWx1ZXMgPC0gYXMubnVtZXJpYyh1bmxpc3Qoc3Ryc3BsaXQoaGVhZGVyLCAiLCIpKVstMV0pICMgUmVtb3ZlIHRoZSBmaXJzdCBlbGVtZW50IHdoaWNoIGlzICJnZW5lX2lkIgoKIyBBcHBseSB0aGUgY29uZGl0aW9uYWwgbG9naWMgdG8gZ2VuZXJhdGUgdGhlIHRlbXBlcmF0dXJlcyB2ZWN0b3IKdGVtcGVyYXR1cmVzIDwtIGlmZWxzZSh2YWx1ZXMgPD0gMzYsICIxNkMiLCAiOUMiKQoKIyBQcmludCB0aGUgcmVzdWx0aW5nIHZlY3RvcgpwcmludCh0ZW1wZXJhdHVyZXMpCmBgYAoKIyBERUdzCgojIyBMb2FkIGNvdW50IG1hdHJpeAoKIyMjIFJlZm9ybWF0IGhlYWRlcgoKYGBge3IgcmVmb3JtYXQtY291bnRzLWhlYWRlciwgZXZhbD1UUlVFfQojIFJlYWQgdGhlIGVudGlyZSBDU1YgZmlsZQpjc3ZfZmlsZSA8LSByZWFkTGluZXMoIi4uL291dHB1dC8xMC4xLWhpc2F0LWRlc2VxMi9nZW5lX2NvdW50X21hdHJpeC5jc3YiKQoKIyBFeHRyYWN0IHRoZSBoZWFkZXIgbGluZQpoZWFkZXIgPC0gY3N2X2ZpbGVbMV0KCiMgU3BsaXQgdGhlIGhlYWRlciB0byBleHRyYWN0IHRoZSB2YWx1ZXMKaGVhZGVyX3ZhbHVlcyA8LSB1bmxpc3Qoc3Ryc3BsaXQoaGVhZGVyLCAiLCIpKQoKIyBQcmVwZW5kICdzYW1wbGVfJyB0byBlYWNoIHZhbHVlIChleGNsdWRpbmcgJ2dlbmVfaWQnKQpoZWFkZXJfdmFsdWVzWy0xXSA8LSBwYXN0ZTAoInNhbXBsZV8iLCBoZWFkZXJfdmFsdWVzWy0xXSkKCiMgQ29tYmluZSB0aGUgbW9kaWZpZWQgaGVhZGVyIGJhY2sgaW50byBhIHNpbmdsZSBzdHJpbmcKbW9kaWZpZWRfaGVhZGVyIDwtIHBhc3RlKGhlYWRlcl92YWx1ZXMsIGNvbGxhcHNlID0gIiwiKQoKIyBSZXBsYWNlIHRoZSBvbGQgaGVhZGVyIHdpdGggdGhlIG5ldyBtb2RpZmllZCBoZWFkZXIgaW4gdGhlIENTViBjb250ZW50CmNzdl9maWxlWzFdIDwtIG1vZGlmaWVkX2hlYWRlcgoKIyBDb252ZXJ0IHRoZSBtb2RpZmllZCBDU1YgY29udGVudCB0byBhIGRhdGEgZnJhbWUKY3N2X2NvbnRlbnQgPC0gcmVhZC5jc3YodGV4dENvbm5lY3Rpb24oY3N2X2ZpbGUpLCByb3cubmFtZXMgPSAxKQoKYGBgCgojIyMgQ29udmVydCB0byBtYXRyaXgKCmBgYHtyIGNvbnZlcnQtZ2VuZS1jb3VudHMtdG8tbWF0cml4LCBldmFsPVRSVUV9CiMgQ29udmVydCB0aGUgZGF0YSBmcmFtZSB0byBhIG1hdHJpeApnZW5lX2NvdW50X21hdHJpeCA8LSBhcy5tYXRyaXgoY3N2X2NvbnRlbnQpCgojIFByaW50IHRoZSBtYXRyaXgKcHJpbnQoaGVhZChnZW5lX2NvdW50X21hdHJpeCkpCgpgYGAKCiMjIyBMb2FkIG1hdHJpeCBpbnRvIGVkZ2VSCgpgYGB7ciBsb2FkLWdlbmUtY291bnQtbWF0cml4LCBldmFsPVRSVUV9CmRnZSA8LSBER0VMaXN0KGNvdW50cyA9IGdlbmVfY291bnRfbWF0cml4LCBncm91cCA9IGZhY3Rvcih0ZW1wZXJhdHVyZXMpKQoKZGdlCgpgYGAKCiMjIyBGaWx0ZXIgbG93IGNvdW50cwoKRmlsdGVycyBmb3IgZ2VuZXMgd2l0aCBhdCBcPj0gYDEwYCByZWFkcyBhY3Jvc3MgYXQgbGVhc3QgMyBzYW1wbGVzLgoKYGBge3IgZmlsdGVyLWxvdy1nZW5lLWNvdW50cywgZXZhbD1UUlVFfQprZWVwIDwtIGZpbHRlckJ5RXhwcihkZ2UpCgpkZ2UgPC0gZGdlW2tlZXAsICwga2VlcC5saWIuc2l6ZXM9RkFMU0VdCgpkZ2UKYGBgCgojIyMgTm9ybWFsaXphdGlvbgoKYGBge3Igbm9ybWFsaXplLWdlbmUtcmVhZC1jb3VudHMsIGV2YWw9VFJVRX0KZGdlIDwtIGNhbGNOb3JtRmFjdG9ycyhvYmplY3QgPSBkZ2UpCgpkZ2UKYGBgCgojIyMgTW9kZWwgZml0dGluZyBhbmQgZXN0aW1hdGluZyBkaXNwZXJzaW9ucwoKYGBge3IgbW9kZWwtZGlzcGVyc2lvbi1nZW5lcywgZXZhbD1UUlVFfQpkZ2UgPC0gZXN0aW1hdGVEaXNwKGRnZSkKCmRnZQpgYGAKCiMjIyBFeGFjdCB0ZXN0IChHZW5lIGV4cHJlc3Npb24pCgpgYGB7ciBkaWZmZXJlbnRpYWwtZXhwcmVzc2lvbiwgZXZhbD1UUlVFfQpleGFjdF90ZXN0X2dlbmVzIDwtIGV4YWN0VGVzdChkZ2UpCgpleGFjdF90ZXN0X2dlbmVzCgpgYGAKCiMjIyBEaWZmZXJlbnRpYWwgZ2VuZSBleHByZXNzaW9uIHN1bW1hcnkKCmBgYHtyIGRlZy1jb3VudHMsICwgZXZhbD1UUlVFfQpzdW1tYXJ5KGRlY2lkZVRlc3RzKG9iamVjdCA9IGV4YWN0X3Rlc3RfZ2VuZXMsIHAudmFsdWUgPSAwLjA1KSkKYGBgCgojIyMgUGVlayBhdCBERUdzCgpgYGB7ciBkZWctc3RhdGlzdGljcywgZXZhbD1UUlVFfQp0b3BfZGVnc190YWJsZSA8LSAgdG9wVGFncyhvYmplY3QgPSBleGFjdF90ZXN0X2dlbmVzLCBuID0gIkluZiIsIGFkanVzdC5tZXRob2QgPSAiZmRyIiwgcC52YWx1ZSA9IDAuMDUpJHRhYmxlCgpzdHIodG9wX2RlZ3NfdGFibGUpCgpgYGAKCiMjIyBWb2xjYW5vIHBsb3QKCmBgYHtyIHBsb3Qtdm9sY2Fuby1kZWdzLCBldmFsPVRSVUV9CmdoaWJsaV9jb2xvcnMgPC0gZ2hpYmxpX3BhbGV0dGUoIlBvbnlvTWVkaXVtIiwgdHlwZSA9ICJkaXNjcmV0ZSIpCgpnaGlibGlfc3Vic2V0IDwtIGMoZ2hpYmxpX2NvbG9yc1szXSwgZ2hpYmxpX2NvbG9yc1s2XSwgZ2hpYmxpX2NvbG9yc1s0XSkKCiMgQ3JlYXRlIG5ldyBjb2x1bW4gYW5kIGZpbGwgd2l0aCBgTkFgCnRvcF9kZWdzX3RhYmxlJHRvcERFIDwtICJOQSIKCiMgU2V0IHZhbHVlIG9mICJVcCIgZm9yIGdlbmVzIHdpdGggRkMgPiAxIGFuZCBGRFIgPCAwLjA1CnRvcF9kZWdzX3RhYmxlJHRvcERFW3RvcF9kZWdzX3RhYmxlJGxvZ0ZDID4gMSAmIHRvcF9kZWdzX3RhYmxlJEZEUiA8IDAuMDVdIDwtICJVcCIKCiMgU2V0IHZhbHVlIG9mICJEb3duIiBmb3IgZ2VuZXMgd2l0aCBGQyA8IC0xIGFuZCBGRFIgPCAwLjA1CnRvcF9kZWdzX3RhYmxlJHRvcERFW3RvcF9kZWdzX3RhYmxlJGxvZ0ZDIDwgLTEgJiB0b3BfZGVnc190YWJsZSRGRFIgPCAwLjA1XSA8LSAiRG93biIKCmdncGxvdChkYXRhPXRvcF9kZWdzX3RhYmxlLCBhZXMoeD1sb2dGQywgeT0tbG9nMTAoRkRSKSwgY29sb3IgPSB0b3BERSkpICsgCiAgZ2VvbV9wb2ludCgpICsKICB0aGVtZV9taW5pbWFsKCkgKwogIHNjYWxlX2NvbG91cl9kaXNjcmV0ZSh0eXBlID0gZ2hpYmxpX3N1YnNldCwgYnJlYWtzID0gYygiVXAiLCAiRG93biIpKQpgYGAKCiMgQ0lUQVRJT05T</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiMTMuMC4wLVJOQXNlcS1lZGdlUiIKYXV0aG9yOiAiU2FtIFdoaXRlIgpkYXRlOiAiMjAyNC0wNS0yOSIKb3V0cHV0OiAKICBib29rZG93bjo6aHRtbF9kb2N1bWVudDI6CiAgICB0aGVtZTogY29zbW8KICAgIHRvYzogdHJ1ZQogICAgdG9jX2Zsb2F0OiB0cnVlCiAgICBudW1iZXJfc2VjdGlvbnM6IHRydWUKICAgIGNvZGVfZm9sZGluZzogc2hvdwogICAgY29kZV9kb3dubG9hZDogdHJ1ZQogIGdpdGh1Yl9kb2N1bWVudDoKICAgIHRvYzogdHJ1ZQogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlCiAgaHRtbF9kb2N1bWVudDoKICAgIHRoZW1lOiBjb3NtbwogICAgdG9jOiB0cnVlCiAgICB0b2NfZmxvYXQ6IHRydWUKICAgIG51bWJlcl9zZWN0aW9uczogdHJ1ZQogICAgY29kZV9mb2xkaW5nOiBzaG93CiAgICBjb2RlX2Rvd25sb2FkOiB0cnVlCmJpYmxpb2dyYXBoeTogcmVmZXJlbmNlcy5iaWIKbGluay1jaXRhdGlvbnM6IHRydWUKLS0tCgpEaWZmZXJlbnRpYWwgZ2VuZSBleHByZXNzaW9uIG9mIDk8c3VwPm88L3N1cD5DIHZzIDE2PHN1cD5vPC9zdXA+QyBsaXZlciBSTkEtc2VxIHVzaW5nIFtlZGdlUl0oaHR0cHM6Ly9iaW9jb25kdWN0b3Iub3JnL3BhY2thZ2VzL3JlbGVhc2UvYmlvYy92aWduZXR0ZXMvZWRnZVIvaW5zdC9kb2MvZWRnZVJVc2Vyc0d1aWRlLnBkZikgW0BjaGVuMjAyNDsgQG1jY2FydGh5MjAxMjsgQGNoZW4yMDE2OyBAcm9iaW5zb24yMDA5XQoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmxpYnJhcnkoa25pdHIpCmxpYnJhcnkoZHBseXIpCmxpYnJhcnkoZWRnZVIpCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShnaGlibGkpCmtuaXRyOjpvcHRzX2NodW5rJHNldCgKICBlY2hvID0gVFJVRSwgICAgICAgICAjIERpc3BsYXkgY29kZSBjaHVua3MKICBldmFsID0gRkFMU0UsICAgICAgICAjIEV2YWx1YXRlIGNvZGUgY2h1bmtzCiAgd2FybmluZyA9IEZBTFNFLCAgICAgIyBIaWRlIHdhcm5pbmdzCiAgbWVzc2FnZSA9IEZBTFNFLCAgICAgIyBIaWRlIG1lc3NhZ2VzCiAgY29tbWVudCA9ICIiICAgICAgICAgIyBQcmV2ZW50cyBhcHBlbmRpbmcgJyMjJyB0byBiZWdpbm5pbmcgb2YgbGluZXMgaW4gY29kZSBvdXRwdXQKKQpgYGAKCiMgQ1JFQVRFIE9VVFBVVCBESVJFQ1RPUlkKYGBge3IgY3JlYXRlLW91dHB1dC1kaXIsIGVuZ2luZT0nYmFzaCcsIGV2YWw9VFJVRX0KIyBNYWtlIG91dHB1dCBkaXJlY3RvcnksIGlmIGl0IGRvZXNuJ3QgZXhpc3QKbWtkaXIgLS1wYXJlbnRzIC4uL291dHB1dC8xMy4wLjAtUk5Bc2VxLWVkZ2VSCmBgYAoKIyBlZGdlUiBHUk9VUElORyBWRUNUT1IKCiMjIENoZWNrIHNhbXBsZSBpbmZvCgpPbmx5IGxvb2tpbmcgYXQgOTxzdXA+bzwvc3VwPkMgYW5kIDE2PHN1cD5vPC9zdXA+QwoKYGBge3IgY2hlY2stc2FtcGxlLWluZm8sIGVuZ2luZT0nYmFzaCcsIGV2YWw9VFJVRX0KZWNobyAiSGVhZGVyIGZvciAuLi9kYXRhL0RFU2VxMl9TYW1wbGVfSW5mb3JtYXRpb24uY3N2OiIKZWNobyAiIgoKaGVhZCAtbiAxIC4uL2RhdGEvREVTZXEyX1NhbXBsZV9JbmZvcm1hdGlvbi5jc3YKCmVjaG8gIiIKZWNobyAiLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIgplY2hvICIiCmF3ayAtRiIsIiAnTlI9PTEge2hlYWRlcj0kMiAiICIgJDQ7IHByaW50IGhlYWRlcjsgbmV4dH0gJDQgPT0gMTYgfHwgJDQgPT0gOSB7cHJpbnQgJDIsICQ0fScgLi4vZGF0YS9ERVNlcTJfU2FtcGxlX0luZm9ybWF0aW9uLmNzdiBcCnwgc29ydCAtazEsMSAtbiBcCnwgY29sdW1uIC10CgpgYGAKCiMjIENyZWF0ZSBlZGdlUiBncm91cGluZyB2ZWN0b3IKClNpbmNlIGFsbCBzYW1wbGUgSURzIGA8PWAgdG8gYDM2YCBhcmUgcGFydCBvZiB0aGUgMTY8c3VwPm88L3N1cD5DIHRyZWF0bWVudCwgd2UgY2FuIHVzZSB0aGlzIHRvIGNyZWF0ZSB2ZWN0b3Igd2hpY2ggbWF0Y2hlcyBzYW1wbGUgb3JkZXJpbmcgaW4gYC4uL291dHB1dC8xMC4xLWhpc2F0LWRlc2VxMi9nZW5lX2NvdW50X21hdHJpeC5jc3ZgCgpgYGB7ciBlZGdlUi1ncm91cGluZywgZXZhbD1UUlVFfQojIFJlYWQgdGhlIGZpcnN0IGxpbmUgb2YgdGhlIENTViBmaWxlCmhlYWRlciA8LSByZWFkTGluZXMoIi4uL291dHB1dC8xMC4xLWhpc2F0LWRlc2VxMi9nZW5lX2NvdW50X21hdHJpeC5jc3YiLCBuID0gMSkKCiMgU3BsaXQgdGhlIGhlYWRlciB0byBleHRyYWN0IHRoZSB2YWx1ZXMKdmFsdWVzIDwtIGFzLm51bWVyaWModW5saXN0KHN0cnNwbGl0KGhlYWRlciwgIiwiKSlbLTFdKSAjIFJlbW92ZSB0aGUgZmlyc3QgZWxlbWVudCB3aGljaCBpcyAiZ2VuZV9pZCIKCiMgQXBwbHkgdGhlIGNvbmRpdGlvbmFsIGxvZ2ljIHRvIGdlbmVyYXRlIHRoZSB0ZW1wZXJhdHVyZXMgdmVjdG9yCnRlbXBlcmF0dXJlcyA8LSBpZmVsc2UodmFsdWVzIDw9IDM2LCAiMTZDIiwgIjlDIikKCiMgUHJpbnQgdGhlIHJlc3VsdGluZyB2ZWN0b3IKcHJpbnQodGVtcGVyYXR1cmVzKQpgYGAKCiMgREVHcwoKIyMgTG9hZCBjb3VudCBtYXRyaXgKCiMjIyBSZWZvcm1hdCBoZWFkZXIKCmBgYHtyIHJlZm9ybWF0LWNvdW50cy1oZWFkZXIsIGV2YWw9VFJVRX0KIyBSZWFkIHRoZSBlbnRpcmUgQ1NWIGZpbGUKY3N2X2ZpbGUgPC0gcmVhZExpbmVzKCIuLi9vdXRwdXQvMTAuMS1oaXNhdC1kZXNlcTIvZ2VuZV9jb3VudF9tYXRyaXguY3N2IikKCiMgRXh0cmFjdCB0aGUgaGVhZGVyIGxpbmUKaGVhZGVyIDwtIGNzdl9maWxlWzFdCgojIFNwbGl0IHRoZSBoZWFkZXIgdG8gZXh0cmFjdCB0aGUgdmFsdWVzCmhlYWRlcl92YWx1ZXMgPC0gdW5saXN0KHN0cnNwbGl0KGhlYWRlciwgIiwiKSkKCiMgUHJlcGVuZCAnc2FtcGxlXycgdG8gZWFjaCB2YWx1ZSAoZXhjbHVkaW5nICdnZW5lX2lkJykKaGVhZGVyX3ZhbHVlc1stMV0gPC0gcGFzdGUwKCJzYW1wbGVfIiwgaGVhZGVyX3ZhbHVlc1stMV0pCgojIENvbWJpbmUgdGhlIG1vZGlmaWVkIGhlYWRlciBiYWNrIGludG8gYSBzaW5nbGUgc3RyaW5nCm1vZGlmaWVkX2hlYWRlciA8LSBwYXN0ZShoZWFkZXJfdmFsdWVzLCBjb2xsYXBzZSA9ICIsIikKCiMgUmVwbGFjZSB0aGUgb2xkIGhlYWRlciB3aXRoIHRoZSBuZXcgbW9kaWZpZWQgaGVhZGVyIGluIHRoZSBDU1YgY29udGVudApjc3ZfZmlsZVsxXSA8LSBtb2RpZmllZF9oZWFkZXIKCiMgQ29udmVydCB0aGUgbW9kaWZpZWQgQ1NWIGNvbnRlbnQgdG8gYSBkYXRhIGZyYW1lCmNzdl9jb250ZW50IDwtIHJlYWQuY3N2KHRleHRDb25uZWN0aW9uKGNzdl9maWxlKSwgcm93Lm5hbWVzID0gMSkKCnN0cihjc3ZfY29udGVudCkKCmBgYAoKIyMjIENvbnZlcnQgdG8gbWF0cml4CgpgYGB7ciBjb252ZXJ0LWdlbmUtY291bnRzLXRvLW1hdHJpeCwgZXZhbD1UUlVFfQojIENvbnZlcnQgdGhlIGRhdGEgZnJhbWUgdG8gYSBtYXRyaXgKZ2VuZV9jb3VudF9tYXRyaXggPC0gYXMubWF0cml4KGNzdl9jb250ZW50KQoKIyBQcmludCB0aGUgbWF0cml4CnByaW50KGhlYWQoZ2VuZV9jb3VudF9tYXRyaXgpKQoKYGBgCgojIyMgTG9hZCBtYXRyaXggaW50byBlZGdlUgoKYGBge3IgbG9hZC1nZW5lLWNvdW50LW1hdHJpeCwgZXZhbD1UUlVFfQpkZ2UgPC0gREdFTGlzdChjb3VudHMgPSBnZW5lX2NvdW50X21hdHJpeCwgZ3JvdXAgPSBmYWN0b3IodGVtcGVyYXR1cmVzKSkKCmRnZQoKYGBgCgojIyMgRmlsdGVyIGxvdyBjb3VudHMKCkZpbHRlcnMgZm9yIGdlbmVzIHdpdGggYXQgXD49IGAxMGAgcmVhZHMgYWNyb3NzIGF0IGxlYXN0IDMgc2FtcGxlcy4KCmBgYHtyIGZpbHRlci1sb3ctZ2VuZS1jb3VudHMsIGV2YWw9VFJVRX0Ka2VlcCA8LSBmaWx0ZXJCeUV4cHIoZGdlKQoKZGdlIDwtIGRnZVtrZWVwLCAsIGtlZXAubGliLnNpemVzPUZBTFNFXQoKZGdlCmBgYAoKIyMjIE5vcm1hbGl6YXRpb24KCmBgYHtyIG5vcm1hbGl6ZS1nZW5lLXJlYWQtY291bnRzLCBldmFsPVRSVUV9CmRnZSA8LSBjYWxjTm9ybUZhY3RvcnMob2JqZWN0ID0gZGdlKQoKZGdlCmBgYAoKIyMjIE1vZGVsIGZpdHRpbmcgYW5kIGVzdGltYXRpbmcgZGlzcGVyc2lvbnMKCmBgYHtyIG1vZGVsLWRpc3BlcnNpb24tZ2VuZXMsIGV2YWw9VFJVRX0KZGdlIDwtIGVzdGltYXRlRGlzcChkZ2UpCgpkZ2UKYGBgCgojIyMgRXhhY3QgdGVzdCAoR2VuZSBleHByZXNzaW9uKQoKYGBge3IgZGlmZmVyZW50aWFsLWV4cHJlc3Npb24sIGV2YWw9VFJVRX0KZXhhY3RfdGVzdF9nZW5lcyA8LSBleGFjdFRlc3QoZGdlKQoKZXhhY3RfdGVzdF9nZW5lcwoKYGBgCgojIyMgRGlmZmVyZW50aWFsIGdlbmUgZXhwcmVzc2lvbiBzdW1tYXJ5CgpgYGB7ciBkZWctY291bnRzLCAsIGV2YWw9VFJVRX0Kc3VtbWFyeShkZWNpZGVUZXN0cyhvYmplY3QgPSBleGFjdF90ZXN0X2dlbmVzLCBwLnZhbHVlID0gMC4wNSkpCmBgYAoKIyMjIFBlZWsgYXQgREVHcwoKU2VsZWN0cyBhbGwgZ2VuZXMgKGBuID0gIkluZiJgKSB3aXRoIGFkanVzdGVkIHAtdmFsdWUgYDwgMC4wNWAsIHNvcnRzIGJ5IGZhbHNlIGRpc2NvdmVyeSByYXRlIChgYWRqdXN0Lm1ldGhvZCA9ICJmZHIiYCkuCgpDb252ZXJ0cyBvYmplY3QgdG8gYSBkYXRhIGZyYW1lICh0aGUgYCR0YWJsZWAgcGFydCkuCgpgYGB7ciBkZWctc3RhdGlzdGljcywgZXZhbD1UUlVFfQp0b3BfZGVnc190YWJsZSA8LSAgdG9wVGFncyhvYmplY3QgPSBleGFjdF90ZXN0X2dlbmVzLCBuID0gIkluZiIsIGFkanVzdC5tZXRob2QgPSAiZmRyIiwgcC52YWx1ZSA9IDAuMDUpJHRhYmxlCgpzdHIodG9wX2RlZ3NfdGFibGUpCgpgYGAKCiMjIyBDb252ZXJ0IGdlbmUgSUQgcm93bmFtZXMgdG8gY29sdW1uCgpgYGB7ciBnZW5lLXJvd25hbWVzLXRvLWNvbHVtbiwgZXZhbD1UUlVFfQojIFN0ZXAgMTogRXh0cmFjdCByb3cgbmFtZXMgYW5kIGNyZWF0ZSBhIG5ldyBjb2x1bW4gJ2dlbmVfaWRzJwp0b3BfZGVnc190YWJsZSRnZW5lX2lkcyA8LSByb3duYW1lcyh0b3BfZGVnc190YWJsZSkKCiMgU3RlcCAyOiBSZW9yZGVyIGNvbHVtbnMgdG8gbWFrZSAnZ2VuZV9pZHMnIHRoZSBmaXJzdCBjb2x1bW4KdG9wX2RlZ3NfdGFibGUgPC0gdG9wX2RlZ3NfdGFibGVbLCBjKCJnZW5lX2lkcyIsIG5hbWVzKHRvcF9kZWdzX3RhYmxlKVstbGVuZ3RoKG5hbWVzKHRvcF9kZWdzX3RhYmxlKSldKV0KCiMgU3RlcCAzOiBDaGVjayB0aGUgcmVzdWx0CmhlYWQodG9wX2RlZ3NfdGFibGUpCmBgYAoKIyMjIFdyaXRlIERFR3MgdG8gZmlsZQpgYGB7ciB3cml0ZS1kZWdzLXRvLWZpbGUsIGV2YWw9VFJVRX0KIyBXcml0ZSBkYXRhZnJhbWUgdG8gQ1NWCndyaXRlLmNzdigKICB0b3BfZGVnc190YWJsZSwgCiAgZmlsZSA9ICIuLi9vdXRwdXQvMTMuMC4wLVJOQXNlcS1lZGdlUi9ERUdzXzlDLXZzLTE2Qy1wLTAuMDUuY3N2IiwgCiAgcXVvdGUgPSBGQUxTRSwgCiAgcm93Lm5hbWVzID0gRkFMU0UpCgpgYGAKCiMjIyBWb2xjYW5vIHBsb3QKCmBgYHtyIHBsb3Qtdm9sY2Fuby1kZWdzLCBldmFsPVRSVUV9CmdoaWJsaV9jb2xvcnMgPC0gZ2hpYmxpX3BhbGV0dGUoIlBvbnlvTWVkaXVtIiwgdHlwZSA9ICJkaXNjcmV0ZSIpCgpnaGlibGlfc3Vic2V0IDwtIGMoZ2hpYmxpX2NvbG9yc1szXSwgZ2hpYmxpX2NvbG9yc1s2XSwgZ2hpYmxpX2NvbG9yc1s0XSkKCiMgQ3JlYXRlIG5ldyBjb2x1bW4gYW5kIGZpbGwgd2l0aCBgTkFgCnRvcF9kZWdzX3RhYmxlJHRvcERFIDwtICJOQSIKCiMgU2V0IHZhbHVlIG9mICJVcCIgZm9yIGdlbmVzIHdpdGggRkMgPiAxIGFuZCBGRFIgPCAwLjA1CnRvcF9kZWdzX3RhYmxlJHRvcERFW3RvcF9kZWdzX3RhYmxlJGxvZ0ZDID4gMSAmIHRvcF9kZWdzX3RhYmxlJEZEUiA8IDAuMDVdIDwtICJVcCIKCiMgU2V0IHZhbHVlIG9mICJEb3duIiBmb3IgZ2VuZXMgd2l0aCBGQyA8IC0xIGFuZCBGRFIgPCAwLjA1CnRvcF9kZWdzX3RhYmxlJHRvcERFW3RvcF9kZWdzX3RhYmxlJGxvZ0ZDIDwgLTEgJiB0b3BfZGVnc190YWJsZSRGRFIgPCAwLjA1XSA8LSAiRG93biIKCmdncGxvdChkYXRhPXRvcF9kZWdzX3RhYmxlLCBhZXMoeD1sb2dGQywgeT0tbG9nMTAoRkRSKSwgY29sb3IgPSB0b3BERSkpICsgCiAgZ2VvbV9wb2ludCgpICsKICB0aGVtZV9taW5pbWFsKCkgKwogIHNjYWxlX2NvbG91cl9kaXNjcmV0ZSh0eXBlID0gZ2hpYmxpX3N1YnNldCwgYnJlYWtzID0gYygiVXAiLCAiRG93biIpKQpgYGAKCiMgQ0lUQVRJT05T</div>
 
 
 </div>

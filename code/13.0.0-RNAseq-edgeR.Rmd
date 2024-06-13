@@ -41,6 +41,12 @@ knitr::opts_chunk$set(
 )
 ```
 
+# CREATE OUTPUT DIRECTORY
+```{r create-output-dir, engine='bash', eval=TRUE}
+# Make output directory, if it doesn't exist
+mkdir --parents ../output/13.0.0-RNAseq-edgeR
+```
+
 # edgeR GROUPING VECTOR
 
 ## Check sample info
@@ -56,7 +62,10 @@ head -n 1 ../data/DESeq2_Sample_Information.csv
 echo ""
 echo "---------------------------------------------"
 echo ""
-awk -F"," '$4 == 16 || $4 == 9 {print $2, $4}' ../data/DESeq2_Sample_Information.csv | sort -n -k1,1
+awk -F"," 'NR==1 {header=$2 " " $4; print header; next} $4 == 16 || $4 == 9 {print $2, $4}' ../data/DESeq2_Sample_Information.csv \
+| sort -k1,1 -n \
+| column -t
+
 ```
 
 ## Create edgeR grouping vector
@@ -104,6 +113,8 @@ csv_file[1] <- modified_header
 
 # Convert the modified CSV content to a data frame
 csv_content <- read.csv(textConnection(csv_file), row.names = 1)
+
+str(csv_content)
 
 ```
 
@@ -172,10 +183,38 @@ summary(decideTests(object = exact_test_genes, p.value = 0.05))
 
 ### Peek at DEGs
 
+Selects all genes (`n = "Inf"`) with adjusted p-value `< 0.05`, sorts by false discovery rate (`adjust.method = "fdr"`).
+
+Converts object to a data frame (the `$table` part).
+
 ```{r deg-statistics, eval=TRUE}
 top_degs_table <-  topTags(object = exact_test_genes, n = "Inf", adjust.method = "fdr", p.value = 0.05)$table
 
 str(top_degs_table)
+
+```
+
+### Convert gene ID rownames to column
+
+```{r gene-rownames-to-column, eval=TRUE}
+# Step 1: Extract row names and create a new column 'gene_ids'
+top_degs_table$gene_ids <- rownames(top_degs_table)
+
+# Step 2: Reorder columns to make 'gene_ids' the first column
+top_degs_table <- top_degs_table[, c("gene_ids", names(top_degs_table)[-length(names(top_degs_table))])]
+
+# Step 3: Check the result
+head(top_degs_table)
+```
+
+### Write DEGs to file
+```{r write-degs-to-file, eval=TRUE}
+# Write dataframe to CSV
+write.csv(
+  top_degs_table, 
+  file = "../output/13.0.0-RNAseq-edgeR/DEGs_9C-vs-16C-p-0.05.csv", 
+  quote = FALSE, 
+  row.names = FALSE)
 
 ```
 
