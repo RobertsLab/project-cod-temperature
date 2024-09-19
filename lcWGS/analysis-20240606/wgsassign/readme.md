@@ -1,10 +1,13 @@
-WGSassign is a program that uses a pre-determined set of markers/sites/SNPs that can predict population structure. Pipeline steps include: 
+WGSassign is a program that uses a pre-determined set of markers/sites/SNPs that can predict population structure. Please see the notebook []() for a complete breakdown of the pipeline steps, but here's a summary: 
 
-- Create training & test sets of bam lists from reference fish of known populations  
-- Downsample populations with very high number of reference fish (as that can sway assignments - more likely to assign fish to those populations)    
-- get site allele frequences (SAFs), and for each pairwise population combination calculate 2-dimentional site frequency spectrum (2dSFS) & fixation index (Fst)     
-- Create multiple subsets of SNPs from the top N snps from each pairwise population combinaton based on (highest) Fst (e.g. top 50, 100, 1000 from each)  
-- Assign test reference individuals and assess accuracy to identify how many top n SNPs to use for experimental assignment    
-- Assign experimental fish to marine regions  
+- Create training & test sets of bam lists from reference fish of known populations in R. This can include downsampling populations with very high number of reference fish (as that can sway assignments - more likely to assign fish to those populations).      
+- Use the script [pcod-training-SAFs.sh]() to get site allele frequences (SAFs) for each population
+- Use the script [pcod-training-2dsfs-fst.sh]() to calculate 2-dimentional site frequency spectrum (2dSFS) & fixation index (Fst) for each pairwise population combination       
+- Use the script [cod-training-pull-top-snps.sh]() to create multiple subsets of SNPs from the top N snps from each pairwise population combinaton based on (highest) Fst (e.g. top 50, 100, 1000 ... from each)  
+- Assign test reference individuals using the top N sites.  This includes first 1) pulling GLs just for test fish using the script [subset-columns-beagle.sh](), then filtering that N times for the top N sites using the script [top-n-sites.sh]()
+- Use the sciprt [get-loo-WGSassign.sh]() to perform leave-one-out cross validation. In R, examine LOO results to assess assignment accuracy of each SNP set (i.e. various top N), and identify which set of SNPs to use for experimental assignment.
+- Use the script [subset-experimental-beagle.sh] to get GLs (beagle file) for experimental fish - it doesn't work to just get the .beagle.gz file from our experiment/gls_wgassign/ directory, since some of the major & minor alleles are swapped! So, previously I wrote the script  [join-beagles.sh] that merged reference and experimental beagle files at overlapping sites, and where alleles were swapped I corrected that.  So, I subset that merged beagle for my experimental fish only.   
+- Use the script [population-assignment.sh] to assign experimental fish to marine regions!
+- Read log-likelihood results from assignment into R, explore assignments and compare them to accuracy rates from our test individuals.  
 
 I do these steps twice, 1) using all spawning locations at the finest resolution, and 2) grouping spawning locations into 5 marine reigions  
