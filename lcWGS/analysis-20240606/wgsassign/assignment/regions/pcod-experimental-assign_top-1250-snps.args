@@ -1,0 +1,9 @@
+WGSassign
+Time: 17/09/2024 16:44:51
+Directory: /home/lspencer/pcod-lcwgs-2023/analysis-20240606/wgsassign2/assignment/regions
+Options:
+	-beagle /home/lspencer/pcod-lcwgs-2023/analysis-20240606/wgsassign2/assignment/regions/pcod-exp_top-1250.beagle.gz
+	-threads 20
+	-out /home/lspencer/pcod-lcwgs-2023/analysis-20240606/wgsassign2/assignment/regions/pcod-experimental-assign_top-1250-snps
+	-pop_af_file /home/lspencer/pcod-lcwgs-2023/analysis-20240606/wgsassign2/snp-testing/regions/testing-LOOs/top-1250.pop_af.npy
+	-get_pop_like
