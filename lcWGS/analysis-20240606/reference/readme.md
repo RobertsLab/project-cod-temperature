@@ -1,0 +1,1 @@
+This directory contains code, inputs, and outputs from reference Pacific cod -- i.e. fish from known spawning locations/regions -- that were used to identify polymorphic sites that predict population/region. Those sites were then used to assign experimental fish to spawning locations/regions. 
