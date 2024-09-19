@@ -1,1 +1,1 @@
-Genotype likelihoods for experimental fish and associated sites files
+Genotype likelihoods (LSs), allele frequencies, and associated sites files for experimental fish 
