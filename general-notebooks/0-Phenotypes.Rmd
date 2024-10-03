@@ -2,20 +2,21 @@
 title: "Phenotypes, P. cod temp experiment"
 author: "Laura Spencer"
 date: "2024-07-29"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 Juvenile Pacific cod were tagged, acclimated to laboratory conditions, then gradually acclimated to four experimental temperatures (0, 5, 9, 16). After 6 weeks in treatments, fish were sacrificed, liver and fin tissues were collected for RNASeq and lcWGS, respectively, and measurements taken of fish length, wet weight, and liver weight. 
 
-
 On 11/21/22 160 tagged fish entered experimental tanks for acclimation, 40 per treatment (n=10 fish / tank, 4 tanks/treatment). On 12/28/22 temperatures began to slowly increase until all target experimental temperatures (0C, 5C, 9C, 16C) were reached on 1/8/23. Of the 40 fish per treatment, all survived the 0C, 5C, and 9C treatments. Four fish died in the 16degC treatment on 1/22/23 (tank 1), 1/24/23 (tank 2), 1/29/23 (tank 4), and 2/1/23 (tank 2). All survivors were euthanized/sampled on 2/8 & 2/9. Standard length and wet weight were 1) collected before tank acclimation, 2) before experimental temperature, and 3) at treatment termination so that growth and condition could be assessed prior to and during experimental treatments. Liver wet weight and tissues for sequencing were collected at treatment termination. 
 
-In this notebook I look at effects of temperature on distributions of growth rate (length, weight) body condition index (wet weight / length), and liver condition (i.e. hepato-somatic index, liver wet weight / whole body wet weight).
+In this notebook I look at effects of temperature on distributions of growth rate (length, weight) body condition index (wet weight / length), liver condition (i.e. hepato-somatic index, liver wet weight / whole body wet weight), and lipids.
 
 ### Load libraries and source scripts 
 
 ```{r, message=FALSE, warning=FALSE, results=FALSE}
-list.of.packages <- c("tidyverse", "readxl", "janitor", "purrr", "ggpubr", "googlesheets4", "plotly", "lubridate")
+list.of.packages <- c("tidyverse", "readxl", "janitor", "purrr", "ggpubr", "googlesheets4", "plotly", "lubridate", "scales", "knitr", "cowplot")
 
 # Load all required libraries
 all.packages <- c(list.of.packages)
@@ -26,20 +27,29 @@ lapply(all.packages, FUN = function(X) {
 `%!in%` = Negate(`%in%`)
 ```
 
-### Load data 
+### Load data and calculate per-fish metrics 
+
+Specific growth rates (SGR) is calculated for each fish based on wet weights and standard length using the below equation, where M1 and M2 are measurements (standard length, wet weight) taken before (t1) and after (t2) the acclimation period to assess baseline growth rates, and before and after experimental temperature treatments to assess effects of temperature (Table 1).
+
+SGR(standard length, wet weight) = 100 * (e^g-1) where g = (ln(M2) - ln(M1)) / t2-t1 
+
+Fulton’s condition index (Kwet) was approximated as K(wet) = 100 * wet total weight (g) / (standard length (mm)/10)^3
+
+The hepato-somatic index (HSI) was calculated as HSI =100 x wet liver weight (g)wet total weight (g). 
 
 ```{r, message=F, warning=F}
 load(file = "../rnaseq/aligned/counts.ts")
 
 phenotypes <- read_excel("../data/Pcod Temp Growth experiment 2022-23 DATA.xlsx", sheet = "AllData") %>% clean_names() %>%
-  mutate_at(c("tank", "temperature", "microchip_id", "dissection_date", "genetic_sampling_count"), factor) %>%
+  mutate(acc_t1=as.Date("2022-11-21", format="%Y-%m-%d"), exp_t1=as.Date("2022-12-27", format= "%Y-%m-%d"), dissection_date=as.Date(dissection_date, format= "%Y-%m-%d")) %>%
+  mutate_at(c("tank", "temperature", "microchip_id", "genetic_sampling_count"), factor) %>%
   dplyr::rename("sl_final"="sl_mm", "wwt_final"="whole_body_ww_g") %>% 
-  mutate(growth.sl.accl=sl_12272022-sl_11212022,
-         growth.sl.trt=round(sl_final-sl_12272022, digits = 2),
-         growth.wwt.trt=wwt_final-wwt_12272022,
-         growth.wwt.accl=round(wwt_12272022-wwt_11212022, digits = 2),
-         ci=wwt_final/sl_final,
-         hsi=total_liver_ww_mg/(wwt_final*1000),
+  mutate(SGR.sl.accl=round(100*(exp((log(sl_12272022)-log(sl_11212022))/(as.numeric(exp_t1-acc_t1)))-1), digits=5),
+         SGR.sl.trt=round(100*(exp((log(sl_final)-log(sl_12272022))/(as.numeric(dissection_date-exp_t1)))-1), digits=5),
+         SGR.ww.accl=round(100*(exp((log(wwt_12272022)-log(wwt_11212022))/(as.numeric(exp_t1-acc_t1)))-1), digits=5),
+         SGR.ww.trt=round(100*(exp((log(wwt_final)-log(wwt_12272022))/(as.numeric(dissection_date-exp_t1)))-1), digits=5),
+         Kwet=100*(wwt_final/(sl_final/10)^3),
+         hsi=100*total_liver_ww_mg/(wwt_final),
          mort=as.factor(case_when(is.na(mort_date) ~ "No", TRUE ~ "Yes")),
          rna=case_when(genetic_sampling_count %in% gsub("sample_", "", rownames(counts.ts)) ~ "Yes", TRUE ~ "No"),
          measure_date=case_when(is.na(mort_date) ~ ymd(dissection_date), TRUE ~ mort_date)) %>%
@@ -91,11 +101,23 @@ phenotypes %>%
   ggtitle("Standard length over time") + xlab(NULL) + ylab("Standard length") +
   scale_x_continuous(breaks = c(1, 2, 3), labels = c("Pre-Acclimation", "Pre-Treatment", "Treatment\ntermination"))
 ```
+
+#### Specific growth while acclimating, Standard Length
+
+Statistics - did it differ among treatments? No. 
+
+```{r, message=F, warning=F}
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(SGR.sl.accl), sd=sd(SGR.sl.accl))
+summary(aov(SGR.sl.accl ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(SGR.sl.accl ~ temperature, phenotypes %>% filter(mort=="No")))
+
+```
+
 ```{r, message=F, warning=F}
 phenotypes %>% 
-    ggplot(aes(y=growth.sl.accl/days_growth, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
+    ggplot(aes(y=SGR.sl.accl, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
   geom_violin(trim = F) + geom_point(position = position_jitterdodge(jitter.width = 1)) + theme_minimal() +
-    ggtitle("Growth rate while acclimating, standard length (mm/day)") +
+    ggtitle("Specific growth rate while acclimating, standard length (~ %/day)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
   scale_x_discrete(drop=T) + #Do drop empty factors for temperature contrasts
   ylab("mm / day") +
@@ -103,102 +125,168 @@ phenotypes %>%
   xlab(NULL) + ylab(NULL)
 
 # phenotypes %>% filter(mort=="No") %>%
-#     ggplot(aes(y=growth.sl.accl/days_growth, x=temperature, fill=temperature)) + 
+#     ggplot(aes(y=SGR.sl.accl/days_growth, x=temperature, fill=temperature)) + 
 #   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
 #     ggtitle("Growth rate while acclimating, standard length (mm/day)") +
 #   scale_fill_manual(name="Temperature", 
 #                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) + 
 #   xlab(NULL) + ylab(NULL)
 ```
+#### Specific growth in treatments, Standard Length
 
-#### Growth while acclimating, standard length statistics 
+Did SGR(sl) differ among treatments? Yes! Among all pairwise comparisons. 
+
+Note: should see if this data fits the model/estimates using this formula from Laurel et al. 2015, https://doi.org/10.1007/s00300-015-1761-5 
+G indiv = y o  + aT + bT 2 + cT 3
 
 ```{r, message=F, warning=F}
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(growth.sl.accl), sd=sd(growth.sl.accl))
-summary(aov(growth.sl.accl ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(growth.sl.accl ~ temperature, phenotypes %>% filter(mort=="No")))
+summary(aov(SGR.sl.trt ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(SGR.sl.trt ~ temperature, phenotypes %>% filter(mort=="No")))
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(SGR.sl.trt), sd=sd(SGR.sl.trt))
 ```
 
 ```{r, message=F, warning=F}
 phenotypes %>% 
-    ggplot(aes(y=growth.sl.trt/days_growth, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
+    ggplot(aes(y=SGR.sl.trt, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
   geom_violin() + geom_point(position = position_jitterdodge(jitter.width = 1)) + theme_minimal() +
-    ggtitle("Growth rate in treatments, standard length (mm/day)") +
+    ggtitle("Specific growth rate in treatments, standard length (~%day)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
   ylab("mm / day") +
   scale_fill_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   xlab(NULL) + ylab(NULL)
+```
+```{r}
+SGR.sl.model <- lm(SGR.sl.trt ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes)
+summary(SGR.sl.model)
 
-# phenotypes %>% filter(mort=="No") %>%
-#     ggplot(aes(y=growth.sl.trt, x=temperature, fill=temperature)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Growth in treatments, standard length") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
+SGR.sl.predict <- data.frame(temperature=seq(0,16,length.out=100))
+SGR.sl.predict$predicted <- predict(SGR.sl.model, SGR.sl.predict)
+
+phenotypes %>% 
+    ggplot(aes(y=SGR.sl.trt, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Specific growth rate in treatments, standard length (~%day)") +
+  geom_line(data=SGR.sl.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("% / day")
+```
+```{r}
+round(SGR.sl.model$coefficients, digits=3) %>% as.vector() %>% as.data.frame(row.names = c("y","a","b","c")) %>% set_names(NULL) %>% kable(caption="Model coefficients")
+
+# What is the maximum standard length growth rate and associated predicted temperature as per this model?  0.35%/day at 12C.
+SGR.sl.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted growth rate & associated temperature, standard length, %/day")
 ```
 
-#### Growth in treatments, standard length statistics
+#### Specific growth while acclimating, wet weight
+
+No difference among temperatures 
 
 ```{r, message=F, warning=F}
-summary(aov(growth.sl.trt ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(growth.sl.trt ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(growth.sl.trt), sd=sd(growth.sl.trt))
+summary(aov(SGR.ww.accl ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(SGR.ww.accl ~ temperature, phenotypes %>% filter(mort=="No")))
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(SGR.ww.accl), sd=sd(SGR.ww.accl))
 ```
 
 ```{r}
 phenotypes %>% 
-    ggplot(aes(y=growth.wwt.accl/days_growth, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
+    ggplot(aes(y=SGR.ww.accl, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
   geom_violin() + geom_point(position = position_jitterdodge(jitter.width = 1)) + theme_minimal() +
     ggtitle("Growth rate while acclimating, wet weight (g/day)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
   ylab("g / day") +
   scale_fill_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   xlab(NULL) 
-
-# phenotypes %>% filter(mort=="No") %>%
-#     ggplot(aes(y=growth.wwt.accl, x=temperature, fill=temperature)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Growth while acclimating, wet weight") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
 ```
+#### Specific growth in treatments, Wet Weight
 
-#### Growth while acclimating, wet weight - stats
+Did SGR(wet weight) differ among treatments? Yes! Among all pairwise comparisons. 
+
+Note: should see if this data fits the model/estimates using this formula from Laurel et al. 2015, https://doi.org/10.1007/s00300-015-1761-5 
+G indiv = y o  + aT + bT 2 + cT 3
 
 ```{r, message=F, warning=F}
-summary(aov(growth.wwt.accl ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(growth.wwt.accl ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(growth.wwt.accl), sd=sd(growth.wwt.accl))
+summary(aov(SGR.ww.trt ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(SGR.ww.trt ~ temperature, phenotypes %>% filter(mort=="No")))
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(SGR.ww.trt), sd=sd(SGR.ww.trt))
 ```
 
 ```{r, message=F, warning=F}
 phenotypes %>% 
-    ggplot(aes(y=growth.wwt.trt/days_growth, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
+    ggplot(aes(y=SGR.ww.trt, x=temperature, fill=temperature, shape=mort, alpha=mort)) + 
   geom_violin() + geom_point(position = position_jitterdodge(jitter.width = 1)) + theme_minimal() +
-    ggtitle("Growth rate in treatments, wet weight (g/day)") +
+    ggtitle("Specific growth rate in treatments, wet weight (~%/day)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
-  ylab("g / day") +
-  scale_fill_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
+  ylab("mm / day") +
+  scale_fill_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) + ylab(NULL)
+```
+```{r}
+SGR.ww.model <- lm(SGR.ww.trt ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes)
+summary(SGR.ww.model)
 
-# phenotypes %>% filter(mort=="No") %>%
-#     ggplot(aes(y=growth.wwt.trt, x=temperature, fill=temperature)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Growth in treatments, wet weight") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
+SGR.ww.predict <- data.frame(temperature=seq(0,16,length.out=100))
+SGR.ww.predict$predicted <- predict(SGR.ww.model, SGR.ww.predict)
+
+phenotypes %>% 
+    ggplot(aes(y=SGR.ww.trt, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Specific growth rate in treatments, wet weight (~%/day)") +
+  geom_line(data=SGR.ww.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("% / day")
+```
+```{r}
+round(SGR.ww.model$coefficients, digits=3) %>% as.vector() %>% as.data.frame(row.names = c("y","a","b","c")) %>% set_names(NULL) %>% kable(caption="Model coefficients")
+
+# What is the maximum standard length growth rate and associated predicted temperature as per this model?  0.35%/day at 12C.
+SGR.ww.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted growth rate & associated temperature, wet weight, %/day")
 ```
 
-#### Growth in treatments, wet weight - stats
+#### Combined growth rate plot 
+
+```{r}
+phenotypes %>% 
+  group_by(temperature) %>% summarise(
+    SGR.sl.mean=mean(SGR.sl.trt), SGR.sl.sd=sd(SGR.sl.trt),
+    SGR.ww.mean=mean(SGR.ww.trt), SGR.ww.sd=sd(SGR.ww.trt)) %>%  
+  ggplot() + 
+  geom_point(aes(x=as.numeric(as.character(temperature)), y=SGR.sl.mean), size=3) + 
+  geom_point(aes(x=as.numeric(as.character(temperature)), y=SGR.ww.mean), size=3) + 
+  geom_errorbar(aes(x = as.numeric(as.character(temperature)), ymin = SGR.sl.mean - SGR.sl.sd, ymax = SGR.sl.mean + SGR.sl.sd), width = 0.2) +
+  geom_errorbar(aes(x = as.numeric(as.character(temperature)), ymin = SGR.ww.mean - SGR.ww.sd, ymax = SGR.ww.mean + SGR.ww.sd), width = 0.2) +
+  theme_minimal() +
+  ggtitle("Specific growth rate in treatments, ~% per day") +
+  geom_line(data=SGR.sl.predict, aes(x=temperature, y=predicted), color="gray25", size=1) +
+  geom_line(data=SGR.ww.predict, aes(x=temperature, y=predicted), color="gray25", size=1) +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_x_continuous(breaks = c(seq(0,16,2))) +
+  xlab("Temperature") +   ylab("% / day") + 
+  geom_text(aes(x = 13.6, y = 0.83, label="Standard Length"), size=4, color="gray25") +
+  geom_text(aes(x = 13.2, y = 0.39, label="Wet Weight"), size=4, color="gray25") +
+  geom_vline(xintercept = SGR.sl.predict[which.max(SGR.sl.predict$predicted),]$temperature, 
+             linetype = "dashed", color = "gray25", size = 1) +
+  geom_vline(xintercept = SGR.ww.predict[which.max(SGR.ww.predict$predicted),]$temperature, 
+             linetype = "dashed", color = "gray25", size = 1)
+```
+
+
+#### Body condition index at termination (Kwet)
+
+Not significantly affected by temperature (but marginal, p=0.07)
 
 ```{r, message=F, warning=F}
-summary(aov(growth.wwt.trt ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(growth.wwt.trt ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(growth.wwt.trt), sd=sd(growth.wwt.trt))
+summary(aov(Kwet ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(Kwet ~ temperature, phenotypes %>% filter(mort=="No")))
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(Kwet), sd=sd(Kwet))
 ```
 
 ```{r, message=F, warning=F}
 phenotypes %>% 
-    ggplot(aes(y=ci, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
+    ggplot(aes(y=Kwet, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
     ggtitle("Body condition index\n(wet weight / standard length") +
   scale_alpha_manual(values=c(0.75,0.5)) +
@@ -206,33 +294,50 @@ phenotypes %>%
        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
   xlab(NULL) + ylab("Wet weight / standard length")
-
-# phenotypes %>% filter(mort=="No") %>%
-#     ggplot(aes(y=ci, x=temperature, fill=temperature)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Appr. body condition index\n(wet weight / standard length") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
 ```
+<!-- Model Kwet by temperature -->
 
-#### Body condition index at termination (WWT/SL)
+<!-- ```{r} -->
+<!-- K.model <- lm(Kwet ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2) -->
+<!-- summary(K.model) -->
+
+<!-- K.predict <- data.frame(temperature=seq(0,16,length.out=100)) -->
+<!-- K.predict$predicted <- predict(K.model, K.predict) -->
+
+<!-- # What is the maximum standard length growth rate and associated predicted temperature as per this model?  0.35%/day at 12C. -->
+<!-- K.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted composite performance index & associated temperature, wet weight, %/day") -->
+
+<!-- phenotypes2 %>%  -->
+<!--     ggplot(aes(y=Kwet, x=as.numeric(as.character(temperature)))) +  -->
+<!--   geom_point(aes(color=temperature)) + theme_minimal() + -->
+<!--   ggtitle("Kwet (condition index)") + -->
+<!--   geom_line(data=K.predict, aes(x=temperature, y=predicted), color="gray45", size=1) + -->
+<!--   #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") + -->
+<!--   scale_alpha_manual(values=c(0.75,0.5)) + -->
+<!--   scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) + -->
+<!--   xlab(NULL) +   ylab("% / day") -->
+<!-- ``` -->
+
+#### Hepato-somatic index 
+
+Very different among temperature treatments except for 0 vs. 5C. 
 
 ```{r, message=F, warning=F}
-summary(aov(ci ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(ci ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(ci), sd=sd(ci))
+summary(aov(hsi ~ temperature, phenotypes %>% filter(mort=="No")))
+TukeyHSD(aov(hsi ~ temperature, phenotypes %>% filter(mort=="No")))
+phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(hsi), sd=sd(hsi))
 ```
 
 ```{r, message=F, warning=F}
 phenotypes %>%
     ggplot(aes(y=hsi, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort)) + 
   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-    ggtitle("Hepato-somatic index\n(liver wet weight / total wet weight)") +
+    ggtitle("Hepato-somatic index\n(100 * liver wet weight / total wet weight)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
   scale_fill_manual(name="Temperature", 
        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  xlab(NULL) + ylab("Liver wet weight / Total wet weight")
+  xlab(NULL) + ylab("100 * Liver wet weight / Total wet weight")
 
 # phenotypes %>% filter(mort=="No") %>%
 #     ggplot(aes(y=hsi, x=temperature, fill=temperature)) + 
@@ -241,90 +346,100 @@ phenotypes %>%
 #   scale_fill_manual(name="Temperature", 
 #                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))
 ```
+<!-- Model HSI by temperature -->
 
-#### Hepato-somatic index - stats
+<!-- ```{r} -->
+<!-- HSI.model <- lm(hsi ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2) -->
+<!-- summary(HSI.model) -->
 
-```{r, message=F, warning=F}
-summary(aov(hsi ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(hsi ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(hsi), sd=sd(hsi))
+<!-- HSI.predict <- data.frame(temperature=seq(0,16,length.out=100)) -->
+<!-- HSI.predict$predicted <- predict(HSI.model, HSI.predict) -->
+
+<!-- # What is the maximum standard length growth rate and associated predicted temperature as per this model?  0.35%/day at 12C. -->
+<!-- HSI.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted composite performance index & associated temperature, wet weight, %/day") -->
+
+<!-- phenotypes2 %>%  -->
+<!--     ggplot(aes(y=hsi, x=as.numeric(as.character(temperature)))) +  -->
+<!--   geom_point(aes(color=temperature)) + theme_minimal() + -->
+<!--   ggtitle("HSI (liver condition index)") + -->
+<!--   geom_line(data=HSI.predict, aes(x=temperature, y=predicted), color="gray45", size=1) + -->
+<!--   #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") + -->
+<!--   scale_alpha_manual(values=c(0.75,0.5)) + -->
+<!--   scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) + -->
+<!--   xlab(NULL) +   ylab("% / day") -->
+<!-- ``` -->
+
+### Lipid data! 
+
+```{r}
+lipids <- read_excel("../data/Lipid class liver data_091324.xlsx") %>% clean_names() %>%
+  mutate(sample_id=as.factor(sample_id))
 ```
 
-### Explore possible index of performance in warming: Condition Index * Hepatosomatic Index
+#### Add lipid data to phenotype data, and calculate composite performance index 
 
-Within treatments, I'd like to use WGCNA to identify co-expressed genes that are linearly related to a performance indicator. Here, I explore using HSI*CI as the performance indicator. In 16C, HSI was lower than control (9C) but CI was higher than control, so fish with high CI & HSI could be "high performers", and expression patterns could provide molecular indicators of performance. 
+Composite Performance Index calculated as SGR(length) * Kwet * HSI * 
 
-```{r, message=F, warning=F}
-# Condition Index * Hepato-somatic Index 
-phenotypes %>% 
-    ggplot(aes(y=ci*hsi, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
+```{r}
+phenotypes2 <- phenotypes %>% 
+  left_join(lipids %>% dplyr::select(sample_id, genetics_sample_number, tag_20:total_32), 
+            by=c("microchip_id"="sample_id")) %>%
+    mutate(G.sl.scaled=rescale(SGR.sl.trt, to=c(0,1)),
+           G.ww.scaled=rescale(SGR.ww.trt, to=c(0,1)),
+           Kwet.scaled=rescale(Kwet, to=c(0,1)),
+           hsi.scaled=rescale(hsi, to=c(0,1)),
+           total.lipid.scaled=rescale(total_32, to=c(0,1))) %>% 
+    mutate(pi=100*G.sl.scaled*G.ww.scaled*Kwet.scaled*hsi.scaled*total.lipid.scaled)
+
+head(phenotypes2)
+```
+
+### Liver lipids consitutents 
+
+#### Total Lipids
+
+```{r}
+summary(aov(total_32 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+TukeyHSD(aov(total_32 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+phenotypes2 %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(total_32, na.rm=T), sd=sd(total_32, na.rm=T))
+
+phenotypes2 %>% 
+  filter(!is.na(total_32)) %>%
+    ggplot(aes(y=total_32, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-    ggtitle("Possible index of performance (?)\n(Condition index * Hepatosomatic Index)") +
+    ggtitle("Total lipid content (ug/mg)") +
   scale_alpha_manual(values=c(0.75,0.5)) +
   scale_fill_manual(name="Temperature", 
      values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  xlab(NULL) + ylab("CI * HSI")
+  xlab(NULL) + ylab("Total lipid Content")
+
+total.model <- lm(total_32 ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2)
+summary(total.model)
+total.predict <- data.frame(temperature=seq(0,16,length.out=100))
+total.predict$predicted <- predict(total.model, total.predict)
+
+# What is the maximum total lipid and associated predicted temperature as per this model?  0.35%/day at 12C.
+total.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted total lipid & associated temperature")
+
+phenotypes2 %>% 
+    ggplot(aes(y=total_32, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Total lipid content") +
+  geom_line(data=total.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("% / day")
 ```
 
-#### Index of performance (CI * HSI) - stats
-
-```{r, message=F, warning=F}
-summary(aov(hsi*ci ~ temperature, phenotypes %>% filter(mort=="No")))
-TukeyHSD(aov(hsi*ci ~ temperature, phenotypes %>% filter(mort=="No")))
-phenotypes %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(hsi*ci), sd=sd(hsi*ci))
-```
-
-```{r, message=F, warning=F}
-#ggplotly(
-  phenotypes %>% filter(mort=="No") %>%
-    ggplot(aes(y=hsi, x=ci, color=temperature)) + 
-  geom_point() + theme_minimal() +
-    ggtitle("HSI / CI") +
-  scale_color_manual(name="Temperature", 
-                       values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c"))+
-  geom_smooth(method = "lm")#)
-```
-
-#### Do we have RNASeq data from liver for the "Top Performers"? 
-
-```{r, message=F, warning=F}
-ggplotly(phenotypes %>% filter(mort=="No") %>%
-    ggplot(aes(y=hsi*ci, x=interaction(rna, temperature), fill=temperature, label=genetic_sampling_count, shape=rna)) + 
-  geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-    ggtitle("Performance Index (CI*HSI) by temperature, by RNASeq data or none") +
-  scale_fill_manual(name="Temperature", 
-                       values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")))
-
-# ggplotly(phenotypes %>% filter(rna=="Yes") %>%
-#     ggplot(aes(y=hsi*ci, x=temperature, fill=temperature, label=genetic_sampling_count)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Appr. hepato-somatic index\n(liver wet weight / total wet weight)") +      
-#     scale_alpha_manual(values=c(0.75,0.5)) + ggtitle("Performance index by temperature, RNASeq samples only") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")))
-# 
-# ggplotly(phenotypes %>% filter(rna=="Yes") %>%
-#            left_join(haplos.allzp3, by = c("genetic_sampling_count"="sample")) %>%
-#     ggplot(aes(y=hsi*ci, x=temperature, fill=temperature, label=genetic_sampling_count, shape=haplo.exons.lcwgs)) + 
-#   geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-#     ggtitle("Appr. hepato-somatic index\n(liver wet weight / total wet weight)") +
-#   scale_fill_manual(name="Temperature", 
-#                        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")))
-```
-
-### Lipid data! 
-```{r}
-lipids <- read_excel("../data/Lipid class liver data_091324.xlsx") %>% clean_names() %>%
-  mutate(sample_id=as.factor(sample_id))
-
-phenotypes2 <- phenotypes %>% 
-  left_join(lipids %>% dplyr::select(sample_id, genetics_sample_number, tag_20:total_32), 
-            by=c("microchip_id"="sample_id")) %>%
-  mutate(pi=1000*growth.sl.trt*ci*hsi*total_32)
-```
+#### Triglycerides
 
 ```{r}
+summary(aov(tag_28 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+TukeyHSD(aov(tag_28 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+phenotypes2 %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(tag_28, na.rm=T), sd=sd(tag_28, na.rm=T))
+
 phenotypes2 %>% 
   filter(!is.na(total_32)) %>%
     ggplot(aes(y=tag_28, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
@@ -335,6 +450,32 @@ phenotypes2 %>%
      values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
   xlab(NULL) + ylab("TAG Content")
+
+tag.model <- lm(tag_28 ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2)
+summary(tag.model)
+tag.predict <- data.frame(temperature=seq(0,16,length.out=100))
+tag.predict$predicted <- predict(tag.model, tag.predict)
+
+# What is the maximum triglyceride and associated predicted temperature as per this model?  0.35%/day at 12C.
+tag.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted triglyceride & associated temperature")
+
+phenotypes2 %>% 
+    ggplot(aes(y=tag_28, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Triglyceride content") +
+  geom_line(data=tag.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("TAG Content")
+```
+
+#### Free Fatty Acids
+
+```{r}
+summary(aov(ffa_29 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+TukeyHSD(aov(Kwet ~ temperature, phenotypes2 %>% filter(mort=="No")))
+phenotypes2 %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(total_32, na.rm=T), sd=sd(total_32, na.rm=T))
 
 phenotypes2 %>% 
   filter(!is.na(total_32)) %>%
@@ -347,6 +488,32 @@ phenotypes2 %>%
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
   xlab(NULL) + ylab("FFA Content")
 
+ffa.model <- lm(ffa_29 ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2)
+summary(ffa.model)
+ffa.predict <- data.frame(temperature=seq(0,16,length.out=100))
+ffa.predict$predicted <- predict(ffa.model, ffa.predict)
+
+# What is the maximum FFA and associated predicted temperature as per this model?  0.35%/day at 12C.
+ffa.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted free fatty acid & associated temperature")
+
+phenotypes2 %>% 
+    ggplot(aes(y=ffa_29, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Free fatty acid content") +
+  geom_line(data=ffa.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("FFA Content")
+```
+
+#### Sterols 
+
+```{r}
+summary(aov(st_30 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+TukeyHSD(aov(st_30 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+phenotypes2 %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(st_30, na.rm=T), sd=sd(st_30, na.rm=T))
+
 phenotypes2 %>% 
   filter(!is.na(total_32)) %>%
     ggplot(aes(y=st_30, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
@@ -358,6 +525,32 @@ phenotypes2 %>%
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
   xlab(NULL) + ylab("sterol Content")
 
+st.model <- lm(st_30 ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2)
+summary(st.model)
+st.predict <- data.frame(temperature=seq(0,16,length.out=100))
+st.predict$predicted <- predict(st.model, st.predict)
+
+# What is the maximum sterol and associated predicted temperature as per this model?  0.35%/day at 12C.
+st.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted sterol & associated temperature")
+
+phenotypes2 %>% 
+    ggplot(aes(y=st_30, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Sterol content") +
+  geom_line(data=st.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
+  scale_alpha_manual(values=c(0.75,0.5)) +
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("Sterol Content")
+```
+
+#### Polar Lipids 
+
+```{r}
+summary(aov(polar_lipids_31 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+TukeyHSD(aov(polar_lipids_31 ~ temperature, phenotypes2 %>% filter(mort=="No")))
+phenotypes2 %>% filter(mort=="No") %>% group_by(temperature) %>% dplyr::summarise(mean=mean(total_32, na.rm=T), sd=sd(total_32, na.rm=T))
+
 phenotypes2 %>% 
   filter(!is.na(total_32)) %>%
     ggplot(aes(y=polar_lipids_31, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
@@ -368,39 +561,187 @@ phenotypes2 %>%
      values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
   xlab(NULL) + ylab("Polar lipid Content")
+```
+
+#### Composite Performance Index 
+
+```{r, warning=F, message=F}
+phenotypes2 %>% ggplot(aes(x=temperature, y=pi, fill=temperature)) + 
+  geom_violin(alpha=0.6) + geom_jitter(width = 0.2) + 
+    scale_fill_manual(name="Temperature", 
+     values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  theme_minimal() + ylab("Composite Performance Index\nGSR(sl) * GSR(ww) * Kwet * HSI * Total Lipid")
+```
+
+Model composite performance index by temperature
+
+```{r, warning=F, message=F}
+pi.model <- lm(pi ~ poly(as.numeric(as.character(temperature)), 3), data = phenotypes2)
+summary(pi.model)
+
+pi.predict <- data.frame(temperature=seq(0,16,length.out=100))
+pi.predict$predicted <- predict(pi.model, pi.predict)
+
+# What is the maximum standard length growth rate and associated predicted temperature as per this model?  0.35%/day at 12C.
+pi.predict %>% arrange(desc(predicted)) %>% head(n=1) %>% round(digits = 2) %>% kable(caption = "Maximum predicted composite performance index & associated temperature, wet weight, %/day")
 
 phenotypes2 %>% 
-  filter(!is.na(total_32)) %>%
-    ggplot(aes(y=total_32, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
-  geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-    ggtitle("Total lipid content (ug/mg)") +
+    ggplot(aes(y=pi, x=as.numeric(as.character(temperature)))) + 
+  geom_point(aes(color=temperature)) + theme_minimal() +
+  ggtitle("Composite Performance Index") +
+  geom_line(data=pi.predict, aes(x=temperature, y=predicted), color="gray45", size=1) +
+  #  stat_smooth(method="lm", se=TRUE, formula=y ~ poly(x, 3),colour="gray50") +
   scale_alpha_manual(values=c(0.75,0.5)) +
-  scale_fill_manual(name="Temperature", 
-     values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  xlab(NULL) + ylab("Total lipid Content")
+  scale_color_manual(name="Temperature", values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  xlab(NULL) +   ylab("% / day")
 ```
 
 
-```{r, message=F, warning=F}
-# Condition Index * Hepato-somatic Index * Total Lipid
-#ggplotly(
+```{r, warning=F, message=F}
+phenotypes2 %>% dplyr::select(microchip_id, genetic_sampling_count, temperature, G.sl.scaled:pi) %>% 
+  pivot_longer(cols = c(G.sl.scaled:total.lipid.scaled), names_to = "biometric", values_to = "scaled_value") %>% 
+  ggplot(aes(y=pi, x=scaled_value, color=temperature)) + geom_point() + 
+  facet_wrap(~biometric) + 
+  theme_minimal_grid() + xlab("Scaled value") + ylab("Composite Performancde Index") + 
+    scale_color_manual(name="Temperature", 
+        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  geom_smooth(method = "glm", se = F) + theme(legend.position = "bottomright")
+```
 
-phenotypes2 %>%
-  # First I scale each metric so they are between about 1-20
-    mutate(hsi=hsi*1e5,
-           ci=ci*100,
-           total_32=total_32/100) %>%
-  #then I calculate a performance index from all metrics (x100)
-    mutate(pi=(growth.sl.trt*hsi*ci*total_32)/100) %>%
+```{r}
+phenotypes3 <- phenotypes2 %>% select(microchip_id, genetic_sampling_count, temperature, SGR.sl.trt, SGR.ww.trt, Kwet, hsi, mort, tag_28, ffa_29, st_30, polar_lipids_31, total_32, pi) %>%
+  filter(mort=="No")
+save(phenotypes3, file="../data/phenotypes3")
+```
 
-      ggplot(aes(y=pi, x=interaction(mort, temperature), fill=temperature, shape=mort, alpha=mort, label=genetic_sampling_count)) + 
-  geom_violin() + geom_jitter(width=0.25) + theme_minimal() +
-    ggtitle("Possible composite index of performance\n(Growth * Condition index * Hepatosomatic Index * Total Lipid)") +
-  scale_alpha_manual(values=c(0.75,0.5)) +
+### All biometrics in one plot 
+
+```{r, warning=FALSE, message=FALSE}
+phenotypes3 %>% filter(mort=="No") %>%  dplyr::select(-mort) %>% 
+  dplyr::rename("K(wet)"="Kwet", "HSI"="hsi", "Triglycerides"="tag_28", "Free Fatty Acids"="ffa_29", 
+         "Sterols"="st_30", "Polar Lipids"="polar_lipids_31", "Total Lipids"="total_32",
+         "Performance Index"="pi", "Growth Rate, Length"="SGR.sl.trt",
+         "Growth Rate, Weight"="SGR.ww.trt") %>%  
+  select(-`Performance Index`) %>% 
+  pivot_longer(`Growth Rate, Length`:HSI, names_to = "metric", values_to = "value") %>% 
+  mutate(metric=as.factor(metric)) %>%
+ 
+  ggplot(aes(x=temperature, y=value, fill=temperature)) + 
+  #geom_jitter(width=0.25, size=1.5) + 
+  geom_boxplot(alpha=0.5) + 
+  theme_minimal() +
   scale_fill_manual(name="Temperature", 
      values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.position = "bottom") +
+  facet_wrap(~metric, scales = "free", nrow=3) + xlab(NULL) + ylab(NULL)
+```
+### All lipid metrics in one plot 
+
+```{r, warning=FALSE, message=FALSE}
+phenotypes3 %>% filter(mort=="No") %>%  dplyr::select(-mort) %>% 
+  dplyr::rename("K(wet)"="Kwet", "HSI"="hsi", "Triglycerides"="tag_28", "Free Fatty Acids"="ffa_29", 
+         "Sterols"="st_30", "Polar Lipids"="polar_lipids_31", "Total Lipids"="total_32",
+         "Performance Index"="pi", "Growth Rate, Length"="SGR.sl.trt",
+         "Growth Rate, Weight"="SGR.ww.trt") %>%  
+  select(-`Performance Index`) %>% 
+  pivot_longer(`Triglycerides`:`Total Lipids`, names_to = "metric", values_to = "value") %>% 
+  mutate(metric=as.factor(metric)) %>%
+ 
+  ggplot(aes(x=temperature, y=value, fill=temperature)) + 
+  #geom_jitter(width=0.25, size=1.5) + 
+  geom_boxplot(alpha=0.5) + 
+  theme_minimal() +
+  scale_fill_manual(name="Temperature", 
+     values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.position = "bottom") +
+  facet_wrap(~metric, scales = "free", nrow=3) + xlab(NULL) + ylab(NULL)
+```
+### Correlations among metrics 
+
+```{r, message=F, warning=F}
+require(corrplot)
+corr.metrics <- cor(phenotypes2 %>% select(SGR.sl.trt, SGR.ww.trt, Kwet, hsi, mort, days_growth, tag_28, ffa_29, st_30, polar_lipids_31, total_32, pi) %>%
+  filter(mort=="No") %>% mutate(growthrate.sl=SGR.sl.trt/days_growth, growthrate.wwt=SGR.ww.trt/days_growth) %>% select(-SGR.sl.trt, -SGR.ww.trt, -mort, -days_growth), use="complete.obs")
+
+corrplot::corrplot(corr.metrics, method = "number", type="lower", diag=T, tl.cex=.8, number.cex = 0.8, sig.level = 0.05, tl.pos="tl")
+corrplot::corrplot(corr.metrics, method = "color", type="upper", diag=F, sig.level = 0.05, add=T, tl.pos="n", )
+```
+
+### Residuals, all metrics ~ temperature 
+
+```{r}
+a <- lm(total_32~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+b <- lm(polar_lipids_31~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+c <- lm(st_30~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+d <- lm(ffa_29~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+e <- lm(tag_28~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+f <- lm(Kwet~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+g <- lm(hsi~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+h <- lm(`SGR.sl.trt`~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+i <- lm(`SGR.ww.trt`~as.numeric(as.character(temperature)), data=phenotypes3 %>% filter(!is.na(total_32)))
+
+phenotypes3.resids <- cbind(
+  sample=as.character((phenotypes3 %>% filter(!is.na(total_32)))$microchip_id),
+  temperature=as.character((phenotypes3 %>% filter(!is.na(total_32)))$temperature),        
+        resid_total.lipids=resid(a),
+         resid_polar=resid(b),
+         resid_sterol=resid(c),
+         resid_ffa=resid(d),
+         resid_trigl=resid(e),
+         resid_Kwet=resid(f),
+         resid_HSI=resid(g),
+         resid_sl.growthrate=resid(h),
+         resid_wwt.growthrate=resid(i)) %>% as.data.frame()
+```
+
+```{r, warning=F, message=F}
+phenotypes3.resids %>% 
+  mutate(temperature=factor(temperature, ordered=T, levels=c(0,5,9,16))) %>%
+  pivot_longer(starts_with("resid"), names_to = "metric", values_to = "resid") %>% 
+  mutate(temperature=as.factor(temperature), metric=as.factor(metric), resid=as.numeric(resid)) %>% 
+ 
+  ggplot(aes(x=temperature, y=resid, color=temperature, text=sample)) + 
+  geom_jitter(width=0.25, size=1.5) + theme_minimal() +
+  scale_color_manual(name="Temperature", 
+     values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-  xlab(NULL) + ylab("Growth + CI * HSI * Total Lipid * 1,000")
-#)
+  facet_wrap(~metric, scales = "free")
+```
+
+### Correlations, residuals ~ temperature 
+
+```{r}
+corr.metrics.resids <- cor(phenotypes3.resids %>% select(-sample, -temperature) %>% mutate_all(as.numeric), use="complete.obs")
+
+corrplot::corrplot(corr.metrics.resids, method = "number", type="lower", diag=T, tl.cex=.8, number.cex = 0.8, sig.level = 0.05, tl.pos="tl")
+corrplot::corrplot(corr.metrics.resids, method = "color", type="upper", diag=F, sig.level = 0.05, add = TRUE, tl.pos = "n")
+```
+
+```{r}
+# anova(a) #total lipid
+# anova(b) #polar lipids <-- only metric not affected by temperature 
+# anova(c) #sterols 
+# anova(d) #free fatty acids 
+# anova(e) #triglycerols 
+# anova(f) #condition index
+# anova(g) #HSI
+# anova(h) #growth rate - length
+# anova(i) #growth rate - weight
+```
+
+#### Look at total lipids ~ condition index  
+
+```{r, warning=F, message=F}
+#ggplotly(
+  phenotypes3 %>% 
+    ggplot(aes(y=total_32, x=Kwet, color=temperature)) + 
+  geom_point() + theme_minimal() +
+    ggtitle("Total Lipids / Condition Index") +
+  scale_color_manual(name="Temperature", 
+        values=c("0"="#2c7bb6", "5"="#abd9e9", "9"="#fdae61", "16"="#d7191c")) +
+  geom_smooth(method = "lm") +   facet_wrap(~temperature) +
+  xlab("Condition Index") + ylab("Total Lipids")#)
+
 ```
