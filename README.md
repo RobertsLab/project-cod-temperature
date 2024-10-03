@@ -30,7 +30,7 @@ For any code document, the name should start with a 2 number prefix (eg 01-temp-
 
 ### Analysis of growth, condition, and lipids
 
-Fish (n=40 per treatment, N=160) were tagged prior to the experiment, enabling collection of per-individual growth metrics which were used to calculate specific growth rates based on wet weights (SGRww) and standard length (SGRsl) during experimental treatments, and Fulton's condition index based on wet weight (Kwet), and hepatosomatic index (HSI) at treatment termination. Please see [0-Phenotypes notebook](https://htmlpreview.github.io/?https://github.com/RobertsLab/project-cod-temperature/blob/main/general-notebooks/0-Phenotypes.html) for details. 
+Fish (n=40 per treatment, N=160) were tagged prior to the experiment, and per-individual growth metrics were collected to calculate specific growth rates based on wet weights (SGRww) and standard length (SGRsl) during experimental treatments, and Fulton's condition index based on wet weight (Kwet), and hepatosomatic index (HSI) at treatment termination. Please see [0-Phenotypes notebook](https://htmlpreview.github.io/?https://github.com/RobertsLab/project-cod-temperature/blob/main/general-notebooks/0-Phenotypes.html) for details. 
 
 ### Analysis of RNA sequencing data
 
