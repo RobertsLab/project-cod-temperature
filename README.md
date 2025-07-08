@@ -16,7 +16,7 @@ Juvenile Pacific cod will be reared in three temperatures under feeding and non-
 
 -   [RNA sequencing raw reads](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-943133806/)
 
--   /volume1/web/nightingales/G_macrocephalus/ [30-1149633765](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149633765/) and [30-1149634506](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149634506/)
+-   **2025 WGS** /volume1/web/nightingales/G_macrocephalus/ [30-1149633765](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149633765/) and [30-1149634506](https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149634506/)
 
 _30-1149633765: heatwave genetics study of juvenile cod spanning 2008 - 2023 + six experimental fish that needed resequencing for juvenile temperature study.
 30-1149634506: pilot cod ecotype sequencing (shallow, deep)_
