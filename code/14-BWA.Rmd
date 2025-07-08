@@ -68,22 +68,15 @@ wget -r -np -nd -A "*.gz" https://owl.fish.washington.edu/nightingales/G_macroce
 
 # ALign
 
-```{bash}
-ls *_R1.fastq.gz | sed 's/_R1.fastq.gz//' | parallel -j 4 \
-'bwa mem -t 8 Gadus_macrocephalus.fa {1}_R1.fastq.gz {1}_R2.fastq.gz > {1}.sam'
-```
 
-or
 
 ```{bash}
 # Path to reference genome (must be indexed with bwa index)
 REFERENCE="../data/GCF_031168955.1_ASM3116895v1_genomic.fna"
 
 # Number of threads per BWA job
-THREADS=8
+THREADS=42
 
-# Number of parallel jobs to run (adjust based on CPU cores)
-JOBS=4
 
 # Directory containing fastq files
 FASTQ_DIR="../data/fastq-ecotype"
@@ -99,14 +92,14 @@ OUT_SUFFIX=".sam"
 # -------------------------------
 # RUN BWA IN PARALLEL
 # -------------------------------
+# Run loop
+for sample in $(ls "${FASTQ_DIR}"/*"${R1_SUFFIX}" | xargs -n 1 basename | sed "s/${R1_SUFFIX}//" | sort -u); do
+  R1_FILE="${FASTQ_DIR}/${sample}${R1_SUFFIX}"
+  R2_FILE="${FASTQ_DIR}/${sample}${R2_SUFFIX}"
+  OUT_FILE="${OUT_DIR}/${sample}${OUT_SUFFIX}"
 
-# Get list of sample prefixes
-ls ${FASTQ_DIR}/*${R1_SUFFIX} | xargs -n 1 basename | sed "s/${R1_SUFFIX}//" | sort -u | \
-parallel -j ${JOBS} '
-  R1_FILE="'${FASTQ_DIR}'"/{1}'${R1_SUFFIX}' &&
-  R2_FILE="'${FASTQ_DIR}'"/{1}'${R2_SUFFIX}' &&
-  OUT_FILE="'${OUT_DIR}'"/{1}'${OUT_SUFFIX}' &&
-  echo "Processing {1}..." &&
-  bwa mem -t '${THREADS}' '${REFERENCE}' $R1_FILE $R2_FILE > $OUT_FILE
+  echo "Running BWA on ${sample}..."
+  bwa mem -t "${THREADS}" "${REFERENCE}" "${R1_FILE}" "${R2_FILE}" > "${OUT_FILE}"
+done
 ```
 
