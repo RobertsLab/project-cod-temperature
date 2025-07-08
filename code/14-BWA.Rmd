@@ -45,5 +45,24 @@ knitr::opts_chunk$set(
 
 # Genome
 
+```{bash}
+cd ../data
+
+curl -O https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_genomic.fna
+```
+
+
+```{bash}
+bwa index ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
+```
+# Reads - getting on raven
+
+ecotype
+
+```{bash}
+mkdir -p ../data/fastq-ecotype
+cd ../data/fastq-ecotype
+wget -r -np -nd -A "*.gz" https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149634506/00_fastq/
+```
 
 
