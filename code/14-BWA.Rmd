@@ -103,3 +103,41 @@ for sample in $(ls "${FASTQ_DIR}"/*"${R1_SUFFIX}" | xargs -n 1 basename | sed "s
 done
 ```
 
+
+
+Convert SAM to BAM
+
+
+```{bash}
+
+
+# Directory containing .sam files
+SAM_DIR="../output/14-BWA"
+
+# Output directory (can be same as SAM_DIR or different)
+OUT_DIR="../output/14-BWA"  # Change this if you want bams elsewhere
+
+
+# Number of threads for sorting
+THREADS=42
+
+
+# Loop through all .sam files
+for sam in "${SAM_DIR}"/*.sam; do
+  # Get base name (e.g., sample1)
+  sample=$(basename "${sam}" .sam)
+
+  # Define output file
+  sorted_bam="${OUT_DIR}/${sample}.sorted.bam"
+
+  echo "Converting $sam to $sorted_bam..."
+
+  # Convert and sort
+  samtools view -@ $THREADS -bS "$sam" | samtools sort -@ $THREADS -o "$sorted_bam" -
+
+  # Index the sorted BAM
+  samtools index "$sorted_bam"
+done
+```
+
+
