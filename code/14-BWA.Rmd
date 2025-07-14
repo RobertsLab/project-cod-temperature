@@ -42,7 +42,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-
 # Genome
 
 ```{bash}
@@ -51,10 +50,10 @@ cd ../data
 curl -O https://owl.fish.washington.edu/halfshell/genomic-databank/GCF_031168955.1_ASM3116895v1_genomic.fna
 ```
 
-
 ```{bash}
 bwa index ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
 ```
+
 # Reads - getting on raven
 
 ecotype
@@ -65,10 +64,7 @@ cd ../data/fastq-ecotype
 wget -r -np -nd -A "*.gz" https://owl.fish.washington.edu/nightingales/G_macrocephalus/30-1149634506/00_fastq/
 ```
 
-
 # ALign
-
-
 
 ```{bash}
 # Path to reference genome (must be indexed with bwa index)
@@ -103,10 +99,7 @@ for sample in $(ls "${FASTQ_DIR}"/*"${R1_SUFFIX}" | xargs -n 1 basename | sed "s
 done
 ```
 
-
-
 Convert SAM to BAM
-
 
 ```{bash}
 
@@ -138,5 +131,3 @@ for sam in "${SAM_DIR}"/*.sam; do
   samtools index "$sorted_bam"
 done
 ```
-
-

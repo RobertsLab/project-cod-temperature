@@ -1,0 +1,121 @@
+---
+title: "15-angsd"
+author: "Steven Roberts"
+date: "`r format(Sys.time(), '%d %B, %Y')`"  
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+  html_document:
+    theme: readable
+    highlight: zenburn
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(DT)
+library(Biostrings)
+library(tm)
+library(pheatmap)
+library(DESeq2)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,         # Evaluate code chunks
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  fig.width = 6,       # Set plot width in inches
+  fig.height = 4,      # Set plot height in inches
+  fig.align = "center", # Align plots to the center
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+```{bash}
+/home/shared/ngsTools/angsd/angsd --help
+```
+```{bash}
+cd ../output/14-BWA
+ls *.bam | awk '{print "../output/14-BWA/" $0}' > ../15-angsd/bamlist.txt
+```
+
+```{bash}
+samtools faidx ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
+```
+
+
+```{bash}
+/home/shared/ngsTools/angsd/angsd | head -n 1
+```
+
+
+```{bash}
+/home/shared/ngsTools/angsd/angsd \
+  -b ../output/15-angsd/bamlist.txt \
+  -ref ../data/GCF_031168955.1_ASM3116895v1_genomic.fna \
+  -out ../output/15-angsd/gmac_01 \
+  -doSaf 1 \
+  -fold 1 \
+  -GL 1 \
+  -doMajorMinor 1 \
+  -doMaf 1 \
+  -minMapQ 30 \
+  -minQ 20 \
+  -uniqueOnly 1 \
+  -remove_bads 1 \
+  -only_proper_pairs 1
+```
+```{bash}
+/home/shared/ngsTools/angsd/angsd \
+  -b ../output/15-angsd/bamlist.txt \
+  -ref ../data/GCF_031168955.1_ASM3116895v1_genomic.fna \
+  -out ../output/15-angsd/gmac_01 \
+  -doSaf 1 \
+  -fold 1 \
+  -GL 1 \
+  -doMajorMinor 1 \
+  -doMaf 1 \
+  -minMapQ 30 \
+  -minQ 20 \
+  -uniqueOnly 1 \
+  -remove_bads 1 \
+  -only_proper_pairs 1 \
+  -anc ../data/GCF_031168955.1_ASM3116895v1_genomic.fna
+```
+ Step 1: Calculate genotype likelihoods & SFS likelihoods
+
+
+```{bash}
+/home/shared/angsd0.940/angsd \
+  -b ../output/15-angsd/bamlist.txt \
+  -ref ../data/GCF_031168955.1_ASM3116895v1_genomic.fna \
+  -out ../output/15-angsd/gmac_02 \
+  -doSaf 1 \
+  -GL 1 \
+  -doMajorMinor 1 \
+  -doMaf 1 \
+  -minMapQ 30 \
+  -minQ 20 \
+  -uniqueOnly 1 \
+  -remove_bads 1 \
+  -only_proper_pairs 1
+```
+
+🧬 Step 2: Estimate the folded SFS from SAF index
+
+```{bash}
+/home/shared/angsd0.940/realSFS ../output/15-angsd/gmac_02.saf.idx > ../output/15-angsd/gmac_02.sfs
+```
+
+
+
