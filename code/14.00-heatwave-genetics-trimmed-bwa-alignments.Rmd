@@ -74,6 +74,7 @@ programs_dir <- file.path("", "home", "shared")
 bamUtil_dir <- file.path(programs_dir, "bamUtil-1.0.15", "bin")
 bwa <- file.path(programs_dir, "bwa-0.7.17", "bwa")
 picard_dir <- file.path(programs_dir, "picard-3.4.0-6-g80ca98e2a", "build", "libs")
+picard <- file.paht(picard_dir, "picard.jar")
 R1_suffix <- "_trimmed_clipped_R1_paired.fq.gz"
 R2_suffix <- "_trimmed_clipped_R2_paired.fq.gz"
 samtools_dir <- file.path(programs_dir, "samtools-1.12")
@@ -102,6 +103,7 @@ Sys.setenv(
   line = line,
   output_dir = output_dir,
   picard_dir = picard_dir,
+  picard = picard,
   top_output_dir = top_output_dir,
   R1_suffix = R1_suffix,
   R2_suffix = R2_suffix,
@@ -180,6 +182,29 @@ do
   | samtools view -@ 20 -bS -F 4 \
   | samtools sort -@ 20 -o ${output_dir}/${sample}.sorted.bam
 done
+```
+
+# MARK DUPLICATES
+
+Use Picard to mark duplicates
+```{r, picard-dupes, engine='bash'}
+for bam in ${output_dir}/*.sorted.bam
+do
+  # Remove path from BAM
+  sample_no_path=${bam##*/}
+  
+  # Capture just samples name (string before first `_`)
+  sample=${sample_no_path%%.*}
+  
+  java -jar ${picard} \
+  MarkDuplicates \
+  I=${bam} \
+  O=${output_dir}/${sample}.sorted.dedup.bam \
+  M=${output_dir}/${sample}-picard_dups.log \
+  VALIDATION_STRINGENCY=SILENT \
+  REMOVE_DUPLICATES=true
+done
+
 ```
 
 # REFERENCES
