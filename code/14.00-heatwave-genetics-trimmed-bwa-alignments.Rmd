@@ -74,7 +74,7 @@ programs_dir <- file.path("", "home", "shared")
 bamUtil_dir <- file.path(programs_dir, "bamUtil-1.0.15", "bin")
 bwa <- file.path(programs_dir, "bwa-0.7.17", "bwa")
 picard_dir <- file.path(programs_dir, "picard-3.4.0-6-g80ca98e2a", "build", "libs")
-picard <- file.paht(picard_dir, "picard.jar")
+picard <- file.path(picard_dir, "picard.jar")
 R1_suffix <- "_trimmed_clipped_R1_paired.fq.gz"
 R2_suffix <- "_trimmed_clipped_R2_paired.fq.gz"
 samtools_dir <- file.path(programs_dir, "samtools-1.12")
@@ -186,6 +186,38 @@ done
 
 # MARK DUPLICATES
 
+## Set read groups
+
+Downstream analysis with Picard requires BAM files to have 
+read groups, but these were not set earlier.
+```{r, set-read-groups, engine='bash'}
+for bam in ${output_dir}/*.sorted.bam
+do
+  # Remove path from BAM
+  sample_no_path=${bam##*/}
+  
+  # Capture just samples name (string before first `_`)
+  sample=${sample_no_path%%.*}
+  
+  # Check read group
+  echo ""
+  echo "Read group for ${bam} before samtools:"
+  ${samtools} view -H ${bam} | grep '@RG'
+  echo ""
+  
+  ${samtools} addreplacerg \
+  -r "@RG\tID:RG1\tSM:${sample}" \
+  -o ${output_dir}/${sample}-RG.sorted.bam \
+  --threads ${threads} \
+  ${bam}
+  
+  echo "Read group for ${output_dir}/${sample}-RG.sorted.bam:"
+  ${samtools} view -H ${output_dir}/${sample}-RG.sorted.bam | grep '@RG'
+  echo ""
+done
+
+```
+
 Use Picard to mark duplicates
 ```{r, picard-dupes, engine='bash'}
 for bam in ${output_dir}/*.sorted.bam
@@ -202,7 +234,8 @@ do
   O=${output_dir}/${sample}.sorted.dedup.bam \
   M=${output_dir}/${sample}-picard_dups.log \
   VALIDATION_STRINGENCY=SILENT \
-  REMOVE_DUPLICATES=true
+  REMOVE_DUPLICATES=true \
+  2> ${output_dir}/${sample}-picard_dups.stderr
 done
 
 ```
