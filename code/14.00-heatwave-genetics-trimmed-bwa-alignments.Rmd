@@ -196,7 +196,7 @@ do
   # Remove path from BAM
   sample_no_path=${bam##*/}
   
-  # Capture just samples name (string before first `_`)
+  # Capture just samples name (string before first `.`)
   sample=${sample_no_path%%.*}
   
   # Check read group
@@ -218,14 +218,16 @@ done
 
 ```
 
+
+## Picard MarkDuplicates
 Use Picard to mark duplicates
 ```{r, picard-dupes, engine='bash'}
-for bam in ${output_dir}/*.sorted.bam
+for bam in ${output_dir}/*RG.sorted.bam
 do
   # Remove path from BAM
   sample_no_path=${bam##*/}
   
-  # Capture just samples name (string before first `_`)
+  # Capture just samples name (string before first `.`)
   sample=${sample_no_path%%.*}
   
   java -jar ${picard} \
@@ -238,6 +240,26 @@ do
   2> ${output_dir}/${sample}-picard_dups.stderr
 done
 
+```
+
+# CLIP OVERLAPS
+
+```{r, clip-overlaps, engine='bash'}
+for bam in ${output_dir}/*.sorted.dedup.bam
+do
+  # Remove path from BAM
+  sample_no_path=${bam##*/}
+  
+  # Capture just samples name (string before first `.`)
+  sample=${sample_no_path%%.*}
+  
+  # Run BamUtils to clip overlaps
+  ${bamUtil_dir} bam \
+  clipOverlap \
+  --in ${bam} \
+  --out ${output_dir}/${sample}.sorted.dedup.bam.clipped.bam \
+  --stats
+done
 ```
 
 # REFERENCES
