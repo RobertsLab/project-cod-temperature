@@ -6,7 +6,7 @@ Juvenile Pacific cod will be reared in three temperatures under feeding and non-
 
 ### Data
 
--   Experimental sampling data - [data/temp-experiment.csv](https://github.com/RobertsLab/project-cod-temperature/blob/main/data/temp-experiment.csv)
+-   Temperature experiment sampling data - [data/temp-experiment.csv](https://github.com/RobertsLab/project-cod-temperature/blob/main/data/temp-experiment.csv)
 
 -   [Liver lipid data](https://github.com/RobertsLab/project-cod-temperature/blob/main/data/Lipid%20class%20liver%20data_091324.xlsx) from Louise 
 
