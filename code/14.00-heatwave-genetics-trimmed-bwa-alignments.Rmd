@@ -254,11 +254,35 @@ do
   sample=${sample_no_path%%.*}
   
   # Run BamUtils to clip overlaps
-  ${bamUtil_dir} bam \
+  ${bamUtil_dir}/bam \
   clipOverlap \
   --in ${bam} \
-  --out ${output_dir}/${sample}.sorted.dedup.bam.clipped.bam \
-  --stats
+  --out ${output_dir}/${sample}.sorted.dedup.clipped.bam \
+  --stats \
+  2> ${output_dir}/${sample}.sorted.dedup.clipped-bamUtil.stats
+done
+```
+
+
+# SAMTOOLS DEPTH
+
+```{r, samtools-depth, engine='bash'}
+for bam in ${output_dir}/*.sorted.dedup.clipped.bam
+do
+  # Remove path from BAM
+  sample_no_path=${bam##*/}
+  
+  # Capture filename without .bam (string before last `.`)
+  sample=${sample_no_path%.*}
+  
+  # Run BamUtils to clip overlaps
+  ${samtools} depth \
+  -aa \
+  ${bam} \
+  | cut -f 3 \
+  | gzip \
+  > ${output_dir}/${sample}.depth.gz
+
 done
 ```
 
