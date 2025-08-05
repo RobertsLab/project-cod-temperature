@@ -1,0 +1,12 @@
+---
+title: "05-genome-prep-klone"
+output: html_document
+---
+
+```{bash}
+bismark_genome_preparation \
+--verbose \
+--parallel 6 \
+../data/genome/
+```
+
