@@ -286,4 +286,19 @@ do
 done
 ```
 
+# INDEX BAMS
+
+```{r, index-bams, engine='bash'}
+
+cd ${output_dir}
+
+for bam in *.sorted.dedup.clipped.bam
+do
+  ${samtools} index \
+  ${bam} \
+  --threads ${threads}
+
+done
+```
+
 # REFERENCES
