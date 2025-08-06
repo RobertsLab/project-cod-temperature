@@ -49,6 +49,11 @@ This Rmd file will perform the following:
 - samtools depth file
 - BAM index files
 
+
+NOTE: Due to the size of the output files, they are not included in the repository. Instead, you can find them in the here:
+
+- [https://gannet.fish.washington.edu/gitrepos/project-cod-temperature/output/14.00-heatwave-genetics-trimmed-bwa-alignments/](https://gannet.fish.washington.edu/gitrepos/project-cod-temperature/output/14.00-heatwave-genetics-trimmed-bwa-alignments/)
+
 ```{r setup, include=FALSE}
 library(knitr)
 knitr::opts_chunk$set(

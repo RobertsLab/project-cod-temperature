@@ -2,6 +2,10 @@
 
 Directory containing output files from the BWA alignment of trimmed reads from the heatwave genetics project. This directory corresponds to the R Markdown file [`14.00-heatwave-genetics-trimmed-bwa-alignments.Rmd`](../code/14.00-heatwave-genetics-trimmed-bwa-alignments.Rmd).
 
+Due to the size of the output files, they are not included in the repository. Instead, you can find them in the here:
+
+- [https://gannet.fish.washington.edu/gitrepos/project-cod-temperature/output/14.00-heatwave-genetics-trimmed-bwa-alignments/](https://gannet.fish.washington.edu/gitrepos/project-cod-temperature/output/14.00-heatwave-genetics-trimmed-bwa-alignments/)
+
 ---
 
 - `*bwa.stderr`: BWA standard error output.
