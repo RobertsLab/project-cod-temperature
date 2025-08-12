@@ -48,6 +48,8 @@ This Rmd file will perform the following:
 - Deduplicated, sorted, clipped BAM files
 - samtools depth file
 - BAM index files
+- samtools stats  file for BWA alignments
+- samtools flagstat file for BWA alignments
 
 
 NOTE: Due to the size of the output files, they are not included in the repository. Instead, you can find them in the here:
@@ -303,6 +305,34 @@ do
   ${bam} \
   --threads ${threads}
 
+done
+```
+
+# STATS FILES
+
+Generate `samtools stats` and `samtools flagstat` for BWA alignments.
+
+```{r bam-stats, engine='bash'}
+
+for bam in ${output_dir}/*-RG.sorted.bam
+do
+  # Remove path from BAM
+  sample_no_path=${bam##*/}
+  
+  # Capture just samples name (string before first `.`)
+  sample=${sample_no_path%%.*}
+  
+  # samtools stats
+  ${samtools} stats \
+  ${bam} \
+  --threads ${threads} \
+  > ${output_dir}/"${sample_no_path}.stats"
+  
+  # samtools flagstat
+  ${samtools} flagstat \
+  ${bam} \
+  -@ {threads} \
+  > ${output_dir}/"${sample_no_path}.flagstat"
 done
 ```
 
