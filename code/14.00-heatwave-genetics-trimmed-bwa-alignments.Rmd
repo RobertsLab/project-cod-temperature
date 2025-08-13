@@ -58,6 +58,7 @@ NOTE: Due to the size of the output files, they are not included in the reposito
 
 ```{r setup, include=FALSE}
 library(knitr)
+library(reticulate)
 knitr::opts_chunk$set(
   echo = TRUE,         # Display code chunks
   eval = FALSE,        # Evaluate code chunks
@@ -80,6 +81,9 @@ trimmed_reads_dir <- file.path(data_dir, "trimmed-fastqs-heatwave-genetics")
 programs_dir <- file.path("", "home", "shared")
 bamUtil_dir <- file.path(programs_dir, "bamUtil-1.0.15", "bin")
 bwa <- file.path(programs_dir, "bwa-0.7.17", "bwa")
+conda_env_name <- c("base")
+conda_path <- c("/home/sam/programs/mambaforge/condabin/conda")
+mean_depths <- c("/home/shared/16TB_HDD_01/sam/gitrepos/WGSfqs-to-genolikelihoods/mean_cov_ind.py")
 multiqc <- file.path("", "home", "sam", "programs", "mambaforge", "bin", "multiqc")
 picard_dir <- file.path(programs_dir, "picard-3.4.0-6-g80ca98e2a", "build", "libs")
 picard <- file.path(picard_dir, "picard.jar")
@@ -109,6 +113,7 @@ Sys.setenv(
   data_dir = data_dir,
   genome_fasta = genome_fasta,
   line = line,
+  mean_depths = mean_depths,
   multiqc = multiqc,
   output_dir = output_dir,
   picard_dir = picard_dir,
@@ -120,6 +125,23 @@ Sys.setenv(
   threads = threads,
   trimmed_reads_dir = trimmed_reads_dir
 )
+```
+
+# Load Conda environment
+
+This is needed to have access to Python3.
+
+If this is successful, the first line of output should show that Python being used.
+
+E.g.
+
+`python:         /home/sam/programs/mambaforge/envs/mirmachine_env/bin/python`
+
+```{r load-shortstack-conda-env, eval=TRUE}
+use_condaenv(condaenv = conda_env_name, conda = conda_path)
+
+# Check successful env loading
+py_config()
 ```
 
 # ALIGNMENTS
@@ -273,8 +295,9 @@ done
 ```
 
 
-# SAMTOOLS DEPTH
+# DEPTHS
 
+## samtools depth
 ```{r, samtools-depth, engine='bash'}
 for bam in ${output_dir}/*.sorted.dedup.clipped.bam
 do
@@ -293,6 +316,23 @@ do
   > ${output_dir}/${sample}.depth.gz
 
 done
+```
+
+## Mean depths
+
+Uses `mean_cov_ind.py` Python script from https://github.com/letimm/WGSfqs-to-genolikelihoods/tree/main
+
+```{r, mean-depth-coverage, engine='bash', eval=TRUE}
+cd ${output_dir}
+
+for depth_file in *.RG.sorted.dedup.clipped.depth.gz
+do
+  ${mean_depths} \
+  --infile ${depth_file} \
+  --outfile mean-coverage.tab
+done
+
+head mean-coverage.tab
 ```
 
 # INDEX BAMS
