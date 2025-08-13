@@ -13,7 +13,9 @@ Due to the size of the output files, they are not included in the repository. In
 - `*RG-picard_dups.md5`: MD5 checksum for the Picard
 - `*RG-picard_dups.stderr`: Picard tool standard error output.
 - `*RG.sorted.bam`: Sorted BAM file after BWA alignment with Read Group assignments.
+- `*RG.sorted.bam.flagstat:`: Flagstat statistics for the RG sorted BAM file.
 - `*RG.sorted.bam.md5`: MD5 checksum for the RG sorted BAM file.
+- `*RG.sorted.bam.stats`: Statistics file for the RG sorted BAM file.
 - `*RG.sorted.dedup.bam`: Sorted BAM file after duplicate marking with Picard.
 - `*RG.sorted.dedup.bam.md5`: MD5 checksum for the RG sorted deduplicated BAM file.
 - `*RG.sorted.dedup.clipped.bam`: Sorted, deduplicated, and clipped BAM file. Clipping was performed using bamUtil.
