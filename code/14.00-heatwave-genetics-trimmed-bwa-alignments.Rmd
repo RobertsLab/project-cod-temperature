@@ -80,6 +80,7 @@ trimmed_reads_dir <- file.path(data_dir, "trimmed-fastqs-heatwave-genetics")
 programs_dir <- file.path("", "home", "shared")
 bamUtil_dir <- file.path(programs_dir, "bamUtil-1.0.15", "bin")
 bwa <- file.path(programs_dir, "bwa-0.7.17", "bwa")
+multiqc <- file.path("", "home", "sam", "programs", "mambaforge", "bin", "multiqc")
 picard_dir <- file.path(programs_dir, "picard-3.4.0-6-g80ca98e2a", "build", "libs")
 picard <- file.path(picard_dir, "picard.jar")
 R1_suffix <- "_trimmed_clipped_R1_paired.fq.gz"
@@ -108,6 +109,7 @@ Sys.setenv(
   data_dir = data_dir,
   genome_fasta = genome_fasta,
   line = line,
+  multiqc = multiqc,
   output_dir = output_dir,
   picard_dir = picard_dir,
   picard = picard,
@@ -325,7 +327,7 @@ do
   # samtools stats
   ${samtools} stats \
   ${bam} \
-  --threads ${threads} \
+  -@ ${threads} \
   > ${output_dir}/"${sample_no_path}.stats"
   
   # samtools flagstat
@@ -334,6 +336,15 @@ do
   -@ {threads} \
   > ${output_dir}/"${sample_no_path}.flagstat"
 done
+```
+
+## MultiQC on Picard MarkdDuplicates and samtools stats/flagstat files
+```{r multiqc-stats, engine='bash'}
+
+cd ${output_dir}
+
+${multiqc} --interactive .
+
 ```
 
 # REFERENCES
