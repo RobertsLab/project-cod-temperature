@@ -9,6 +9,7 @@ Due to the size of the output files, they are not included in the repository. In
 ---
 
 - `*bwa.stderr`: BWA standard error output.
+- `mean-coverage.tab`: Two column, space-delimited file `filename coverage`.
 - `*RG-picard_dups.log`: Picard tool log for duplicate marking.
 - `*RG-picard_dups.md5`: MD5 checksum for the Picard
 - `*RG-picard_dups.stderr`: Picard tool standard error output.
