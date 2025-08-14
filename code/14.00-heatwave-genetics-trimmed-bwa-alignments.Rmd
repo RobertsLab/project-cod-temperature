@@ -70,7 +70,7 @@ knitr::opts_chunk$set(
 
 # VARIABLES
 
-```{r variables}
+```{r variables, eval=TRUE}
 # DIRECTORIES
 top_output_dir <- file.path("..", "output")
 output_dir <- file.path(top_output_dir, "14.00-heatwave-genetics-trimmed-bwa-alignments")
@@ -137,7 +137,7 @@ E.g.
 
 `python:         /home/sam/programs/mambaforge/envs/mirmachine_env/bin/python`
 
-```{r load-shortstack-conda-env, eval=TRUE}
+```{r load-conda-env, eval=TRUE}
 use_condaenv(condaenv = conda_env_name, conda = conda_path)
 
 # Check successful env loading
@@ -322,10 +322,11 @@ done
 
 Uses `mean_cov_ind.py` Python script from https://github.com/letimm/WGSfqs-to-genolikelihoods/tree/main
 
-```{r, mean-depth-coverage, engine='bash', eval=TRUE}
+```{bash, mean-depth-coverage, eval=TRUE}
+
 cd ${output_dir}
 
-for depth_file in *.RG.sorted.dedup.clipped.depth.gz
+for depth_file in *-RG.sorted.dedup.clipped.depth.gz
 do
   ${mean_depths} \
   --infile ${depth_file} \
