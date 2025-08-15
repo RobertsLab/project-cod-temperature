@@ -12,7 +12,7 @@ mkdir -p "$output_dir"
 mkdir -p logs
 
 # Make the sample list (overwrites each time for safety)
-ls "${reads_dir}"*_1.fastq.gz | xargs -n 1 basename | sed 's/_R1\.fastq\.gz//' | sort > "$samples_file"
+ls "${reads_dir}"*_1.fastq.gz | xargs -n 1 basename | sed 's/_1\.fastq\.gz//' | sort > "$samples_file"
 
 # Count the number of samples for array indexing
 num_samples=$(wc -l < "$samples_file")
