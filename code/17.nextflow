@@ -2,7 +2,7 @@ nextflow run nf-core/methylseq \
 -c /gscratch/scrubbed/sr320/github/project-cod-temperature/code/17.config \
 --input /gscratch/scrubbed/sr320/github/project-cod-temperature/code/17.samplesheet.csv \
 --outdir /gscratch/scrubbed/sr320/github/project-cod-temperature/output/17-nextflow \
---fasta /gscratch/scrubbed/sr320/github/project-cod-temperature/data/GCF_031168955.1_ASM3116895v1_genomic.fna \
+--fasta /gscratch/scrubbed/sr320/github/project-cod-temperature/data/genome/GCF_031168955.1_ASM3116895v1_genomic.fa \
 -resume \
 -with-trace \
 -with-report nf_report.html \
