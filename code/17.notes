@@ -1,0 +1,22 @@
+
+Replicating Shelly's nextflow 
+
+
+
+screen -S myFridays
+
+salloc -A srlab -p cpu-g2-mem2x -N 1 -c 1 --mem=30GB --time=90:00:00
+
+eval "$(mamba shell hook --shell bash)"
+
+mamba activate myflow
+
+
+to detach  screen 
+control A D 
+
+screen -ls 
+
+screen -r myFriday 
+
+salloc -A srlab -p cpu-g2-mem2x -N 1 -c 1 --mem=30GB --time=24:00:00
