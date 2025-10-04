@@ -1,0 +1,206 @@
+---
+title: "20-methylation-pca"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+This notebook performs a principal component analysis (PCA) on CpG methylation fractions derived from Bismark `coverage2cytosine` outputs. Only coverage files currently present in `data/17-nextflow/coverage2cytosine/coverage/` are considered; download additional samples before rerunning if needed. Heavy chunks default to `eval = FALSE`; run them manually after adjusting paths for your environment.
+
+## Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(vroom)
+library(glue)
+library(scales)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE)
+    return(TRUE)
+  }
+  return(FALSE)
+}
+
+has_ggrepel <- quietly_require("ggrepel")
+has_broom <- quietly_require("broom")
+```
+
+## Paths and configuration
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv("PROJECT_COD_TEMP_ROOT", unset = getwd())
+message(glue("Project root: {project_root}"))
+
+cov_dir <- file.path(project_root, "data/17-nextflow/coverage2cytosine/coverage")
+stopifnot(dir.exists(cov_dir))
+
+samplesheet_path <- file.path(project_root, "code/17.samplesheet.csv")
+output_dir <- file.path(project_root, "output/20-methylation-pca")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+cov_files <- list.files(cov_dir, pattern = "\\.cov\\.gz$", full.names = TRUE)
+stopifnot(length(cov_files) > 0)
+message(glue("Detected {length(cov_files)} coverage files"))
+```
+
+```{r inspect-files, eval=TRUE}
+basename(cov_files)
+```
+
+## Load coverage data
+
+```{r load-coverage}
+# coverage2cytosine CpG report format columns:
+# chr, start, end, methylation_percent, count_methylated, count_unmethylated
+read_cov <- function(path, min_coverage = 10L) {
+  vroom::vroom(
+    file = path,
+    delim = "\t",
+    col_names = c("chr", "start", "end", "perc_meth", "count_meth", "count_unmeth"),
+    col_types = list(
+      chr = "c", start = "i", end = "i",
+      perc_meth = "d", count_meth = "i", count_unmeth = "i"
+    ),
+    progress = FALSE
+  ) %>%
+    mutate(
+      depth = count_meth + count_unmeth,
+      beta = pmax(pmin(perc_meth / 100, 1), 0),
+      cpg_id = paste(chr, start, sep = ":")
+    ) %>%
+    filter(depth >= min_coverage) %>%
+    select(cpg_id, chr, start, end, depth, beta)
+}
+
+get_sample_id <- function(path) {
+  sub("\\..*$", "", basename(path))
+}
+
+min_cov <- 10L
+max_sites <- 50000L  # take top sites per sample by depth before intersecting
+
+cov_list <- cov_files %>%
+  setNames(map_chr(., get_sample_id)) %>%
+  imap(function(path, sample_id) {
+    message(glue("Reading {basename(path)}"))
+    read_cov(path, min_cov) %>% mutate(sample = sample_id)
+  })
+
+sample_summary <- cov_list %>%
+  map(~ .x %>% summarize(n_cpg = n(), mean_depth = mean(depth), median_depth = median(depth), mean_beta = mean(beta), median_beta = median(beta))) %>%
+  bind_rows(.id = "sample") %>%
+  arrange(sample)
+
+readr::write_csv(sample_summary, file.path(output_dir, "sample-summary.csv"))
+sample_summary
+```
+
+## Build beta matrix and run PCA
+
+```{r pca}
+# Select top CpGs per sample by depth
+top_by_sample <- cov_list %>%
+  imap(~ .x %>% arrange(desc(depth)) %>% slice_head(n = min(max_sites, n())) %>% select(cpg_id, beta))
+
+common_cpgs <- Reduce(intersect, map(top_by_sample, ~ .x$cpg_id))
+message(glue("Common CpGs across samples after top-{max_sites} filter: {scales::comma(length(common_cpgs))}"))
+stopifnot(length(common_cpgs) >= 1000)
+
+beta_long <- cov_list %>%
+  imap(~ .x %>% filter(cpg_id %in% common_cpgs) %>% select(cpg_id, beta) %>% mutate(sample = .y)) %>%
+  bind_rows()
+
+beta_wide <- beta_long %>%
+  pivot_wider(names_from = sample, values_from = beta)
+
+cpg_ids <- beta_wide$cpg_id
+beta_mat <- beta_wide %>% select(-cpg_id) %>% as.matrix() %>% t()
+colnames(beta_mat) <- cpg_ids
+
+pc <- prcomp(beta_mat, center = TRUE, scale. = TRUE)
+explained <- (pc$sdev^2) / sum(pc$sdev^2)
+explained_pct <- percent(explained[1:5])
+
+pca_scores <- as_tibble(pc$x[, 1:5], rownames = "sample")
+if (file.exists(samplesheet_path)) {
+  sample_meta <- readr::read_csv(samplesheet_path, show_col_types = FALSE)
+  if ("sample" %in% names(sample_meta)) {
+    pca_scores <- left_join(pca_scores, sample_meta, by = "sample")
+  }
+}
+
+readr::write_csv(pca_scores, file.path(output_dir, "pca-scores.csv"))
+
+pca_scores
+```
+
+## Plot PCA
+
+```{r plot-pca}
+plot_obj <- ggplot(pca_scores, aes(x = PC1, y = PC2, label = sample)) +
+  geom_point(size = 3, alpha = 0.9) +
+  labs(
+    title = "PCA of CpG methylation (common sites)",
+    subtitle = glue("Common CpGs: {scales::comma(ncol(beta_mat))}; PC1 {explained_pct[1]}, PC2 {explained_pct[2]}"),
+    x = glue("PC1 ({explained_pct[1]} var)"),
+    y = glue("PC2 ({explained_pct[2]} var)")
+  ) +
+  theme_minimal(base_size = 12)
+
+if (has_ggrepel) {
+  plot_obj <- plot_obj + ggrepel::geom_text_repel(size = 3, max.overlaps = 50)
+}
+
+print(plot_obj)
+
+ggsave(filename = file.path(output_dir, "pca-scatter.png"), plot = plot_obj, width = 7, height = 5, dpi = 300)
+```
+
+## Optional: PCA loadings
+
+pca_loadings <- broom::tidy(pc, matrix = "rotation") %>%
+```{r loadings}
+if (!has_broom) {
+  warning("Package 'broom' is not installed; skipping loadings export.")
+} else {
+  pca_loadings <- broom::tidy(pc, matrix = "rotation") %>%
+    mutate(abs_value = abs(value)) %>%
+    group_by(column) %>%
+    slice_max(order_by = abs_value, n = 20, with_ties = FALSE) %>%
+    ungroup()
+
+  readr::write_csv(pca_loadings, file.path(output_dir, "pca-loadings-top20.csv"))
+  pca_loadings
+}
+```
+
+## Notes
+
+- Adjust `min_cov` and `max_sites` if you need to increase coverage depth or the number of CpGs used in the PCA.
+- Include additional metadata (treatment, temperature, feeding) in `code/17.samplesheet.csv` to colour points by experimental factors.
+- Ensure newly downloaded coverage files are placed in `data/17-nextflow/coverage2cytosine/coverage/` before rerunning the notebook.
