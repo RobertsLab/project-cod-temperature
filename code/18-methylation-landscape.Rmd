@@ -1,0 +1,216 @@
+---
+title: "18 - DNA methylation landscape across samples (with PCA)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: readable
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(vroom)
+library(glue)
+library(scales)
+
+# Optional packages for nicer plots; will only be used if installed
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE)
+    return(TRUE)
+  }
+  return(FALSE)
+}
+
+has_ggridges <- quietly_require("ggridges")
+has_pheatmap <- quietly_require("pheatmap")
+```
+
+## Paths
+
+```{r paths}
+project_root <- "/home/shared/16TB_HDD_01/sr320/github/project-cod-temperature"
+cov_dir <- file.path(project_root, "output/17-nextflow/coverage2cytosine/coverage")
+samplesheet <- file.path(project_root, "code/17.samplesheet.csv")
+out_dir <- file.path(project_root, "output/18-methylation-landscape")
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+cov_files <- list.files(cov_dir, pattern = "\\.cov\\.gz$", full.names = TRUE)
+stopifnot(length(cov_files) > 0)
+
+samples_tbl <- readr::read_csv(samplesheet, show_col_types = FALSE)
+```
+
+## Load coverage2cytosine CpG reports
+
+```{r load-cov, message=FALSE}
+# Bismark coverage2cytosine merged CpG cov format (6 columns expected):
+# chr, start, end, methylation_percent, count_methylated, count_unmethylated
+read_cov <- function(path, min_coverage = 5L) {
+  df <- vroom::vroom(
+    file = path,
+    delim = "\t",
+    col_names = c("chr", "start", "end", "perc_meth", "count_meth", "count_unmeth"),
+    col_types = list(
+      chr = "c", start = "i", end = "i",
+      perc_meth = "d", count_meth = "i", count_unmeth = "i"
+    )
+  ) %>%
+    mutate(
+      depth = count_meth + count_unmeth,
+      beta = pmax(pmin(perc_meth / 100, 1), 0),
+      cpg_id = paste(chr, start, sep = ":")
+    ) %>%
+    filter(depth >= min_coverage) %>%
+    select(cpg_id, chr, start, end, depth, beta)
+  df
+}
+
+get_sample_id <- function(path) {
+  bn <- basename(path)
+  sub("\\.CpG_report.*$", "", bn)
+}
+
+min_cov <- 5L
+
+message(glue("Reading {length(cov_files)} coverage files (min_coverage = {min_cov})..."))
+
+cov_list <- cov_files %>%
+  setNames(map_chr(., get_sample_id)) %>%
+  imap(function(path, sample_id) {
+    d <- read_cov(path, min_coverage = min_cov)
+    d$sample <- sample_id
+    d
+  })
+
+cov_df <- bind_rows(cov_list)
+
+# Align with samplesheet order where possible
+sample_order <- intersect(samples_tbl$sample, unique(cov_df$sample))
+if (length(sample_order) > 0) {
+  cov_df$sample <- factor(cov_df$sample, levels = unique(c(sample_order, setdiff(unique(cov_df$sample), sample_order))))
+}
+
+readr::write_csv(cov_df %>% sample_n(min(100000, nrow(.))), file.path(out_dir, "cov-example-100k.csv"))
+```
+
+## Per-sample summaries
+
+```{r summarize}
+sample_summary <- cov_df %>%
+  group_by(sample) %>%
+  summarize(
+    n_cpg_covered = n(),
+    mean_depth = mean(depth),
+    median_depth = median(depth),
+    mean_beta = mean(beta),
+    median_beta = median(beta)
+  ) %>%
+  arrange(sample)
+
+readr::write_csv(sample_summary, file.path(out_dir, "sample-summary.csv"))
+sample_summary
+```
+
+## Methylation distributions
+
+```{r distributions, fig.width=10, fig.height=8}
+if (has_ggridges) {
+  ggplot(cov_df %>% group_by(sample) %>% sample_n(min(200000, n()))) +
+    ggridges::geom_density_ridges(aes(x = beta, y = sample, fill = sample),
+                                  alpha = 0.8, color = NA, scale = 2, rel_min_height = 0.01) +
+    scale_x_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+    guides(fill = "none") +
+    labs(title = "CpG methylation beta distributions by sample",
+         x = "Beta (methylation fraction)", y = "Sample") +
+    theme_minimal(base_size = 12)
+} else {
+  ggplot(cov_df %>% group_by(sample) %>% sample_n(min(200000, n()))) +
+    geom_density(aes(x = beta, color = sample), alpha = 0.6, size = 0.4) +
+    scale_x_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+    labs(title = "CpG methylation beta densities (subset)",
+         x = "Beta (methylation fraction)", y = "Density") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "right")
+}
+```
+
+## Build Beta matrix for PCA
+
+```{r build-matrix, message=FALSE}
+# To keep memory reasonable, take up to N_TOP CpGs per sample by depth, then find intersection
+N_TOP <- 100000L
+
+top_by_sample <- cov_list %>%
+  imap(~ .x %>% arrange(desc(depth)) %>% slice_head(n = min(N_TOP, n())) %>% select(cpg_id, beta) %>% mutate(sample = .y))
+
+# Find CpGs common to all samples after top-N filtering
+common_cpgs <- reduce(map(top_by_sample, ~ .x %>% select(cpg_id) %>% distinct()), inner_join, by = "cpg_id")
+
+n_common <- nrow(common_cpgs)
+message(glue("Common CpGs across samples after top-{N_TOP} filter: {format(n_common, big.mark = ',')}"))
+
+stopifnot(n_common > 1000)  # sanity check for PCA
+
+# Construct wide matrix (rows: CpG, cols: sample); then transpose for PCA
+wide_beta <- top_by_sample %>%
+  map(~ inner_join(.x, common_cpgs, by = "cpg_id")) %>%
+  bind_rows() %>%
+  select(cpg_id, sample, beta) %>%
+  pivot_wider(names_from = sample, values_from = beta)
+
+# Order columns using samplesheet if available
+col_order <- names(wide_beta)[-1]
+if (length(sample_order) > 0) {
+  col_order <- unique(c(sample_order, setdiff(col_order, sample_order)))
+}
+wide_beta <- wide_beta %>% select(cpg_id, all_of(col_order))
+
+# Matrix for PCA: samples as rows, features as cols
+beta_mat <- as.matrix(t(as.data.frame(wide_beta[,-1])))
+colnames(beta_mat) <- wide_beta$cpg_id
+```
+
+## PCA
+
+```{r pca, message=FALSE}
+set.seed(1)
+pc <- prcomp(beta_mat, center = TRUE, scale. = TRUE)
+
+explained <- (pc$sdev^2) / sum(pc$sdev^2)
+explained_pc1_pc2 <- scales::percent(explained[1:2])
+
+pca_df <- as_tibble(pc$x[, 1:5], rownames = "sample")
+
+ggplot(pca_df, aes(x = PC1, y = PC2, label = sample)) +
+  geom_point(size = 3, alpha = 0.9) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 50) +
+  labs(title = "PCA of CpG methylation (common sites)",
+       subtitle = glue("n_common CpGs = {ncol(beta_mat)}; PC1 {explained_pc1_pc2[1]}, PC2 {explained_pc1_pc2[2]} explained"),
+       x = glue("PC1 ({explained_pc1_pc2[1]} var)"),
+       y = glue("PC2 ({explained_pc1_pc2[2]} var)")) +
+  theme_minimal(base_size = 12)
+
+readr::write_csv(pca_df, file.path(out_dir, "pca-scores.csv"))
+```
+
+## Sample correlation heatmap (optional)
+
+```{r corr-heatmap, eval=has_pheatmap, fig.width=8, fig.height=8}
+cor_mat <- cor(beta_mat, method = "pearson", use = "pairwise.complete.obs")
+has_pheatmap && pheatmap::pheatmap(cor_mat, clustering_distance_rows = "euclidean",
+                                   clustering_distance_cols = "euclidean",
+                                   color = colorRampPalette(c("#313695", "#74add1", "#ffffbf", "#f46d43", "#a50026"))(100),
+                                   main = "Sample-sample correlation (beta)")
+```
+
+## Save key figures
+
+```{r save-figs}
+# Save PCA as a standalone image
+ggsave(filename = file.path(out_dir, "pca.png"), width = 7, height = 5, dpi = 300)
+```
+
+
