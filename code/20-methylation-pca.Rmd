@@ -125,7 +125,13 @@ sample_summary
 ```{r pca}
 # Select top CpGs per sample by depth
 top_by_sample <- cov_list %>%
-  imap(~ .x %>% arrange(desc(depth)) %>% slice_head(n = min(max_sites, n())) %>% select(cpg_id, beta))
+  imap(~ {
+    n_rows <- nrow(.x)
+    .x %>%
+      arrange(desc(depth)) %>%
+      slice_head(n = min(max_sites, n_rows)) %>%
+      select(cpg_id, beta)
+  })
 
 common_cpgs <- Reduce(intersect, map(top_by_sample, ~ .x$cpg_id))
 message(glue("Common CpGs across samples after top-{max_sites} filter: {scales::comma(length(common_cpgs))}"))
@@ -183,7 +189,6 @@ ggsave(filename = file.path(output_dir, "pca-scatter.png"), plot = plot_obj, wid
 
 ## Optional: PCA loadings
 
-pca_loadings <- broom::tidy(pc, matrix = "rotation") %>%
 ```{r loadings}
 if (!has_broom) {
   warning("Package 'broom' is not installed; skipping loadings export.")
