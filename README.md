@@ -4,6 +4,30 @@
 
 Juvenile Pacific cod will be reared in three temperatures under feeding and non-feeding conditions, then an integrated genomic approach will identify genes, gene variants, and epigenetic markers that respond to thermal stress and confer resilience. To complement the genomic approaches and further investigate temperature influences on energy resources, we will perform lipid analyses. This work will inform predictions of genetic selection and molecular response of Pacific cod in the Gulf of Alaska under climate change.
 
+### Sequencing Project Summary
+
+This project integrates multiple sequencing approaches to investigate thermal stress responses in juvenile Pacific cod:
+
+| Project         | Type | Unique samples | FASTQ/FQ files | Naming schema                                              | Examples | Status |
+|-----------------|------|---------------:|---------------:|------------------------------------------------------------|----------|--------|
+| 30-943133806    | RNA-seq | 80            | 160            | `NN[_SUFFIX]_R{1,2}_001.fastq.gz`, `RESUB-###_R{1,2}_001.fastq.gz` | `100_R1_001.fastq.gz`, `19-G_R1_001.fastq.gz`, `RESUB-76_R1_001.fastq.gz` | Complete - DESeq2 analysis identified 4,105 DEGs (9°C vs 16°C, padj<0.05) |
+| H202SC23041287  | lcWGS | 157           | 314*           | `GM##_*_{1,2}.fq.gz` (sample `GM##`, multiple lanes/runs)  | `GM1_CKDN230011839-1A_H5NNGDSX7_L1_1.fq.gz` | Complete - WGSassign population assignment analysis |
+| 30-1149633765   | WGS | 350            | 700            | `EXP###_R{1,2}_001.fastq.gz`, `MHW###_R{1,2}_001.fastq.gz` | `EXP001_R1_001.fastq.gz`, `MHW001_R1_001.fastq.gz` | In progress - heatwave genetics study (2008-2023) + experimental resequencing |
+| 30-1149634506   | WGS | 16             | 32             | `ET##_R{1,2}_001.fastq.gz`                                 | `ET22_R1_001.fastq.gz` | In progress - pilot ecotype sequencing (shallow/deep) |
+| AN00025267**    | BS-seq | 32            | 64             | `##B_{1,2}.fastq.gz` (paired reads as `_1`/`_2`)           | `01B_1.fastq.gz`, `01B_2.fastq.gz` | In progress - nf-core/methylseq pipeline (17.nextflow) |
+| AN00025268**    | BS-seq | 32            | 64             | `##B_{1,2}.fastq.gz` (paired reads as `_1`/`_2`)           | `01B_1.fastq.gz`, `01B_2.fastq.gz` | Planned |
+| 30-1067895835** | - | 1              | 2              | `SAMPLE_R{1,2}_001.fastq.gz`                               | `1D11_R1_001.fastq.gz` | Planned |
+
+\* Multiple sequencing runs per sample; **Methylation/bisulfite sequencing projects; projects marked as planned may be external or future sequencing
+
+### Key Results to Date
+
+- **RNA-seq differential expression**: 4,105 significantly differentially expressed genes identified between 9°C and 16°C treatments (padj < 0.05); 2,790 DEGs with log2-fold change > 0.58
+- **Gene ontology enrichment**: GO term enrichment analysis performed using DAVID on DEGs
+- **Population genetics**: lcWGS data analyzed to assign experimental fish to known Pacific cod spawning populations using WGSassign
+- **Growth and physiology**: Significant treatment effects observed on growth rates (SGRww, SGRsl), condition indices (Kwet, HSI), and liver lipid composition
+- **Methylation landscape**: Genome-wide methylation analysis in progress using nf-core/methylseq pipeline
+
 ### Data
 
 - Heatwave juvenile cod rearing experiment data - [metadata-MHW-sample_collection_data.csv](data/metadata-MHW-sample_collection_data.csv)
