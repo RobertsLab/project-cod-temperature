@@ -1,0 +1,320 @@
+---
+title: "24-cod-integration-figures"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,        # Run manually after 21-23 outputs exist
+  warning = FALSE,
+  message = FALSE,
+  comment = "",
+  dpi = 300,
+  fig.path = "../output/24-cod-integration-figures/"
+)
+```
+
+# Overview
+
+Final notebook in the integrated RNA-seq + DNA methylation series (`21`–`24`). It renders
+**publication-quality figures** from the integration outputs in `23` (and matrices in
+`22`), using a shared ggplot2 theme and a temperature color palette consistent across the
+project. All figures are saved at 300+ DPI as both `.png` and `.pdf`.
+
+## Inputs (from `21`–`23`)
+
+- `output/21-cod-integration-crosswalk/paired-sample-metadata.csv`
+- `output/22-cod-integration-feature-matrices/expression-vst-paired.csv`
+- `output/22-cod-integration-feature-matrices/methylation-genebody-paired-rnaseqkey.csv`
+- `output/23-cod-integration-analysis/gene-expr-meth-correlation.csv`
+- `output/23-cod-integration-analysis/joint-pca-scores.csv`
+- `output/23-cod-integration-analysis/joint-pca-variance.csv`
+
+## Outputs (written to `output/24-cod-integration-figures/`)
+
+- `fig-joint-pca.{png,pdf}` — joint multi-omics PCA, colored by `temp_treatment`.
+- `fig-expr-meth-volcano.{png,pdf}` — per-gene correlation vs -log10(FDR).
+- `fig-top-gene-scatter.{png,pdf}` — expression-vs-methylation scatter for top genes.
+- `fig-integration-heatmap.{png,pdf}` — heatmap of top integrated features.
+
+# Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+has_ggrepel  <- quietly_require("ggrepel")
+has_pheatmap <- quietly_require("pheatmap")
+has_patchwork <- quietly_require("patchwork")
+```
+
+# Paths, theme, and palette
+
+```{r paths-theme, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+in21 <- file.path(project_root, "output/21-cod-integration-crosswalk")
+in22 <- file.path(project_root, "output/22-cod-integration-feature-matrices")
+in23 <- file.path(project_root, "output/23-cod-integration-analysis")
+output_dir <- file.path(project_root, "output/24-cod-integration-figures")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Shared publication theme.
+theme_cod <- function(base_size = 12) {
+  theme_bw(base_size = base_size) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(linewidth = 0.3, color = "grey90"),
+      strip.background = element_rect(fill = "grey95", color = NA),
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold"),
+      legend.position = "right"
+    )
+}
+
+# Temperature treatments in this experiment: 0, 5, 9, 16 C. Blue (cold) -> red (warm).
+temp_levels  <- c("0", "5", "9", "16")
+temp_palette <- c("0" = "#2166AC", "5" = "#67A9CF", "9" = "#EF8A62", "16" = "#B2182B")
+
+# Helper: save both PNG and PDF at high DPI.
+save_fig <- function(plot, name, width = 7, height = 5, dpi = 300) {
+  ggsave(file.path(output_dir, paste0(name, ".png")),
+         plot, width = width, height = height, dpi = dpi)
+  ggsave(file.path(output_dir, paste0(name, ".pdf")),
+         plot, width = width, height = height)
+  invisible(plot)
+}
+```
+
+# Load integration results
+
+```{r load-results}
+paired     <- readr::read_csv(file.path(in21, "paired-sample-metadata.csv"),
+                              show_col_types = FALSE)
+joint_scores <- readr::read_csv(file.path(in23, "joint-pca-scores.csv"),
+                                show_col_types = FALSE)
+joint_var  <- readr::read_csv(file.path(in23, "joint-pca-variance.csv"),
+                              show_col_types = FALSE)
+cor_all    <- readr::read_csv(file.path(in23, "gene-expr-meth-correlation.csv"),
+                              show_col_types = FALSE)
+
+expr     <- readr::read_csv(file.path(in22, "expression-vst-paired.csv"),
+                            show_col_types = FALSE)
+meth_gb  <- readr::read_csv(file.path(in22,
+              "methylation-genebody-paired-rnaseqkey.csv"), show_col_types = FALSE)
+
+# Standardize temp_treatment as an ordered factor for consistent coloring.
+fix_temp <- function(df) {
+  df %>% mutate(temp_treatment = factor(as.character(temp_treatment), levels = temp_levels))
+}
+joint_scores <- fix_temp(joint_scores)
+```
+
+# Figure 1 — Joint multi-omics PCA
+
+```{r fig-joint-pca}
+pc1_var <- scales::percent(joint_var$var_explained[1], accuracy = 0.1)
+pc2_var <- scales::percent(joint_var$var_explained[2], accuracy = 0.1)
+
+p_pca <- ggplot(joint_scores, aes(PC1, PC2, color = temp_treatment, label = rnaseq_sample)) +
+  geom_point(size = 3.5, alpha = 0.9) +
+  scale_color_manual(values = temp_palette, name = "Temp (°C)", drop = FALSE) +
+  labs(
+    title = "Joint RNA-seq + methylation PCA",
+    subtitle = "Paired juvenile Pacific cod (concatenated, z-scored omics blocks)",
+    x = glue("PC1 ({pc1_var})"),
+    y = glue("PC2 ({pc2_var})")
+  ) +
+  theme_cod()
+
+if (has_ggrepel) {
+  p_pca <- p_pca + ggrepel::geom_text_repel(size = 3, show.legend = FALSE, max.overlaps = 30)
+}
+
+p_pca
+save_fig(p_pca, "fig-joint-pca", width = 7, height = 5.5)
+```
+
+# Figure 2 — Expression–methylation correlation "volcano"
+
+Per-gene correlation coefficient (x) vs -log10(FDR) (y); points above the FDR threshold
+are highlighted, with the top genes labeled.
+
+```{r fig-volcano}
+feature_focus <- "gene_body"   # TODO (lab): switch to "promoter" if preferred
+volc <- cor_all %>%
+  filter(feature == feature_focus, is.finite(estimate), is.finite(fdr)) %>%
+  mutate(
+    neglog10_fdr = -log10(fdr),
+    significant = fdr < 0.05
+  )
+
+top_label <- volc %>% filter(significant) %>% slice_max(neglog10_fdr, n = 12)
+
+p_volc <- ggplot(volc, aes(estimate, neglog10_fdr)) +
+  geom_point(aes(color = significant), alpha = 0.6, size = 1.8) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey60") +
+  scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "grey70"),
+                     name = "FDR < 0.05") +
+  labs(
+    title = "Gene-body methylation vs expression",
+    subtitle = glue("Per-gene correlation across paired samples ({feature_focus})"),
+    x = "Correlation coefficient (expression vs methylation)",
+    y = expression(-log[10]("BH FDR"))
+  ) +
+  theme_cod()
+
+if (has_ggrepel && nrow(top_label) > 0) {
+  p_volc <- p_volc +
+    ggrepel::geom_text_repel(data = top_label, aes(label = gene_id),
+                             size = 3, max.overlaps = 30)
+}
+
+p_volc
+save_fig(p_volc, "fig-expr-meth-volcano", width = 7, height = 5.5)
+```
+
+# Figure 3 — Expression vs methylation scatter for top genes
+
+```{r fig-top-scatter}
+top_genes <- cor_all %>%
+  filter(feature == feature_focus, is.finite(fdr)) %>%
+  slice_min(fdr, n = 6) %>%
+  pull(gene_id)
+
+sample_ids <- intersect(setdiff(names(expr), "gene_id"),
+                        setdiff(names(meth_gb), "gene_id"))
+
+long_for_genes <- function(genes) {
+  e <- expr %>% filter(gene_id %in% genes) %>%
+    pivot_longer(all_of(sample_ids), names_to = "rnaseq_sample", values_to = "expression")
+  m <- meth_gb %>% filter(gene_id %in% genes) %>%
+    pivot_longer(all_of(sample_ids), names_to = "rnaseq_sample", values_to = "methylation")
+  e %>% inner_join(m, by = c("gene_id", "rnaseq_sample")) %>%
+    left_join(paired %>% select(rnaseq_sample, temp_treatment), by = "rnaseq_sample") %>%
+    fix_temp()
+}
+
+scatter_df <- long_for_genes(top_genes)
+
+p_scatter <- ggplot(scatter_df, aes(methylation, expression)) +
+  geom_smooth(method = "lm", se = FALSE, color = "grey40", linewidth = 0.6) +
+  geom_point(aes(color = temp_treatment), size = 2.5, alpha = 0.9) +
+  scale_color_manual(values = temp_palette, name = "Temp (°C)", drop = FALSE) +
+  facet_wrap(~ gene_id, scales = "free") +
+  labs(
+    title = "Top expression–methylation associations",
+    x = "Gene-body methylation (weighted fraction)",
+    y = "Expression (VST)"
+  ) +
+  theme_cod()
+
+p_scatter
+save_fig(p_scatter, "fig-top-gene-scatter", width = 9, height = 6)
+```
+
+# Figure 4 — Integration heatmap
+
+Heatmap of the top correlated genes, showing expression and gene-body methylation
+side-by-side across paired samples (columns annotated by temperature). Both blocks are
+row-scaled (z-score) so they share a color scale.
+
+```{r fig-heatmap}
+heat_genes <- cor_all %>%
+  filter(feature == feature_focus, is.finite(fdr)) %>%
+  slice_min(fdr, n = 30) %>% pull(gene_id)
+
+zrows <- function(m) t(scale(t(m)))
+ord_samples <- paired$rnaseq_sample[paired$rnaseq_sample %in% sample_ids]
+
+expr_block <- expr %>% filter(gene_id %in% heat_genes) %>%
+  column_to_rownames("gene_id") %>% select(all_of(ord_samples)) %>% as.matrix() %>% zrows()
+meth_block <- meth_gb %>% filter(gene_id %in% heat_genes) %>%
+  column_to_rownames("gene_id") %>% select(all_of(ord_samples)) %>% as.matrix() %>% zrows()
+
+if (has_pheatmap) {
+  ann_col <- paired %>% filter(rnaseq_sample %in% ord_samples) %>%
+    column_to_rownames("rnaseq_sample") %>%
+    transmute(temp = factor(as.character(temp_treatment), levels = temp_levels))
+  ann_colors <- list(temp = temp_palette)
+
+  # Expression heatmap
+  pheatmap::pheatmap(
+    expr_block, annotation_col = ann_col, annotation_colors = ann_colors,
+    main = "Expression (VST, row z-score) — top integrated genes",
+    filename = file.path(output_dir, "fig-integration-heatmap-expression.png"),
+    width = 8, height = 8, fontsize_row = 6
+  )
+  # Methylation heatmap (same gene order would require fixing cluster_rows; left independent)
+  pheatmap::pheatmap(
+    meth_block, annotation_col = ann_col, annotation_colors = ann_colors,
+    main = "Gene-body methylation (row z-score) — top integrated genes",
+    filename = file.path(output_dir, "fig-integration-heatmap-methylation.png"),
+    width = 8, height = 8, fontsize_row = 6
+  )
+} else {
+  message("pheatmap not installed; building a ggplot tile heatmap fallback.")
+  tile_df <- bind_rows(
+    as_tibble(expr_block, rownames = "gene_id") %>%
+      pivot_longer(-gene_id, names_to = "rnaseq_sample", values_to = "z") %>%
+      mutate(block = "Expression"),
+    as_tibble(meth_block, rownames = "gene_id") %>%
+      pivot_longer(-gene_id, names_to = "rnaseq_sample", values_to = "z") %>%
+      mutate(block = "Methylation")
+  )
+  p_heat <- ggplot(tile_df, aes(rnaseq_sample, gene_id, fill = z)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+    facet_wrap(~ block) +
+    labs(title = "Top integrated features (row z-score)", x = NULL, y = NULL) +
+    theme_cod(base_size = 8) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  save_fig(p_heat, "fig-integration-heatmap", width = 9, height = 8)
+}
+```
+
+# Notes, assumptions, and TODOs
+
+- **Palette / levels.** `temp_palette` covers 0/5/9/16 °C. If a paired subset spans only
+  some temperatures, unused levels are dropped from legends (`drop = FALSE` keeps them
+  consistent across figures — adjust if you prefer to drop).
+- **Feature focus.** Figures default to `gene_body` methylation (`feature_focus`); switch
+  to `"promoter"` for promoter-centric figures, or render both.
+- **Small-n labeling.** Volcano/scatter labels use FDR ranks; with n≈10 prefer showing
+  effect sizes and individual points (already faceted) over heavy significance claims.
+- **Heatmap clustering.** Expression and methylation heatmaps are clustered independently;
+  to compare matched rows, fix a common gene order (e.g. cluster expression, apply the
+  same order to methylation).
+- **Tissue caveat** from `21`/`22`/`23` still applies to every figure.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

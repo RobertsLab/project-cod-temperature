@@ -1,0 +1,369 @@
+---
+title: "21-cod-integration-crosswalk"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,        # Do not evaluate by default; run manually after checking paths
+  warning = FALSE,     # Hide warnings
+  message = FALSE,     # Hide messages
+  comment = ""         # Prevents appending '##' to beginning of lines in code output
+)
+```
+
+# Overview
+
+This is the **first notebook in the integrated RNA-seq + DNA methylation series**
+(`21`–`24`). It builds the **sample crosswalk / integrated metadata table** that links
+the three sample-identifier systems used in this project so that downstream notebooks can
+join expression and methylation features for the same individual fish.
+
+The three identifier systems are:
+
+| System | Example | Source |
+|--------|---------|--------|
+| RNA-seq sample ID | `sample_1` | `data/DESeq2_Sample_Information.csv` (`sample_name`) |
+| featureCounts column / BAM label | `1` (or `19-G`, `RESUB-36`) | `output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt` |
+| WGBS methylation ID | `01B` | `code/17.samplesheet.csv` (`sample`) |
+
+The **linking key is `GeneticSamplingCount`** (the integer assigned at dissection,
+recorded in `data/temp-experiment.csv`):
+
+- RNA-seq IDs are `sample_{GeneticSamplingCount}`.
+- WGBS IDs are `{GeneticSamplingCount, zero-padded to 2 digits}B` (e.g. `1` -> `01B`).
+
+This notebook fills the gap noted in the repo: **there is currently no committed file
+linking methylation `{NN}B` IDs to RNA-seq `sample_{N}` IDs.** The outputs here are the
+canonical metadata used by `22`, `23`, and `24`.
+
+> **NOTE / TODO for the lab.** The `{NN}B` ↔ `sample_{N}` mapping below is derived
+> purely from the *numeric component* of each ID (both assumed to equal
+> `GeneticSamplingCount`). This convention is consistent with the documented sample
+> naming, but it has **not been independently verified against dissection records**.
+> Before trusting the paired analyses, confirm that, for each paired individual, the
+> WGBS tube `{NN}B` and the RNA-seq tube `sample_{N}` came from the **same fish and the
+> same tissue (Liver)**. See the "Validation" section at the end.
+
+## Inputs
+
+- `data/DESeq2_Sample_Information.csv` — RNA-seq sample sheet (`sample_name`,
+  `sample_number`, `tank`, `temp_treatment`, `tissue_type`).
+- `data/temp-experiment.csv` — full dissection/experiment table; contains
+  `GeneticSamplingCount`, `Microchip ID`, `Tank`, `Temperature`, tissue masses, etc.
+- `code/17.samplesheet.csv` — WGBS methylseq samplesheet (`sample`, `fastq_1`, `fastq_2`).
+- `output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt`
+  — used only to read the *column labels* so we know exactly which RNA-seq libraries
+  exist (including resequenced/odd labels like `19-G`, `RESUB-36`).
+
+## Outputs (written to `output/21-cod-integration-crosswalk/`)
+
+- `integrated-sample-metadata.csv` — one row per known sample (RNA-seq and/or WGBS).
+- `paired-sample-metadata.csv` — paired subset (both assays present).
+- `crosswalk-summary.csv` — counts by assay availability × `temp_treatment`.
+
+# Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+```
+
+# Paths and configuration
+
+Paths are resolved relative to the repository root. When knitting from `code/`, the
+working directory is `code/`, so we step up one level. You can also set the environment
+variable `PROJECT_COD_TEMP_ROOT` to point at the repo root explicitly.
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+message(glue("Project root: {project_root}"))
+
+deseq2_info_path   <- file.path(project_root, "data/DESeq2_Sample_Information.csv")
+temp_exp_path      <- file.path(project_root, "data/temp-experiment.csv")
+meth_samplesheet   <- file.path(project_root, "code/17.samplesheet.csv")
+featurecounts_path <- file.path(
+  project_root,
+  "output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt"
+)
+
+output_dir <- file.path(project_root, "output/21-cod-integration-crosswalk")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+```
+
+# Helper: parse `GeneticSamplingCount` from each ID system
+
+```{r helpers, eval=TRUE}
+# RNA-seq "sample_12" -> 12 ; methylation "01B" -> 1 ; "RESUB-36" -> 36
+parse_count_from_rnaseq <- function(x) {
+  as.integer(str_extract(x, "(?<=sample_)\\d+"))
+}
+
+# WGBS "01B" -> 1. Strip the trailing "B" and any leading zeros.
+parse_count_from_meth <- function(x) {
+  as.integer(str_extract(x, "^\\d+"))
+}
+
+# featureCounts BAM labels embed the count, sometimes with suffixes:
+#   "1", "100", "19-G", "19-S", "RESUB-36" ...
+# Pull the FIRST integer run. Keep the raw label so odd libraries are visible.
+parse_count_from_bamlabel <- function(x) {
+  as.integer(str_extract(x, "\\d+"))
+}
+
+# Format a GeneticSamplingCount integer as the WGBS-style "{NN}B" ID (2-digit pad).
+meth_id_from_count <- function(n) {
+  ifelse(is.na(n), NA_character_, sprintf("%02dB", n))
+}
+```
+
+# RNA-seq metadata
+
+```{r load-rnaseq-meta}
+deseq2_info <- readr::read_csv(deseq2_info_path, show_col_types = FALSE)
+glimpse(deseq2_info)
+
+# Standardize to the integrated schema columns we care about.
+rnaseq_meta <- deseq2_info %>%
+  transmute(
+    rnaseq_sample        = sample_name,                 # e.g. "sample_1"
+    genetic_sampling_count = parse_count_from_rnaseq(sample_name),
+    tank                 = tank,
+    temp_treatment       = temp_treatment,
+    tissue_type          = tissue_type
+  ) %>%
+  mutate(has_rnaseq = TRUE)
+
+rnaseq_meta
+```
+
+## Cross-check against the actual featureCounts columns
+
+The featureCounts matrix is the authoritative list of RNA-seq libraries that were
+actually quantified. We read just the header so we know which libraries exist (and can
+flag any that are *not* represented in `DESeq2_Sample_Information.csv`, e.g. resequenced
+`RESUB-*` or split `19-G`/`19-S` libraries).
+
+```{r featurecounts-columns}
+# featureCounts output: line 1 is the program/command comment, line 2 is the header.
+fc_header <- readr::read_tsv(featurecounts_path, skip = 1, n_max = 0,
+                             show_col_types = FALSE)
+
+# Drop the fixed annotation columns; the rest are BAM paths.
+fixed_cols <- c("Geneid", "Chr", "Start", "End", "Strand", "Length")
+bam_cols <- setdiff(names(fc_header), fixed_cols)
+
+# BAM label = basename without ".sorted.bam"
+bam_labels <- bam_cols %>%
+  basename() %>%
+  str_remove("\\.sorted\\.bam$")
+
+featurecounts_libs <- tibble(
+  bam_label = bam_labels,
+  genetic_sampling_count = parse_count_from_bamlabel(bam_labels)
+)
+
+featurecounts_libs
+
+# TODO (lab): decide how to treat non-standard libraries when integrating, e.g.
+#   - "19-G"/"19-S", "20-G"/"20-S", "57-G"/"57-S", "58-G"/"58-S": gonad/somatic splits?
+#   - "RESUB-36", "RESUB-76", ...: resequenced libraries (use which one?).
+# For the paired-sample integration these are unlikely to matter (paired set is small),
+# but document the decision here so 22 reads the intended column for each individual.
+```
+
+# WGBS (methylation) metadata
+
+```{r load-meth-meta}
+meth_sheet <- readr::read_csv(meth_samplesheet, show_col_types = FALSE)
+glimpse(meth_sheet)
+
+meth_meta <- meth_sheet %>%
+  transmute(
+    meth_sample = sample,                               # e.g. "01B"
+    genetic_sampling_count = parse_count_from_meth(sample)
+  ) %>%
+  mutate(has_methylation = TRUE)
+
+meth_meta
+```
+
+# Experiment/dissection table (for richer covariates)
+
+`data/temp-experiment.csv` is keyed by `GeneticSamplingCount` and adds covariates that
+may be useful downstream (microchip ID, body/liver masses, dissection date). Note that
+column names contain spaces, so we reference them with backticks / `janitor`-style
+cleaning.
+
+```{r load-temp-experiment}
+temp_exp <- readr::read_csv(temp_exp_path, show_col_types = FALSE)
+glimpse(temp_exp)
+
+temp_exp_keyed <- temp_exp %>%
+  rename(genetic_sampling_count = GeneticSamplingCount) %>%
+  # keep a compact set of covariates; expand as needed
+  transmute(
+    genetic_sampling_count,
+    microchip_id   = `Microchip ID`,
+    exp_tank       = Tank,
+    exp_temp       = Temperature,
+    sl_mm          = SL_mm,
+    whole_body_ww_g = WholeBodyWW_g,
+    total_liver_ww_mg = TOTAL_Liver_WW_mg,
+    dissection_date = DissectionDate
+  ) %>%
+  filter(!is.na(genetic_sampling_count)) %>%
+  distinct(genetic_sampling_count, .keep_all = TRUE)
+
+temp_exp_keyed
+```
+
+# Build the integrated crosswalk
+
+We full-join RNA-seq and methylation metadata on `genetic_sampling_count`, then attach
+the dissection covariates. `paired = has_rnaseq & has_methylation`.
+
+```{r build-crosswalk}
+crosswalk <- full_join(
+  rnaseq_meta,
+  meth_meta,
+  by = "genetic_sampling_count"
+) %>%
+  mutate(
+    has_rnaseq      = coalesce(has_rnaseq, FALSE),
+    has_methylation = coalesce(has_methylation, FALSE),
+    # Re-derive the expected methylation ID from the count for any RNA-only rows,
+    # so the lab can see what the WGBS ID *would* be if that fish were sequenced.
+    expected_meth_sample = meth_id_from_count(genetic_sampling_count),
+    paired = has_rnaseq & has_methylation
+  ) %>%
+  left_join(temp_exp_keyed, by = "genetic_sampling_count") %>%
+  # Prefer the RNA-seq sample sheet's temp_treatment; fall back to experiment table.
+  mutate(temp_treatment = coalesce(temp_treatment, exp_temp)) %>%
+  arrange(genetic_sampling_count)
+
+crosswalk
+```
+
+```{r write-crosswalk}
+readr::write_csv(crosswalk, file.path(output_dir, "integrated-sample-metadata.csv"))
+```
+
+# Paired subset
+
+These are the individuals that carry **both** assays in-repo. The repo notes ~10 such
+individuals (`GeneticSamplingCount`: 1, 2, 3, 13, 21, 31, 49, 60, 67, 68); this chunk
+derives the set programmatically rather than hard-coding it.
+
+```{r paired-subset}
+paired <- crosswalk %>%
+  filter(paired) %>%
+  select(
+    genetic_sampling_count,
+    rnaseq_sample,
+    meth_sample,
+    temp_treatment,
+    tissue_type,
+    tank,
+    microchip_id
+  ) %>%
+  arrange(genetic_sampling_count)
+
+message(glue("Paired individuals (both assays): {nrow(paired)}"))
+paired
+
+readr::write_csv(paired, file.path(output_dir, "paired-sample-metadata.csv"))
+```
+
+```{r expected-paired-check, eval=TRUE}
+# Sanity reference: the paired set documented in the repo.
+expected_paired_counts <- c(1, 2, 3, 13, 21, 31, 49, 60, 67, 68)
+message(glue(
+  "Documented paired GeneticSamplingCounts: {paste(expected_paired_counts, collapse = ', ')}"
+))
+# After running the chunks above, compare:
+# setdiff(expected_paired_counts, paired$genetic_sampling_count)  # documented but missing
+# setdiff(paired$genetic_sampling_count, expected_paired_counts)  # newly paired
+```
+
+# Summary table
+
+```{r summary}
+crosswalk_summary <- crosswalk %>%
+  mutate(
+    assay = case_when(
+      has_rnaseq & has_methylation ~ "both",
+      has_rnaseq                   ~ "rnaseq_only",
+      has_methylation              ~ "methylation_only",
+      TRUE                         ~ "none"
+    )
+  ) %>%
+  count(temp_treatment, assay) %>%
+  pivot_wider(names_from = assay, values_from = n, values_fill = 0) %>%
+  arrange(temp_treatment)
+
+crosswalk_summary
+readr::write_csv(crosswalk_summary, file.path(output_dir, "crosswalk-summary.csv"))
+```
+
+# Validation checks (run before trusting paired analyses)
+
+```{r validation}
+# 1. Every paired individual should resolve to exactly one RNA-seq and one WGBS ID.
+dup_check <- crosswalk %>%
+  filter(paired) %>%
+  count(genetic_sampling_count) %>%
+  filter(n > 1)
+stopifnot(nrow(dup_check) == 0)
+
+# 2. Tissue should be Liver for paired individuals (RNA-seq is mostly Liver).
+#    WGBS tissue is NOT recorded in 17.samplesheet.csv -> see TODO below.
+paired_tissue <- crosswalk %>% filter(paired) %>% count(tissue_type)
+paired_tissue
+
+# 3. Methylation IDs we expected vs. methylation IDs that actually exist.
+missing_expected_meth <- crosswalk %>%
+  filter(has_rnaseq, !has_methylation) %>%
+  pull(expected_meth_sample)
+length(missing_expected_meth)
+```
+
+> **TODO / assumptions for the lab to resolve:**
+>
+> 1. **Tissue match.** `code/17.samplesheet.csv` does not record tissue for the WGBS
+>    libraries. RNA-seq is "mostly Liver". Confirm each paired WGBS library is **Liver**
+>    (or record its true tissue) before interpreting expression–methylation correlations;
+>    a tissue mismatch would confound everything downstream.
+> 2. **ID-to-fish provenance.** Verify the `{NN}B` ↔ `sample_{N}` mapping against
+>    dissection sheets / microchip IDs, not just the numeric convention used here.
+> 3. **Non-standard RNA-seq libraries.** Decide which featureCounts column to use for any
+>    individual with `RESUB-*` or `-G`/`-S` split libraries (none are in the documented
+>    paired set, but record the rule in case the paired set grows).
+> 4. **`temp_treatment` source of truth.** We prefer `DESeq2_Sample_Information.csv` and
+>    fall back to `temp-experiment.csv$Temperature`; confirm these agree for paired fish.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

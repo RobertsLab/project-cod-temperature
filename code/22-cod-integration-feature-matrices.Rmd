@@ -1,0 +1,417 @@
+---
+title: "22-cod-integration-feature-matrices"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,         # Display code chunks
+  eval = FALSE,        # Heavy compute / off-repo data: run manually
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Second notebook in the integrated RNA-seq + DNA methylation series (`21`–`24`). It
+prepares **matched, paired-sample feature matrices** so the integration in `23` operates
+on the same set of genes and the same individuals from both assays.
+
+It produces three feature matrices restricted to the **paired samples** identified in
+`21`:
+
+1. **Gene expression** — normalized from the genome-aligned featureCounts gene matrix
+   (`06.2`). We use DESeq2 variance-stabilizing transformation (VST) as the primary
+   normalization, with an edgeR logCPM alternative provided.
+2. **Gene-body methylation** — per-gene weighted methylation fraction from the methylseq
+   `coverage2cytosine` CpG reports, using gene-body coordinates from the genome GTF.
+3. **Promoter methylation** — same, but over a TSS-flanking window (default ±1 kb).
+
+The common feature key across all matrices is the **NCBI gene ID** (e.g. `LOC132464423`),
+which is the `gene_id` used by featureCounts (`-g gene_id`) and present in `genomic.gtf`.
+
+## Inputs
+
+- `output/21-cod-integration-crosswalk/paired-sample-metadata.csv` (from notebook `21`).
+- `output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt`.
+- Methylation `coverage2cytosine` coverage files. **Path note:** notebooks `18`/`20`
+  reference both `data/17-nextflow/coverage2cytosine/coverage/` and
+  `output/17-nextflow/coverage2cytosine/coverage/`. Set `cov_dir` below to wherever the
+  `*.cov.gz` files live in your environment (klone / Owl mirror).
+- Genome annotation `data/genomic.gtf` (NCBI GCF_031168955.1; downloaded off-repo in
+  `06.2`, not committed).
+
+## Outputs (written to `output/22-cod-integration-feature-matrices/`)
+
+- `expression-vst-paired.csv` — VST expression, genes × paired samples.
+- `methylation-genebody-paired.csv` — gene-body weighted methylation.
+- `methylation-promoter-paired.csv` — promoter weighted methylation.
+- `common-genes.txt` — genes present in both expression and (gene-body) methylation.
+- `feature-matrix-summary.csv` — dimensions and filtering notes.
+
+# Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+library(vroom)
+
+# Bioconductor packages used in heavy chunks (install once):
+# BiocManager::install(c("DESeq2", "edgeR", "GenomicRanges", "GenomicFeatures",
+#                        "txdbmaker", "rtracklayer"))
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE)
+    return(TRUE)
+  }
+  FALSE
+}
+```
+
+# Paths and configuration
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+
+paired_meta_path   <- file.path(project_root,
+  "output/21-cod-integration-crosswalk/paired-sample-metadata.csv")
+featurecounts_path <- file.path(project_root,
+  "output/06.2-cod-RNAseq-alignment-genome/featureCounts-gene/featureCounts_gene_matrix.txt")
+gtf_path           <- file.path(project_root, "data/genomic.gtf")
+
+# TODO (lab): point this at the coverage2cytosine *.cov.gz directory in your env.
+cov_dir <- file.path(project_root, "data/17-nextflow/coverage2cytosine/coverage")
+
+output_dir <- file.path(project_root, "output/22-cod-integration-feature-matrices")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Tunables
+min_cpg_coverage   <- 5L     # min read depth to keep a CpG (per sample)
+min_cpgs_per_gene  <- 3L     # min CpGs overlapping a feature to report methylation
+promoter_upstream  <- 1000L  # bp upstream of TSS
+promoter_downstream <- 200L  # bp downstream of TSS (into the gene)
+```
+
+```{r load-paired-meta, eval=TRUE}
+paired <- readr::read_csv(paired_meta_path, show_col_types = FALSE)
+paired
+# Expected columns: genetic_sampling_count, rnaseq_sample, meth_sample,
+#                   temp_treatment, tissue_type, tank, microchip_id
+```
+
+# Gene expression matrix (RNA-seq)
+
+## Import featureCounts and map columns to paired samples
+
+featureCounts columns are BAM paths whose basename encodes the
+`GeneticSamplingCount` (e.g. `.../13.sorted.bam` -> count 13). We map those to the
+paired `rnaseq_sample` IDs.
+
+```{r import-featurecounts}
+# Line 1 is the featureCounts command comment; the real header is line 2.
+fc_raw <- readr::read_tsv(featurecounts_path, skip = 1, show_col_types = FALSE)
+
+annot_cols <- c("Geneid", "Chr", "Start", "End", "Strand", "Length")
+count_mat <- fc_raw %>%
+  select(Geneid, all_of(setdiff(names(fc_raw), annot_cols))) %>%
+  column_to_rownames("Geneid") %>%
+  as.matrix()
+
+# Clean BAM-path column names down to their label, then to GeneticSamplingCount.
+bam_labels <- colnames(count_mat) %>% basename() %>% str_remove("\\.sorted\\.bam$")
+bam_counts <- as.integer(str_extract(bam_labels, "\\d+"))
+
+colnames(count_mat) <- bam_labels
+
+# Keep only the (standard) columns whose count is in the paired set. If an individual
+# has multiple libraries (e.g. RESUB-*), this selects the plain label first.
+paired_counts <- paired$genetic_sampling_count
+keep_idx <- which(bam_counts %in% paired_counts & bam_labels == as.character(bam_counts))
+count_mat_paired <- count_mat[, keep_idx, drop = FALSE]
+
+# Reorder/relabel columns to the rnaseq_sample IDs, ordered like `paired`.
+label_to_sample <- paired %>%
+  mutate(label = as.character(genetic_sampling_count)) %>%
+  select(label, rnaseq_sample) %>%
+  deframe()
+
+colnames(count_mat_paired) <- label_to_sample[colnames(count_mat_paired)]
+count_mat_paired <- count_mat_paired[, paired$rnaseq_sample[
+  paired$rnaseq_sample %in% colnames(count_mat_paired)], drop = FALSE]
+
+dim(count_mat_paired)
+head(count_mat_paired)
+
+# TODO (lab): if any paired individual is missing here, it means its standard featureCounts
+# column was not found (maybe only a RESUB-* / split library exists). Resolve per the rule
+# you recorded in notebook 21.
+```
+
+## Filter low-count genes and normalize with DESeq2 VST
+
+```{r deseq2-vst}
+has_deseq2 <- quietly_require("DESeq2")
+stopifnot(has_deseq2)
+
+# Light pre-filter: keep genes with a few counts across the (small) paired set.
+keep_genes <- rowSums(count_mat_paired >= 10) >= 3
+count_filt <- count_mat_paired[keep_genes, , drop = FALSE]
+message(glue("Genes kept after pre-filter: {nrow(count_filt)} / {nrow(count_mat_paired)}"))
+
+coldata <- paired %>%
+  filter(rnaseq_sample %in% colnames(count_filt)) %>%
+  mutate(temp_treatment = factor(temp_treatment)) %>%
+  column_to_rownames("rnaseq_sample")
+coldata <- coldata[colnames(count_filt), , drop = FALSE]
+
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = count_filt,
+  colData   = coldata,
+  design    = ~ 1                # design-agnostic transform; modeling happens in 23/DE notebooks
+)
+
+vsd <- DESeq2::vst(dds, blind = TRUE)
+expr_vst <- SummarizedExperiment::assay(vsd)
+
+# Column names -> rnaseq_sample IDs (already are). Write genes x samples.
+expr_vst_df <- as_tibble(expr_vst, rownames = "gene_id")
+readr::write_csv(expr_vst_df, file.path(output_dir, "expression-vst-paired.csv"))
+dim(expr_vst_df)
+```
+
+## Alternative: edgeR logCPM (optional)
+
+```{r edger-logcpm}
+has_edger <- quietly_require("edgeR")
+if (has_edger) {
+  dge <- edgeR::DGEList(counts = count_mat_paired)
+  keep <- edgeR::filterByExpr(dge)
+  dge <- dge[keep, , keep.lib.sizes = FALSE]
+  dge <- edgeR::calcNormFactors(dge)
+  logcpm <- edgeR::cpm(dge, log = TRUE, prior.count = 2)
+  logcpm_df <- as_tibble(logcpm, rownames = "gene_id")
+  readr::write_csv(logcpm_df, file.path(output_dir, "expression-logcpm-paired.csv"))
+  dim(logcpm_df)
+} else {
+  message("edgeR not installed; skipping logCPM alternative.")
+}
+```
+
+# Gene-level methylation matrix (WGBS)
+
+We summarize CpG methylation to **gene-level features** by overlapping each sample's
+CpGs with (a) gene-body intervals and (b) promoter intervals from the genome GTF, then
+computing a **coverage-weighted methylation fraction** per gene:
+
+\[
+\text{methylation}_{gene} = \frac{\sum_{\text{CpG} \in gene} \text{count\_meth}}{\sum_{\text{CpG} \in gene} (\text{count\_meth} + \text{count\_unmeth})}
+\]
+
+This weighted approach is standard (e.g. methylKit/bsseq region summaries) and is more
+robust than averaging per-CpG percentages.
+
+## Build gene-body and promoter ranges from the GTF
+
+```{r build-ranges}
+has_gr  <- quietly_require("GenomicRanges")
+has_gf  <- quietly_require("GenomicFeatures")
+stopifnot(has_gr, has_gf)
+
+# txdbmaker::makeTxDbFromGFF in recent Bioconductor; falls back to GenomicFeatures.
+make_txdb <- function(gtf) {
+  if (quietly_require("txdbmaker")) {
+    txdbmaker::makeTxDbFromGFF(gtf, format = "gtf")
+  } else {
+    GenomicFeatures::makeTxDbFromGFF(gtf, format = "gtf")
+  }
+}
+
+txdb <- make_txdb(gtf_path)
+
+# Gene bodies keyed by gene_id (matches featureCounts -g gene_id).
+gene_bodies <- GenomicFeatures::genes(txdb)
+
+# Promoters: TSS-flanking windows.
+gene_promoters <- GenomicRanges::promoters(
+  gene_bodies,
+  upstream   = promoter_upstream,
+  downstream = promoter_downstream
+)
+
+length(gene_bodies)
+length(gene_promoters)
+
+# IMPORTANT: seqlevels (chromosome names) in the GTF must match the coverage files.
+# Both come from GCF_031168955.1, so they should be NC_/NW_ RefSeq accessions
+# (e.g. "NC_082382.1"). Verify before overlapping:
+# head(GenomeInfoDb::seqlevels(gene_bodies))
+```
+
+## Read coverage files for paired methylation samples
+
+```{r read-coverage}
+# Match the paired WGBS IDs (e.g. "13B") to coverage files in cov_dir.
+all_cov <- list.files(cov_dir, pattern = "\\.cov(\\.gz)?$", full.names = TRUE)
+stopifnot(length(all_cov) > 0)
+
+cov_label <- function(path) sub("\\..*$", "", basename(path))  # "01B.something.cov.gz" -> "01B"
+
+cov_index <- tibble(path = all_cov, meth_sample = map_chr(all_cov, cov_label))
+paired_cov <- cov_index %>% filter(meth_sample %in% paired$meth_sample)
+paired_cov
+
+# coverage2cytosine .cov columns: chr, start, end, perc_meth, count_meth, count_unmeth
+read_cov <- function(path, min_coverage = min_cpg_coverage) {
+  vroom::vroom(
+    path, delim = "\t",
+    col_names = c("chr", "start", "end", "perc_meth", "count_meth", "count_unmeth"),
+    col_types = list(chr = "c", start = "i", end = "i",
+                     perc_meth = "d", count_meth = "i", count_unmeth = "i"),
+    progress = FALSE
+  ) %>%
+    mutate(depth = count_meth + count_unmeth) %>%
+    filter(depth >= min_coverage)
+}
+```
+
+## Overlap CpGs with features and compute weighted methylation
+
+```{r summarize-methylation}
+# Returns a named numeric vector: gene_id -> weighted methylation, for one sample.
+summarize_sample <- function(cov_df, feature_gr, min_cpgs = min_cpgs_per_gene) {
+  cpg_gr <- GenomicRanges::GRanges(
+    seqnames = cov_df$chr,
+    ranges   = IRanges::IRanges(start = cov_df$start, end = cov_df$start),
+    count_meth   = cov_df$count_meth,
+    count_unmeth = cov_df$count_unmeth
+  )
+  hits <- GenomicRanges::findOverlaps(cpg_gr, feature_gr, ignore.strand = TRUE)
+  if (length(hits) == 0) return(tibble(gene_id = character(), meth = numeric()))
+
+  gene_idx <- S4Vectors::subjectHits(hits)
+  cpg_idx  <- S4Vectors::queryHits(hits)
+
+  tibble(
+    gene_id      = names(feature_gr)[gene_idx],
+    count_meth   = cov_df$count_meth[cpg_idx],
+    count_unmeth = cov_df$count_unmeth[cpg_idx]
+  ) %>%
+    group_by(gene_id) %>%
+    summarise(
+      n_cpg = n(),
+      meth  = sum(count_meth) / sum(count_meth + count_unmeth),
+      .groups = "drop"
+    ) %>%
+    filter(n_cpg >= min_cpgs) %>%
+    select(gene_id, meth)
+}
+
+# Build a long table across all paired methylation samples for a given feature set.
+build_meth_matrix <- function(feature_gr) {
+  paired_cov %>%
+    mutate(data = map(path, ~ summarize_sample(read_cov(.x), feature_gr))) %>%
+    select(meth_sample, data) %>%
+    unnest(data) %>%
+    pivot_wider(names_from = meth_sample, values_from = meth)
+}
+
+meth_genebody <- build_meth_matrix(gene_bodies)
+meth_promoter <- build_meth_matrix(gene_promoters)
+
+dim(meth_genebody)
+dim(meth_promoter)
+```
+
+## Relabel methylation columns to the integrated sample key and write
+
+```{r write-methylation}
+# Optionally rename meth columns from "{NN}B" to the matching rnaseq_sample, so that
+# downstream joins use a single shared sample key. We keep BOTH styles documented.
+meth_to_rnaseq <- paired %>% select(meth_sample, rnaseq_sample) %>% deframe()
+
+relabel_meth <- function(df) {
+  cols <- intersect(names(df), names(meth_to_rnaseq))
+  rename_vec <- setNames(cols, unname(meth_to_rnaseq[cols]))
+  df %>% rename(!!!rename_vec)
+}
+
+readr::write_csv(meth_genebody, file.path(output_dir, "methylation-genebody-paired.csv"))
+readr::write_csv(meth_promoter, file.path(output_dir, "methylation-promoter-paired.csv"))
+
+# Also write rnaseq-keyed versions for convenience in 23/24.
+readr::write_csv(relabel_meth(meth_genebody),
+                 file.path(output_dir, "methylation-genebody-paired-rnaseqkey.csv"))
+readr::write_csv(relabel_meth(meth_promoter),
+                 file.path(output_dir, "methylation-promoter-paired-rnaseqkey.csv"))
+```
+
+# Common gene set and summary
+
+```{r common-genes}
+expr_genes <- expr_vst_df$gene_id
+meth_genes <- meth_genebody$gene_id
+common_genes <- intersect(expr_genes, meth_genes)
+message(glue("Common genes (expression ∩ gene-body methylation): {length(common_genes)}"))
+
+writeLines(common_genes, file.path(output_dir, "common-genes.txt"))
+
+feature_summary <- tibble(
+  matrix = c("expression_vst", "methylation_genebody", "methylation_promoter",
+             "common_genes"),
+  n_features = c(length(expr_genes), nrow(meth_genebody), nrow(meth_promoter),
+                 length(common_genes)),
+  n_samples  = c(ncol(expr_vst_df) - 1, ncol(meth_genebody) - 1,
+                 ncol(meth_promoter) - 1, NA_integer_),
+  note = c(
+    "DESeq2 VST, blind, pre-filtered rowSums(counts>=10)>=3",
+    glue("weighted meth; min_depth={min_cpg_coverage}; min_cpgs={min_cpgs_per_gene}"),
+    glue("promoter window -{promoter_upstream}/+{promoter_downstream} bp around TSS"),
+    "expression ∩ gene-body methylation gene IDs"
+  )
+)
+readr::write_csv(feature_summary, file.path(output_dir, "feature-matrix-summary.csv"))
+feature_summary
+```
+
+# Notes, assumptions, and TODOs
+
+- **Coverage directory.** Set `cov_dir` to the actual location of the `*.cov.gz`
+  `coverage2cytosine` files (klone `/gscratch/...` or Owl mirror). Only paired samples
+  are read here.
+- **Seqlevel matching.** The GTF and coverage chromosome names must match (both RefSeq
+  `NC_/NW_` accessions from GCF_031168955.1). If not, harmonize with
+  `GenomeInfoDb::seqlevelsStyle()` before `findOverlaps`.
+- **Feature definition.** Gene-body and promoter (±1 kb / +200 bp) are reasonable defaults.
+  The lab may prefer CpG-island-, exon-, or first-intron-level summaries; the
+  `summarize_sample()` helper accepts any `GRanges` feature set.
+- **Tissue caveat carries over from `21`.** These matrices assume each paired WGBS library
+  is the same tissue as the RNA-seq library (Liver). Confirm before interpreting.
+- **No DE/DMR pre-selection here.** This notebook produces *full* normalized matrices;
+  feature selection (variable genes, DEGs, DMR genes) happens in `23`.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```
