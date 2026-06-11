@@ -37,6 +37,16 @@ output
 
 For any code document, the name should start with a 2 number prefix (eg 01-temp-size-analysis.Rmd). All output from that code should be in a sub-directory of output named the same as the code. For example the output of 01-temp-size-analysis.Rmd would be in output/01-temp-size-analysis.Rmd/
 
+The repo also contains the following additional directories:
+
+```         
+general-notebooks   # phenotype/growth analyses (e.g. 0-Phenotypes)
+lcWGS               # genetic assignment analysis of experimental fish (see lcWGS/README.md)
+reports             # project reports, presentations, and posters
+```
+
+Heavy jobs assume UW Hyak (`klone`) paths; most bash chunks are set `eval = FALSE` and are run manually rather than during knitting. Raw reads and references live off-repo on [Owl](https://owl.fish.washington.edu/) and are referenced via variables defined in each notebook's setup chunk.
+
 ### Analysis of growth, condition, and lipids
 
 Fish (n=40 per treatment, N=160) were tagged prior to the experiment, and per-individual growth metrics were collected to calculate specific growth rates based on wet weights (SGRww) and standard length (SGRsl) during experimental treatments, and Fulton's condition index based on wet weight (Kwet), and hepatosomatic index (HSI) at treatment termination. Please see [0-Phenotypes notebook](https://htmlpreview.github.io/?https://github.com/RobertsLab/project-cod-temperature/blob/main/general-notebooks/0-Phenotypes.html) for details. 
@@ -50,6 +60,20 @@ The workflow for RNAseq data analysis uses the following steps. Visualizations o
 3.  Identify differentially expressed genes (DEGs), and generate associated visualizations (heatmap, volcano plot) (`07-cod-RNAseq-DESeq2`, `07.2.1-cod-RNAseq-DESeq2genome-exon`, `07.2.2-cod-RNAseq-DESeq2-genome-gene`). Differential expression analysis was performed with DESeq2.
 4.  Annotate reference transcriptome/genome to generate a database of transcript/gene IDs and associated gene ontology (GO) terms (`03-transcriptome-annotation`, `03.2-genome-annotation`)
 5.  Identify enriched GO terms (`08-cod-RNAseq-GO-annotation`, `08.2.1-cod-RNAseq-GO-annotation-genome-exon`). Enrichment analysis was performed using DAVID. 
+
+An alternative differential expression analysis using edgeR is also available (`13.0.0-RNAseq-edgeR`).
+
+### Analysis of population structure (lcWGS)
+
+Experimental fish are assigned to known spawning populations based on low-coverage whole-genome sequencing (lcWGS) data from reference fish. The approach combines code from the [AFSC lcWGS pipeline](https://github.com/AFSC-Genetics/lcWGS-pipeline) and the [WGSassign](https://github.com/mgdesaix/amre-adaptation/tree/main) pipeline. All steps are laid out in [01-lcWGS-WGSassign](https://htmlpreview.github.io/?https://github.com/RobertsLab/project-cod-temperature/blob/main/lcWGS/notebooks/01-lcWGS-WGSassign.html), with supporting files in the [`lcWGS/`](lcWGS/) directory. See [`lcWGS/README.md`](lcWGS/README.md) for details.
+
+### Analysis of DNA methylation
+
+Whole-genome bisulfite sequencing (WGBS) data are processed to characterize the DNA methylation landscape across treatments. The workflow:
+
+1. Prepare the bisulfite-converted reference genome with Bismark (`16.2-genome-prep-klone`, `16-bismark.job`).
+2. Run the [nf-core/methylseq](https://nf-co.re/methylseq) pipeline via Nextflow on UW Hyak (`klone`), using `17.nextflow`, `17.config`, `17.samplesheet.csv` (see setup notes in `17.notes`).
+3. Characterize the genome-wide methylation landscape (`18-methylation-landscape`) and perform PCA on methylation profiles across samples (`20-methylation-pca`).
 
 ### See also
 
