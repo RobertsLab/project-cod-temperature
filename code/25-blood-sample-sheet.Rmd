@@ -1,0 +1,259 @@
+---
+title: "25-blood-sample-sheet"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,        # Off-repo data: run manually after checking paths
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+First notebook in the **blood RNA-seq + DNA methylation integration series** (`25`–`30`),
+which implements the plan in [`21-RNAseq-methylation.md`](21-RNAseq-methylation.md).
+
+This series is a **new, self-contained track**: blood from juvenile Pacific cod held at
+two temperatures, with **the same individuals assayed by both WGBS and RNA-seq**, aligned
+to a single reference (`GCF_031168955.1`). It is *separate* from the earlier liver/gill/
+spleen RNA-seq work (`05`–`13`) and the earlier methylation landscape work (`18`, `20`).
+
+**Design**
+
+| Group | Samples (GeneticSamplingCount) | Temperature | Tissue |
+|-------|--------------------------------|-------------|--------|
+| Warm  | 1–36                           | 16 °C       | Blood  |
+| Cold  | 44–74                          | 0 °C        | Blood  |
+
+**The integration key is the sample ID** `{NN}B` (e.g. `01B`), which is **identical
+across both assays** (verified against the Owl directory listings), so unlike the earlier
+liver track there is no ambiguous crosswalk — the WGBS file `13B_*.fastq.gz` and the
+RNA-seq file `13B_*.fastq.gz` are the same fish (GeneticSamplingCount 13).
+
+**Raw data (Owl)**
+
+- WGBS: <http://owl.fish.washington.edu/nightingales/G_macrocephalus/AN00025267/>
+- RNA-seq: <http://owl.fish.washington.edu/nightingales/G_macrocephalus/AN00025268/>
+
+**Reference genome**
+
+- NCBI RefSeq `GCF_031168955.1` (assembly `ASM3116895v1`).
+  <https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_031168955.1/>
+
+## Outputs (written to `output/25-blood-sample-sheet/`)
+
+- `blood-sample-metadata.csv` — one row per individual: `meth_sample` (`{NN}B`),
+  `genetic_sampling_count`, `temp_treatment`, group, plus dissection covariates.
+- `samplesheet-rnaseq.csv` — nf-core/Flexbar-style sheet (sample, fastq_1, fastq_2).
+- `samplesheet-wgbs.csv` — nf-core/methylseq sheet (sample, fastq_1, fastq_2).
+- `paired-samples.csv` — individuals with BOTH assays present on Owl (the integration set).
+
+# Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+library(rvest)   # parse the Owl directory index; install if needed
+```
+
+# Paths and configuration
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+
+owl_base   <- "http://owl.fish.washington.edu/nightingales/G_macrocephalus"
+wgbs_url   <- glue("{owl_base}/AN00025267/")
+rnaseq_url <- glue("{owl_base}/AN00025268/")
+
+# Where the FASTQs will live when staged on klone for the pipelines.
+wgbs_fastq_dir   <- "/gscratch/coenv/sr320/cod-blood-bs"
+rnaseq_fastq_dir <- "/gscratch/coenv/sr320/cod-blood-rna"
+
+temp_exp_path <- file.path(project_root, "data/temp-experiment.csv")
+output_dir    <- file.path(project_root, "output/25-blood-sample-sheet")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Group definition (from 21-RNAseq-methylation.md).
+warm_range <- 1:36    # 16 C
+cold_range <- 44:74   # 0 C
+```
+
+# Discover samples from the Owl directory listings
+
+```{r list-owl, eval=TRUE}
+# Parse an Apache directory index and return the *_1.fastq.gz basenames -> sample IDs.
+list_samples <- function(url) {
+  links <- rvest::read_html(url) %>%
+    rvest::html_elements("a") %>%
+    rvest::html_attr("href")
+  r1 <- links[str_detect(links, "_1\\.fastq\\.gz$")]
+  tibble(
+    fastq_1 = r1,
+    fastq_2 = str_replace(r1, "_1\\.fastq\\.gz$", "_2.fastq.gz"),
+    sample  = str_remove(r1, "_1\\.fastq\\.gz$")   # e.g. "01B"
+  )
+}
+
+wgbs_files   <- list_samples(wgbs_url)   %>% mutate(assay = "wgbs")
+rnaseq_files <- list_samples(rnaseq_url) %>% mutate(assay = "rnaseq")
+
+bind_rows(wgbs_files, rnaseq_files) %>% count(assay)
+```
+
+# Build the integrated sample table
+
+```{r build-table, eval=TRUE}
+# "01B" -> 1 ; strip trailing B and leading zeros.
+count_from_id <- function(x) as.integer(str_extract(x, "^\\d+"))
+
+assign_group <- function(n) {
+  case_when(
+    n %in% warm_range ~ "warm",
+    n %in% cold_range ~ "cold",
+    TRUE              ~ NA_character_
+  )
+}
+assign_temp <- function(n) {
+  case_when(
+    n %in% warm_range ~ 16L,
+    n %in% cold_range ~ 0L,
+    TRUE              ~ NA_integer_
+  )
+}
+
+assay_avail <- bind_rows(wgbs_files, rnaseq_files) %>%
+  distinct(sample, assay) %>%
+  mutate(present = TRUE) %>%
+  pivot_wider(names_from = assay, values_from = present, values_fill = FALSE) %>%
+  rename(has_wgbs = wgbs, has_rnaseq = rnaseq)
+
+sample_meta <- assay_avail %>%
+  mutate(
+    genetic_sampling_count = count_from_id(sample),
+    group          = assign_group(genetic_sampling_count),
+    temp_treatment = assign_temp(genetic_sampling_count),
+    paired         = has_wgbs & has_rnaseq
+  ) %>%
+  arrange(genetic_sampling_count)
+
+sample_meta
+```
+
+## Attach dissection covariates
+
+```{r join-covariates, eval=TRUE}
+temp_exp <- readr::read_csv(temp_exp_path, show_col_types = FALSE)
+
+temp_exp_keyed <- temp_exp %>%
+  rename(genetic_sampling_count = GeneticSamplingCount) %>%
+  transmute(
+    genetic_sampling_count,
+    microchip_id      = `Microchip ID`,
+    exp_tank          = Tank,
+    exp_temp          = Temperature,
+    sl_mm             = SL_mm,
+    whole_body_ww_g   = WholeBodyWW_g,
+    dissection_date   = DissectionDate
+  ) %>%
+  filter(!is.na(genetic_sampling_count)) %>%
+  distinct(genetic_sampling_count, .keep_all = TRUE)
+
+sample_meta <- sample_meta %>%
+  left_join(temp_exp_keyed, by = "genetic_sampling_count")
+
+# Sanity check: the experiment table's recorded Temperature should agree with the
+# group assignment from 21-RNAseq-methylation.md. Flag any disagreements.
+sample_meta %>%
+  filter(!is.na(exp_temp), exp_temp != temp_treatment) %>%
+  select(sample, genetic_sampling_count, temp_treatment, exp_temp)
+
+readr::write_csv(sample_meta, file.path(output_dir, "blood-sample-metadata.csv"))
+```
+
+# Write pipeline sample sheets
+
+```{r write-samplesheets, eval=TRUE}
+# methylseq / RNA-seq sheets point at the staged klone paths.
+make_sheet <- function(files, fastq_dir) {
+  files %>%
+    transmute(
+      sample,
+      fastq_1 = file.path(fastq_dir, basename(fastq_1)),
+      fastq_2 = file.path(fastq_dir, basename(fastq_2))
+    ) %>%
+    arrange(sample)
+}
+
+readr::write_csv(make_sheet(wgbs_files,   wgbs_fastq_dir),
+                 file.path(output_dir, "samplesheet-wgbs.csv"))
+readr::write_csv(make_sheet(rnaseq_files, rnaseq_fastq_dir),
+                 file.path(output_dir, "samplesheet-rnaseq.csv"))
+
+paired <- sample_meta %>% filter(paired) %>%
+  select(sample, genetic_sampling_count, group, temp_treatment,
+         microchip_id, exp_tank)
+readr::write_csv(paired, file.path(output_dir, "paired-samples.csv"))
+
+glue("WGBS samples: {nrow(wgbs_files)} | RNA-seq samples: {nrow(rnaseq_files)} | ",
+     "paired (both assays): {nrow(paired)}")
+```
+
+# Download helper (run on klone)
+
+```{bash download, eval=FALSE}
+# Stage raw reads onto klone scratch before running the pipelines.
+mkdir -p /gscratch/coenv/sr320/cod-blood-bs /gscratch/coenv/sr320/cod-blood-rna
+
+wget -r -np -nd -A "*.fastq.gz" \
+  -P /gscratch/coenv/sr320/cod-blood-bs \
+  http://owl.fish.washington.edu/nightingales/G_macrocephalus/AN00025267/
+
+wget -r -np -nd -A "*.fastq.gz","*.md5" \
+  -P /gscratch/coenv/sr320/cod-blood-rna \
+  http://owl.fish.washington.edu/nightingales/G_macrocephalus/AN00025268/
+
+# Verify RNA-seq checksums (Azenta provides per-sample .md5)
+cd /gscratch/coenv/sr320/cod-blood-rna && md5sum -c *.md5
+```
+
+# Notes, assumptions, and TODOs
+
+- **Shared ID = same fish.** Both Owl directories use `{NN}B` IDs; this notebook assumes
+  `13B` in WGBS and `13B` in RNA-seq are the same individual (GeneticSamplingCount 13).
+  This is the documented convention but should be confirmed against dissection/microchip
+  records, especially for any IDs present in only one assay.
+- **Group boundaries.** `warm_range`/`cold_range` encode the 1–36 = 16 °C and 44–74 = 0 °C
+  split from `21-RNAseq-methylation.md`. The `exp_temp` cross-check above will surface any
+  IDs whose recorded experiment temperature disagrees.
+- **Tissue.** All libraries here are **blood** (note the `B` suffix), unlike the liver
+  RNA-seq in `07.*`. Do not mix these count matrices.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

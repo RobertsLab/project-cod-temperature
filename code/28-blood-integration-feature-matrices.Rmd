@@ -1,0 +1,131 @@
+---
+title: "28-blood-integration-feature-matrices"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Fourth notebook in the blood integration series (`25`–`30`). It assembles **matched
+feature matrices** so the integration in `29` operates on the same genes and the same
+**paired individuals** across both assays.
+
+Because blood WGBS and RNA-seq share the `{NN}B` sample ID (verified in `25`), no
+crosswalk is needed — matrices are joined directly on sample ID and on `gene_id`.
+
+Three matrices, restricted to paired samples:
+
+1. **Gene expression** — DESeq2 VST from `26` (genes × `{NN}B`).
+2. **Gene-body methylation** — weighted CpG fraction from `27`.
+3. **Promoter methylation** — same, over TSS-flanking windows.
+
+## Inputs
+
+- `output/25-blood-sample-sheet/paired-samples.csv`
+- `output/26-blood-RNAseq-align-DESeq2/deseq2-vst.csv`
+- `output/27-blood-WGBS-methylation-DMR/genebody-methylation.csv`
+- `output/27-blood-WGBS-methylation-DMR/promoter-methylation.csv`
+
+## Outputs (written to `output/28-blood-integration-feature-matrices/`)
+
+- `expression-vst-paired.csv`, `methylation-genebody-paired.csv`,
+  `methylation-promoter-paired.csv`
+- `common-genes.txt`, `feature-matrix-summary.csv`
+
+# Load packages and paths
+
+```{r load, eval=TRUE}
+library(tidyverse)
+library(glue)
+
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+in25 <- file.path(project_root, "output/25-blood-sample-sheet")
+in26 <- file.path(project_root, "output/26-blood-RNAseq-align-DESeq2")
+in27 <- file.path(project_root, "output/27-blood-WGBS-methylation-DMR")
+output_dir <- file.path(project_root, "output/28-blood-integration-feature-matrices")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+```
+
+```{r read-inputs}
+paired  <- readr::read_csv(file.path(in25, "paired-samples.csv"), show_col_types = FALSE)
+expr    <- readr::read_csv(file.path(in26, "deseq2-vst.csv"), show_col_types = FALSE)
+meth_gb <- readr::read_csv(file.path(in27, "genebody-methylation.csv"), show_col_types = FALSE)
+meth_pr <- readr::read_csv(file.path(in27, "promoter-methylation.csv"), show_col_types = FALSE)
+
+# Paired samples present in BOTH matrices (shared {NN}B key).
+paired_ids <- paired$sample
+expr_ids   <- intersect(paired_ids, setdiff(names(expr), "gene_id"))
+meth_ids   <- intersect(paired_ids, setdiff(names(meth_gb), "gene_id"))
+shared_ids <- intersect(expr_ids, meth_ids)
+message(glue("Paired samples usable in both assays: {length(shared_ids)}"))
+stopifnot(length(shared_ids) >= 3)
+```
+
+# Restrict matrices to shared samples and common genes
+
+```{r restrict}
+sel <- function(df) df %>% select(gene_id, all_of(shared_ids))
+expr_p    <- sel(expr)
+meth_gb_p <- sel(meth_gb)
+meth_pr_p <- sel(meth_pr)
+
+readr::write_csv(expr_p,    file.path(output_dir, "expression-vst-paired.csv"))
+readr::write_csv(meth_gb_p, file.path(output_dir, "methylation-genebody-paired.csv"))
+readr::write_csv(meth_pr_p, file.path(output_dir, "methylation-promoter-paired.csv"))
+
+common_genes <- intersect(expr_p$gene_id, meth_gb_p$gene_id)
+writeLines(common_genes, file.path(output_dir, "common-genes.txt"))
+
+feature_summary <- tibble(
+  matrix = c("expression_vst", "methylation_genebody", "methylation_promoter", "common_genes"),
+  n_features = c(nrow(expr_p), nrow(meth_gb_p), nrow(meth_pr_p), length(common_genes)),
+  n_samples  = c(length(shared_ids), length(shared_ids), length(shared_ids), NA_integer_)
+)
+readr::write_csv(feature_summary, file.path(output_dir, "feature-matrix-summary.csv"))
+feature_summary
+```
+
+# Notes
+
+- **Single shared key.** No `{NN}B ↔ sample_{N}` translation is required for blood; both
+  assays use `{NN}B`. If an individual is missing from one matrix it is simply dropped
+  from the integration set.
+- **No feature pre-selection here.** Full normalized matrices are written; DEG/DMR-based
+  selection happens in `29`.
+- **gene_id consistency.** Expression `gene_id` (featureCounts `-g gene_id`, `26`) must be
+  the same identifier used when summarizing methylation to genes (`27`); both derive from
+  the `GCF_031168955.1` GTF.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

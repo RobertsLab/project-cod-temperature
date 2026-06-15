@@ -1,0 +1,274 @@
+---
+title: "26-blood-RNAseq-align-DESeq2"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,        # Heavy compute (klone): run manually
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Second notebook in the blood integration series (`25`–`30`). It takes the **blood RNA-seq**
+reads (`AN00025268`) from raw FASTQ to a **gene-level count matrix** and a **DESeq2
+differential expression** result for **16 °C vs 0 °C**, aligned to `GCF_031168955.1`.
+
+This mirrors the established liver workflow (`05` trim, `06.2` HISAT2 + featureCounts,
+`07.2.2` DESeq2) but is rebuilt for blood and the two-group design so its outputs share
+the `{NN}B` sample key with the methylation track (`27`).
+
+## Inputs
+
+- `output/25-blood-sample-sheet/samplesheet-rnaseq.csv`, `blood-sample-metadata.csv`.
+- Reference: `GCF_031168955.1` genomic FASTA + GFF (staged on klone, off-repo).
+
+## Outputs (written to `output/26-blood-RNAseq-align-DESeq2/`)
+
+- `gene_counts_matrix.txt` — featureCounts gene-level counts (genes × `{NN}B`).
+- `deseq2-results-16v0.csv` — full DESeq2 results table.
+- `deseq2-DEGs-sig.csv` — significant DEGs (padj < 0.05).
+- `deseq2-normalized-counts.csv` — normalized counts for downstream integration.
+- `volcano-16v0.png`, `heatmap-DEGs.png`, `PCA.png`.
+
+# Reference preparation (klone)
+
+```{bash get-reference, eval=FALSE}
+# Download GCF_031168955.1 genome + annotation from NCBI datasets.
+cd /gscratch/coenv/sr320/cod-ref
+datasets download genome accession GCF_031168955.1 \
+  --include genome,gff3,gtf
+unzip -o ncbi_dataset.zip
+# Resulting files (paths used below):
+#   ncbi_dataset/data/GCF_031168955.1/GCF_031168955.1_ASM3116895v1_genomic.fna
+#   ncbi_dataset/data/GCF_031168955.1/genomic.gtf
+```
+
+# 1. QC and trimming
+
+```{bash fastqc-raw, eval=FALSE}
+# FastQC + MultiQC on raw reads
+mkdir -p output/26-blood-RNAseq-align-DESeq2/fastqc-raw
+fastqc -t 16 -o output/26-blood-RNAseq-align-DESeq2/fastqc-raw \
+  /gscratch/coenv/sr320/cod-blood-rna/*.fastq.gz
+multiqc output/26-blood-RNAseq-align-DESeq2/fastqc-raw \
+  -o output/26-blood-RNAseq-align-DESeq2/fastqc-raw
+```
+
+```{bash trim, eval=FALSE}
+# Trim with Flexbar (matching 05-cod-RNAseq-trimming conventions).
+RAW=/gscratch/coenv/sr320/cod-blood-rna
+TRIM=/gscratch/coenv/sr320/cod-blood-rna/trimmed
+mkdir -p $TRIM
+
+for r1 in $RAW/*_1.fastq.gz; do
+  s=$(basename $r1 _1.fastq.gz)      # e.g. 13B
+  flexbar \
+    -r $RAW/${s}_1.fastq.gz \
+    -p $RAW/${s}_2.fastq.gz \
+    -a /gscratch/coenv/sr320/cod-ref/illumina_adapters.fa \
+    -ap ON -qtrim TAIL -qtrim-format i1.8 -qtrim-threshold 25 \
+    -m 36 -n 16 \
+    -t $TRIM/${s}.flexbar_trim
+done
+```
+
+# 2. Align to genome (HISAT2) and count (featureCounts)
+
+```{bash hisat2-build, eval=FALSE}
+REF=/gscratch/coenv/sr320/cod-ref/ncbi_dataset/data/GCF_031168955.1
+hisat2-build -p 16 \
+  $REF/GCF_031168955.1_ASM3116895v1_genomic.fna \
+  /gscratch/coenv/sr320/cod-ref/GCF_031168955.1_hisat2
+```
+
+```{bash hisat2-align, eval=FALSE}
+TRIM=/gscratch/coenv/sr320/cod-blood-rna/trimmed
+IDX=/gscratch/coenv/sr320/cod-ref/GCF_031168955.1_hisat2
+BAM=output/26-blood-RNAseq-align-DESeq2/bam
+mkdir -p $BAM
+
+for r1 in $TRIM/*.flexbar_trim_1.fastq.gz; do
+  s=$(basename $r1 .flexbar_trim_1.fastq.gz)   # e.g. 13B
+  hisat2 -p 16 --dta -x $IDX \
+    -1 $TRIM/${s}.flexbar_trim_1.fastq.gz \
+    -2 $TRIM/${s}.flexbar_trim_2.fastq.gz \
+    2> $BAM/${s}.hisat2.log \
+  | samtools sort -@ 16 -o $BAM/${s}.sorted.bam
+  samtools index $BAM/${s}.sorted.bam
+done
+multiqc $BAM -o $BAM
+```
+
+```{bash featurecounts, eval=FALSE}
+REF=/gscratch/coenv/sr320/cod-ref/ncbi_dataset/data/GCF_031168955.1
+BAM=output/26-blood-RNAseq-align-DESeq2/bam
+OUT=output/26-blood-RNAseq-align-DESeq2
+
+# NCBI GTF: gene-level counts keyed by gene_id (e.g. LOC132...). Name BAMs as {NN}B.sorted.bam
+featureCounts -T 16 -p --countReadPairs -t exon -g gene_id \
+  -a $REF/genomic.gtf \
+  -o $OUT/gene_counts_matrix.txt \
+  $BAM/*.sorted.bam
+```
+
+# 3. Differential expression (DESeq2)
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+```
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+counts_path <- file.path(project_root,
+  "output/26-blood-RNAseq-align-DESeq2/gene_counts_matrix.txt")
+meta_path   <- file.path(project_root, "output/25-blood-sample-sheet/blood-sample-metadata.csv")
+output_dir  <- file.path(project_root, "output/26-blood-RNAseq-align-DESeq2")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+padj_alpha <- 0.05
+lfc_thresh <- 1     # |log2FC| > 1 for "significant" call
+```
+
+```{r import-counts}
+# featureCounts: line 1 is the command comment; line 2 is the header.
+fc <- readr::read_tsv(counts_path, skip = 1, show_col_types = FALSE)
+annot_cols <- c("Geneid", "Chr", "Start", "End", "Strand", "Length")
+
+count_mat <- fc %>%
+  select(Geneid, all_of(setdiff(names(fc), annot_cols))) %>%
+  column_to_rownames("Geneid") %>%
+  as.matrix()
+
+# Clean BAM-path column names to {NN}B sample IDs.
+colnames(count_mat) <- colnames(count_mat) %>%
+  basename() %>% str_remove("\\.sorted\\.bam$")
+dim(count_mat)
+```
+
+```{r deseq2}
+has_deseq2 <- quietly_require("DESeq2"); stopifnot(has_deseq2)
+
+meta <- readr::read_csv(meta_path, show_col_types = FALSE) %>%
+  filter(sample %in% colnames(count_mat)) %>%
+  mutate(temp_treatment = factor(temp_treatment, levels = c(0, 16))) %>%  # 0 = reference
+  column_to_rownames("sample")
+count_mat <- count_mat[, rownames(meta), drop = FALSE]
+
+# Pre-filter low-count genes.
+keep <- rowSums(count_mat >= 10) >= 3
+count_filt <- count_mat[keep, , drop = FALSE]
+message(glue("Genes kept: {nrow(count_filt)} / {nrow(count_mat)}"))
+
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = count_filt,
+  colData   = meta,
+  design    = ~ temp_treatment
+)
+dds <- DESeq2::DESeq(dds)
+
+# Contrast: 16 C vs 0 C (positive log2FC = higher in warm).
+res <- DESeq2::results(dds, contrast = c("temp_treatment", "16", "0"))
+res_df <- as_tibble(as.data.frame(res), rownames = "gene_id") %>% arrange(padj)
+readr::write_csv(res_df, file.path(output_dir, "deseq2-results-16v0.csv"))
+
+degs <- res_df %>% filter(!is.na(padj), padj < padj_alpha, abs(log2FoldChange) > lfc_thresh)
+readr::write_csv(degs, file.path(output_dir, "deseq2-DEGs-sig.csv"))
+message(glue("Significant DEGs (padj<{padj_alpha}, |log2FC|>{lfc_thresh}): {nrow(degs)}"))
+
+# Normalized counts + VST for downstream integration.
+norm_counts <- DESeq2::counts(dds, normalized = TRUE)
+readr::write_csv(as_tibble(norm_counts, rownames = "gene_id"),
+                 file.path(output_dir, "deseq2-normalized-counts.csv"))
+vsd <- DESeq2::vst(dds, blind = TRUE)
+readr::write_csv(as_tibble(SummarizedExperiment::assay(vsd), rownames = "gene_id"),
+                 file.path(output_dir, "deseq2-vst.csv"))
+```
+
+# 4. Visualizations
+
+```{r figures}
+library(ggplot2)
+
+# Volcano
+volc <- res_df %>% mutate(
+  sig = !is.na(padj) & padj < padj_alpha & abs(log2FoldChange) > lfc_thresh)
+p_volc <- ggplot(volc, aes(log2FoldChange, -log10(pvalue), color = sig)) +
+  geom_point(alpha = 0.5, size = 1.6) +
+  scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "grey70")) +
+  geom_vline(xintercept = c(-lfc_thresh, lfc_thresh), linetype = "dotted") +
+  labs(title = "Blood RNA-seq: 16 °C vs 0 °C", x = "log2 fold change (16 vs 0)",
+       y = expression(-log[10](p))) +
+  theme_bw()
+ggsave(file.path(output_dir, "volcano-16v0.png"), p_volc, width = 7, height = 5, dpi = 300)
+
+# PCA
+pca <- DESeq2::plotPCA(vsd, intgroup = "temp_treatment", returnData = TRUE)
+pv <- round(100 * attr(pca, "percentVar"))
+p_pca <- ggplot(pca, aes(PC1, PC2, color = temp_treatment, label = name)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c(`0` = "#2166AC", `16` = "#B2182B"), name = "Temp (°C)") +
+  labs(x = glue("PC1 ({pv[1]}%)"), y = glue("PC2 ({pv[2]}%)"),
+       title = "Blood RNA-seq PCA") + theme_bw()
+ggsave(file.path(output_dir, "PCA.png"), p_pca, width = 7, height = 5, dpi = 300)
+
+# Heatmap of significant DEGs
+if (quietly_require("pheatmap") && nrow(degs) > 1) {
+  m <- SummarizedExperiment::assay(vsd)[degs$gene_id, , drop = FALSE]
+  m <- t(scale(t(m)))
+  ann <- as.data.frame(meta["temp_treatment"])
+  pheatmap::pheatmap(m, annotation_col = ann, show_rownames = FALSE,
+    main = "Significant DEGs (VST, row z-score)",
+    filename = file.path(output_dir, "heatmap-DEGs.png"), width = 8, height = 8)
+}
+```
+
+# Notes, assumptions, and TODOs
+
+- **Reference consistency.** Use the *same* `GCF_031168955.1` assembly and chromosome
+  accessions (`NC_0823..`) as the methylation track (`27`) so gene IDs and coordinates
+  join cleanly in `28`.
+- **gene_id attribute.** NCBI GTF uses `gene_id` like `LOC132...`; confirm the
+  `featureCounts -g gene_id` column matches the `gene_id` used when summarizing
+  methylation to genes in `28`.
+- **Alternative DE.** An edgeR path (cf. `13.0.0`) can be added if preferred; DESeq2 is the
+  headline here for consistency with `07.2.2`.
+- **Batch/covariates.** If tank or extraction batch is a concern, add it to the design
+  (`~ tank + temp_treatment`) — covariates are available in `blood-sample-metadata.csv`.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

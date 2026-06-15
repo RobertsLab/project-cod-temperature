@@ -1,0 +1,256 @@
+---
+title: "29-blood-integration-analysis"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Fifth notebook in the blood integration series (`25`–`30`). It performs the core
+**expression ↔ methylation integration** to address the project question: *how does DNA
+methylation relate to gene expression, and which thermally-responsive genes appear to be
+under epigenetic control?*
+
+Four analyses:
+
+1. **Genome-wide relationship.** Across all genes, relate mean methylation (promoter and
+   gene-body) to mean expression level — establishes the baseline epigenetic pattern
+   (expected: promoter meth ↓ expression; gene-body meth ↑ expression).
+2. **Per-gene correlation** of expression vs methylation across paired individuals
+   (BH FDR), separately for gene-body and promoter.
+3. **DEG × DMG overlap (the headline).** Cross the temperature DEGs (`26`) with the
+   differentially methylated genes (`27`) into a four-quadrant table (e.g. promoter-
+   hypermethylated + down-regulated) — the candidate epigenetically-controlled thermal
+   response genes.
+4. **Joint multivariate view** (PCA; optional mixOmics DIABLO) to see whether the combined
+   omics separate 16 °C vs 0 °C.
+
+## Inputs
+
+- `output/25-blood-sample-sheet/paired-samples.csv`
+- `output/26-blood-RNAseq-align-DESeq2/deseq2-results-16v0.csv`
+- `output/27-blood-WGBS-methylation-DMR/gene-methylation-diff.csv`
+- `output/28-blood-integration-feature-matrices/*` (paired matrices, common-genes)
+
+## Outputs (written to `output/29-blood-integration-analysis/`)
+
+- `genome-wide-meth-expr.csv` — binned methylation vs mean expression.
+- `gene-expr-meth-correlation.csv` — per-gene r/rho, p, FDR (gene-body & promoter).
+- `deg-dmg-overlap.csv` — DEG × DMG quadrant assignments for candidate genes.
+- `joint-pca-scores.csv`, `joint-pca-variance.csv`, `diablo-loadings.csv` (optional).
+
+# Load packages and paths
+
+```{r load, eval=TRUE}
+library(tidyverse)
+library(glue)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+in25 <- file.path(project_root, "output/25-blood-sample-sheet")
+in26 <- file.path(project_root, "output/26-blood-RNAseq-align-DESeq2")
+in27 <- file.path(project_root, "output/27-blood-WGBS-methylation-DMR")
+in28 <- file.path(project_root, "output/28-blood-integration-feature-matrices")
+output_dir <- file.path(project_root, "output/29-blood-integration-analysis")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+cor_method <- "spearman"
+fdr_alpha  <- 0.05
+padj_alpha <- 0.05
+lfc_thresh <- 1
+```
+
+```{r read-inputs}
+paired   <- readr::read_csv(file.path(in25, "paired-samples.csv"), show_col_types = FALSE)
+deg      <- readr::read_csv(file.path(in26, "deseq2-results-16v0.csv"), show_col_types = FALSE)
+gene_meth_diff <- readr::read_csv(file.path(in27, "gene-methylation-diff.csv"),
+                                  show_col_types = FALSE)
+expr     <- readr::read_csv(file.path(in28, "expression-vst-paired.csv"), show_col_types = FALSE)
+meth_gb  <- readr::read_csv(file.path(in28, "methylation-genebody-paired.csv"),
+                            show_col_types = FALSE)
+meth_pr  <- readr::read_csv(file.path(in28, "methylation-promoter-paired.csv"),
+                            show_col_types = FALSE)
+
+sample_ids <- intersect(setdiff(names(expr), "gene_id"), setdiff(names(meth_gb), "gene_id"))
+sample_ids <- paired$sample[paired$sample %in% sample_ids]
+to_matrix <- function(df) df %>% select(gene_id, all_of(sample_ids)) %>%
+  column_to_rownames("gene_id") %>% as.matrix()
+expr_m    <- to_matrix(expr)
+meth_gb_m <- to_matrix(meth_gb)
+meth_pr_m <- to_matrix(meth_pr)
+```
+
+# 1. Genome-wide methylation–expression relationship
+
+```{r genome-wide}
+mean_expr <- tibble(gene_id = rownames(expr_m), mean_expr = rowMeans(expr_m, na.rm = TRUE))
+mean_gb   <- tibble(gene_id = rownames(meth_gb_m), gene_body = rowMeans(meth_gb_m, na.rm = TRUE))
+mean_pr   <- tibble(gene_id = rownames(meth_pr_m), promoter  = rowMeans(meth_pr_m, na.rm = TRUE))
+
+gw <- mean_expr %>% left_join(mean_gb, by = "gene_id") %>% left_join(mean_pr, by = "gene_id")
+
+# Bin by methylation decile and summarize expression — the canonical curve.
+gw_binned <- gw %>%
+  pivot_longer(c(gene_body, promoter), names_to = "feature", values_to = "methylation") %>%
+  filter(is.finite(methylation), is.finite(mean_expr)) %>%
+  group_by(feature) %>%
+  mutate(meth_bin = ntile(methylation, 10)) %>%
+  group_by(feature, meth_bin) %>%
+  summarise(mean_expr = mean(mean_expr), n = n(), .groups = "drop")
+readr::write_csv(gw_binned, file.path(output_dir, "genome-wide-meth-expr.csv"))
+gw_binned
+```
+
+# 2. Per-gene expression–methylation correlation
+
+```{r per-gene-corr}
+cor_one <- function(x, y, method = cor_method) {
+  ok <- is.finite(x) & is.finite(y)
+  if (sum(ok) < 4) return(c(estimate = NA_real_, p.value = NA_real_, n = sum(ok)))
+  ct <- suppressWarnings(cor.test(x[ok], y[ok], method = method))
+  c(estimate = unname(ct$estimate), p.value = ct$p.value, n = sum(ok))
+}
+correlate_block <- function(meth_mat, label) {
+  genes <- intersect(rownames(expr_m), rownames(meth_mat))
+  map_dfr(genes, function(g) {
+    s <- cor_one(expr_m[g, sample_ids], meth_mat[g, sample_ids])
+    tibble(gene_id = g, feature = label,
+           estimate = s["estimate"], p_value = s["p.value"], n = s["n"])
+  }) %>% mutate(fdr = p.adjust(p_value, "BH")) %>% arrange(fdr, p_value)
+}
+cor_all <- bind_rows(correlate_block(meth_gb_m, "gene_body"),
+                     correlate_block(meth_pr_m, "promoter"))
+readr::write_csv(cor_all, file.path(output_dir, "gene-expr-meth-correlation.csv"))
+cor_all %>% filter(fdr < fdr_alpha) %>% head(20)
+```
+
+# 3. DEG × DMG overlap (candidate epigenetically-controlled genes)
+
+```{r deg-dmg}
+deg_tagged <- deg %>%
+  transmute(gene_id,
+            log2FoldChange,
+            deg_sig = !is.na(padj) & padj < padj_alpha & abs(log2FoldChange) > lfc_thresh,
+            expr_dir = if_else(log2FoldChange > 0, "up_warm", "down_warm"))
+
+dmg_tagged <- gene_meth_diff %>%
+  transmute(gene_id,
+            delta,                              # mean gene-body meth (16 - 0)
+            dmg_sig = !is.na(fdr) & fdr < fdr_alpha,
+            meth_dir = if_else(delta > 0, "hyper_warm", "hypo_warm"))
+
+overlap <- deg_tagged %>%
+  inner_join(dmg_tagged, by = "gene_id") %>%
+  mutate(quadrant = paste(expr_dir, meth_dir, sep = " / "),
+         candidate = deg_sig & dmg_sig)
+
+readr::write_csv(overlap, file.path(output_dir, "deg-dmg-overlap.csv"))
+
+# Quadrant counts among genes significant in BOTH assays.
+overlap %>% filter(candidate) %>% count(quadrant, sort = TRUE)
+message(glue("DEG ∩ DMG candidates: {sum(overlap$candidate)}"))
+```
+
+# 4. Joint PCA
+
+```{r joint-pca}
+top_var <- function(mat, n = 1000) {
+  v <- apply(mat, 1, var, na.rm = TRUE)
+  mat[order(v, decreasing = TRUE)[seq_len(min(n, sum(is.finite(v))))], , drop = FALSE]
+}
+zrows <- function(mat) t(scale(t(mat)))
+expr_top <- zrows(top_var(expr_m)); meth_top <- zrows(top_var(meth_gb_m))
+expr_top <- expr_top[is.finite(rowSums(expr_top)), , drop = FALSE]
+meth_top <- meth_top[is.finite(rowSums(meth_top)), , drop = FALSE]
+rownames(expr_top) <- paste0("expr__", rownames(expr_top))
+rownames(meth_top) <- paste0("meth__", rownames(meth_top))
+joint <- t(rbind(expr_top, meth_top))
+
+pc <- prcomp(joint, center = FALSE, scale. = FALSE)
+ve <- (pc$sdev^2) / sum(pc$sdev^2)
+joint_scores <- as_tibble(pc$x[, seq_len(min(5, ncol(pc$x)))], rownames = "sample") %>%
+  left_join(paired, by = "sample")
+readr::write_csv(joint_scores, file.path(output_dir, "joint-pca-scores.csv"))
+readr::write_csv(tibble(PC = paste0("PC", seq_along(ve)), var_explained = ve) %>%
+                   slice_head(n = 10),
+                 file.path(output_dir, "joint-pca-variance.csv"))
+joint_scores
+```
+
+# 5. Optional: mixOmics DIABLO
+
+```{r diablo}
+has_mixomics <- quietly_require("mixOmics")
+if (!has_mixomics) {
+  message("mixOmics not installed; skipping DIABLO.")
+} else {
+  X <- list(expression = t(expr_top), methylation = t(meth_top))
+  Y <- paired %>% filter(sample %in% rownames(X$expression)) %>%
+    arrange(match(sample, rownames(X$expression))) %>% pull(group) %>% factor()
+  design <- matrix(0.5, length(X), length(X), dimnames = list(names(X), names(X)))
+  diag(design) <- 0
+  diablo <- mixOmics::block.splsda(X = X, Y = Y, ncomp = 2,
+    keepX = list(expression = c(15, 15), methylation = c(15, 15)), design = design)
+  loadings_tbl <- map_dfr(names(X), function(blk) map_dfr(1:2, function(cc) {
+    val <- mixOmics::selectVar(diablo, block = blk, comp = cc)[[blk]]$value
+    tibble(block = blk, comp = cc, feature = rownames(val), loading = val[, 1])
+  }))
+  readr::write_csv(loadings_tbl, file.path(output_dir, "diablo-loadings.csv"))
+  loadings_tbl %>% group_by(block, comp) %>% slice_max(abs(loading), n = 5)
+}
+```
+
+```{r session-info, eval=TRUE}
+writeLines(capture.output(sessionInfo()),
+           file.path(output_dir, "integration-session-info.txt"))
+sessionInfo()
+```
+
+# Notes, assumptions, and TODOs
+
+- **Direction of effect.** Negative promoter-meth ↔ expression is the classic silencing
+  pattern; gene-body methylation often correlates positively with expression. Interpret
+  the sign by feature type, and read the DEG×DMG quadrants accordingly (the
+  `down_warm / hyper_warm` and `up_warm / hypo_warm` promoter quadrants are the cleanest
+  "epigenetic control" candidates).
+- **Confounding by treatment.** A per-gene expression–methylation correlation may reflect
+  both responding to temperature rather than a direct regulatory link. Consider partial
+  correlation controlling for group, or correlating within-group as n allows.
+- **Power.** Treat per-gene results as hypothesis-generating; lean on the DEG×DMG overlap
+  and the multivariate view for structure.
+- **Functional follow-up.** Pass the candidate gene set to GO/enrichment (reuse the
+  `08.*` / DAVID approach) — this can be a short `29.1` notebook or a section in `30`.
+

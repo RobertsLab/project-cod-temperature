@@ -1,0 +1,236 @@
+---
+title: "30-blood-integration-figures"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Final notebook in the blood integration series (`25`–`30`). It renders the publication
+figures from the integration results in `29` (with matrices from `28`).
+
+Figures:
+
+1. Genome-wide methylation vs expression (the canonical curve, gene-body & promoter).
+2. Joint RNA-seq + methylation PCA (16 °C vs 0 °C).
+3. Per-gene expression–methylation correlation "volcano".
+4. DEG × DMG quadrant scatter (the headline integration figure).
+5. Integration heatmap of top candidate genes (expression + methylation).
+
+## Inputs (from `28`–`29`)
+
+- `output/29-blood-integration-analysis/{genome-wide-meth-expr,gene-expr-meth-correlation,deg-dmg-overlap,joint-pca-scores,joint-pca-variance}.csv`
+- `output/28-blood-integration-feature-matrices/{expression-vst-paired,methylation-genebody-paired}.csv`
+- `output/25-blood-sample-sheet/paired-samples.csv`
+
+## Outputs (written to `output/30-blood-integration-figures/`)
+
+PNG + PDF for each figure.
+
+# Load packages, paths, theme
+
+```{r setup-fig, eval=TRUE}
+library(tidyverse)
+library(glue)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+has_ggrepel  <- quietly_require("ggrepel")
+has_pheatmap <- quietly_require("pheatmap")
+
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+in25 <- file.path(project_root, "output/25-blood-sample-sheet")
+in28 <- file.path(project_root, "output/28-blood-integration-feature-matrices")
+in29 <- file.path(project_root, "output/29-blood-integration-analysis")
+output_dir <- file.path(project_root, "output/30-blood-integration-figures")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Two-group palette: blue (cold, 0 C) -> red (warm, 16 C).
+temp_levels  <- c("0", "16")
+temp_palette <- c("0" = "#2166AC", "16" = "#B2182B")
+group_palette <- c("cold" = "#2166AC", "warm" = "#B2182B")
+
+theme_cod <- function(base_size = 12) {
+  theme_bw(base_size = base_size) +
+    theme(panel.grid.minor = element_blank(),
+          strip.background = element_rect(fill = "grey95", color = NA),
+          strip.text = element_text(face = "bold"),
+          plot.title = element_text(face = "bold"))
+}
+save_fig <- function(plot, name, width = 7, height = 5, dpi = 300) {
+  ggsave(file.path(output_dir, paste0(name, ".png")), plot, width = width, height = height, dpi = dpi)
+  ggsave(file.path(output_dir, paste0(name, ".pdf")), plot, width = width, height = height)
+  invisible(plot)
+}
+```
+
+```{r load-results}
+paired   <- readr::read_csv(file.path(in25, "paired-samples.csv"), show_col_types = FALSE)
+gw       <- readr::read_csv(file.path(in29, "genome-wide-meth-expr.csv"), show_col_types = FALSE)
+cor_all  <- readr::read_csv(file.path(in29, "gene-expr-meth-correlation.csv"), show_col_types = FALSE)
+overlap  <- readr::read_csv(file.path(in29, "deg-dmg-overlap.csv"), show_col_types = FALSE)
+jscores  <- readr::read_csv(file.path(in29, "joint-pca-scores.csv"), show_col_types = FALSE)
+jvar     <- readr::read_csv(file.path(in29, "joint-pca-variance.csv"), show_col_types = FALSE)
+expr     <- readr::read_csv(file.path(in28, "expression-vst-paired.csv"), show_col_types = FALSE)
+meth_gb  <- readr::read_csv(file.path(in28, "methylation-genebody-paired.csv"), show_col_types = FALSE)
+```
+
+# Figure 1 — Genome-wide methylation vs expression
+
+```{r fig1}
+p1 <- ggplot(gw, aes(factor(meth_bin), mean_expr)) +
+  geom_col(fill = "grey40") +
+  facet_wrap(~ feature) +
+  labs(title = "Methylation vs expression (genome-wide)",
+       subtitle = "Mean VST expression by methylation decile",
+       x = "Methylation decile (low → high)", y = "Mean expression (VST)") +
+  theme_cod()
+save_fig(p1, "fig1-genome-wide-meth-expr", width = 9, height = 4.5)
+```
+
+# Figure 2 — Joint multi-omics PCA
+
+```{r fig2}
+jscores <- jscores %>% mutate(group = factor(group, levels = c("cold", "warm")))
+pc1 <- scales::percent(jvar$var_explained[1], accuracy = 0.1)
+pc2 <- scales::percent(jvar$var_explained[2], accuracy = 0.1)
+p2 <- ggplot(jscores, aes(PC1, PC2, color = group, label = sample)) +
+  geom_point(size = 3.5) +
+  scale_color_manual(values = group_palette, name = "Group") +
+  labs(title = "Joint RNA-seq + methylation PCA",
+       subtitle = "Paired blood samples (concatenated, z-scored omics)",
+       x = glue("PC1 ({pc1})"), y = glue("PC2 ({pc2})")) +
+  theme_cod()
+if (has_ggrepel) p2 <- p2 + ggrepel::geom_text_repel(size = 3, show.legend = FALSE)
+save_fig(p2, "fig2-joint-pca", width = 7, height = 5.5)
+```
+
+# Figure 3 — Expression–methylation correlation volcano
+
+```{r fig3}
+feature_focus <- "gene_body"   # or "promoter"
+volc <- cor_all %>% filter(feature == feature_focus, is.finite(estimate), is.finite(fdr)) %>%
+  mutate(neglog10_fdr = -log10(fdr), significant = fdr < 0.05)
+top_label <- volc %>% filter(significant) %>% slice_max(neglog10_fdr, n = 12)
+p3 <- ggplot(volc, aes(estimate, neglog10_fdr)) +
+  geom_point(aes(color = significant), alpha = 0.6, size = 1.8) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey60") +
+  scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "grey70"), name = "FDR < 0.05") +
+  labs(title = glue("{feature_focus} methylation vs expression"),
+       x = "Correlation (expression vs methylation)", y = expression(-log[10]("BH FDR"))) +
+  theme_cod()
+if (has_ggrepel && nrow(top_label) > 0)
+  p3 <- p3 + ggrepel::geom_text_repel(data = top_label, aes(label = gene_id), size = 3)
+save_fig(p3, "fig3-expr-meth-volcano", width = 7, height = 5.5)
+```
+
+# Figure 4 — DEG × DMG quadrant (headline)
+
+```{r fig4}
+q <- overlap %>% filter(is.finite(log2FoldChange), is.finite(delta))
+p4 <- ggplot(q, aes(delta, log2FoldChange)) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_vline(xintercept = 0, color = "grey70") +
+  geom_point(aes(color = candidate, size = candidate), alpha = 0.6) +
+  scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "grey75"),
+                     name = "DEG ∩ DMG") +
+  scale_size_manual(values = c(`TRUE` = 2.4, `FALSE` = 1.2), guide = "none") +
+  labs(title = "Differential methylation vs differential expression",
+       subtitle = "Each point a gene; red = significant in both assays",
+       x = "Δ gene-body methylation (16 − 0 °C)",
+       y = "log2 fold change expression (16 vs 0 °C)") +
+  theme_cod()
+if (has_ggrepel) {
+  lab <- q %>% filter(candidate) %>% slice_max(abs(log2FoldChange) + abs(delta), n = 15)
+  if (nrow(lab) > 0) p4 <- p4 + ggrepel::geom_text_repel(data = lab, aes(label = gene_id), size = 3)
+}
+save_fig(p4, "fig4-deg-dmg-quadrant", width = 7.5, height = 6)
+```
+
+# Figure 5 — Integration heatmap of top candidates
+
+```{r fig5}
+heat_genes <- overlap %>% filter(candidate) %>%
+  slice_max(abs(log2FoldChange) + abs(delta), n = 30) %>% pull(gene_id)
+if (length(heat_genes) < 2)
+  heat_genes <- cor_all %>% filter(feature == feature_focus, is.finite(fdr)) %>%
+    slice_min(fdr, n = 30) %>% pull(gene_id)
+
+sample_ids <- intersect(setdiff(names(expr), "gene_id"), setdiff(names(meth_gb), "gene_id"))
+ord <- paired$sample[paired$sample %in% sample_ids]
+zrows <- function(m) t(scale(t(m)))
+expr_block <- expr %>% filter(gene_id %in% heat_genes) %>% column_to_rownames("gene_id") %>%
+  select(all_of(ord)) %>% as.matrix() %>% zrows()
+meth_block <- meth_gb %>% filter(gene_id %in% heat_genes) %>% column_to_rownames("gene_id") %>%
+  select(all_of(ord)) %>% as.matrix() %>% zrows()
+
+if (has_pheatmap) {
+  ann <- paired %>% filter(sample %in% ord) %>% column_to_rownames("sample") %>%
+    transmute(group = factor(group, levels = c("cold", "warm")))
+  ann_colors <- list(group = group_palette)
+  pheatmap::pheatmap(expr_block, annotation_col = ann, annotation_colors = ann_colors,
+    main = "Expression (VST z-score) — candidate genes", fontsize_row = 6,
+    filename = file.path(output_dir, "fig5-heatmap-expression.png"), width = 8, height = 8)
+  pheatmap::pheatmap(meth_block, annotation_col = ann, annotation_colors = ann_colors,
+    main = "Gene-body methylation (z-score) — candidate genes", fontsize_row = 6,
+    filename = file.path(output_dir, "fig5-heatmap-methylation.png"), width = 8, height = 8)
+} else {
+  tile_df <- bind_rows(
+    as_tibble(expr_block, rownames = "gene_id") %>%
+      pivot_longer(-gene_id, names_to = "sample", values_to = "z") %>% mutate(block = "Expression"),
+    as_tibble(meth_block, rownames = "gene_id") %>%
+      pivot_longer(-gene_id, names_to = "sample", values_to = "z") %>% mutate(block = "Methylation"))
+  p5 <- ggplot(tile_df, aes(sample, gene_id, fill = z)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+    facet_wrap(~ block) + labs(title = "Top candidate genes (z-score)", x = NULL, y = NULL) +
+    theme_cod(base_size = 8) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  save_fig(p5, "fig5-integration-heatmap", width = 9, height = 8)
+}
+```
+
+# Notes
+
+- **Feature focus.** Figures 3/5 default to gene-body methylation; set `feature_focus`
+  to `"promoter"` (and swap `meth_gb` for the promoter matrix) for promoter-centric views.
+- **Two-group palette.** Blue = 0 °C (cold), red = 16 °C (warm), consistent across figures.
+- **Small n.** Prefer showing individual points and effect sizes (already done) over heavy
+  significance claims.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

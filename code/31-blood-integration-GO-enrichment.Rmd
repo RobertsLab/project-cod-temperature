@@ -1,0 +1,236 @@
+---
+title: "31-blood-integration-GO-enrichment"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,        # Run manually after 26/27/29 produce their outputs
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Functional follow-up to the blood integration series (`25`–`30`). It takes the gene sets
+produced by the integration and asks **which biological processes are over-represented**,
+with particular focus on the **DEG × DMG candidate set** from `29` — the genes that are
+both differentially expressed and differentially methylated between 16 °C and 0 °C, i.e.
+the strongest candidates for epigenetic control of the thermal response.
+
+It reuses the gene→GO/UniProt database built in `03.2-genome-annotation`
+(`G_macrocephalus_genes_IDmapping_2024_05_22.tab`), which is keyed by NCBI `LOC…` gene IDs
+from the **same** `GCF_031168955.1` assembly used throughout this track — so it joins
+directly to the `gene_id`s from `26`/`27`.
+
+Two enrichment routes are provided:
+
+1. **In-R GO enrichment (topGO)** — runs end-to-end with no external web step, using the
+   custom gene→GO mapping from the annotation database. This is the default.
+2. **DAVID export** — writes UniProt-accession target/background lists in the same format
+   as `08.2.1-cod-RNAseq-GO-annotation-genome-exon`, for the established DAVID web workflow.
+
+## Inputs
+
+- `output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_05_22.tab`
+- `output/29-blood-integration-analysis/deg-dmg-overlap.csv` (candidate set)
+- `output/26-blood-RNAseq-align-DESeq2/deseq2-DEGs-sig.csv` (DEGs)
+- `output/27-blood-WGBS-methylation-DMR/gene-methylation-diff.csv` (DMGs)
+- `output/26-blood-RNAseq-align-DESeq2/deseq2-results-16v0.csv` (universe / background)
+
+## Outputs (written to `output/31-blood-integration-GO-enrichment/`)
+
+- `<set>-GO-annotated.tab` — each gene set joined to GO terms / UniProt accessions.
+- `<set>-topGO-BP.tab` — enriched biological-process GO terms (per set).
+- `GO-enrichment-barplot-candidates.png` — top enriched terms for the candidate set.
+- `<set>-uniprotAccessions_formatted.txt` + `background_formatted.txt` — DAVID-ready lists.
+
+# Load packages and paths
+
+```{r load, eval=TRUE}
+library(tidyverse)
+library(glue)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+idmap_path <- file.path(project_root,
+  "output/03.2-genome-annotation/G_macrocephalus_genes_IDmapping_2024_05_22.tab")
+in26 <- file.path(project_root, "output/26-blood-RNAseq-align-DESeq2")
+in27 <- file.path(project_root, "output/27-blood-WGBS-methylation-DMR")
+in29 <- file.path(project_root, "output/29-blood-integration-analysis")
+output_dir <- file.path(project_root, "output/31-blood-integration-GO-enrichment")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+go_fdr_alpha <- 0.05
+```
+
+# Load the gene→GO/UniProt database and the gene sets
+
+```{r load-data}
+# Annotation DB: gene_ID (LOC...) -> UniProt accession (V13), GO IDs, protein names.
+idmap <- read.csv(idmap_path, sep = "\t") %>%
+  select(-X) %>%
+  rename(gene_id = gene_ID,
+         uniprot_accession = V13,
+         go_ids = Gene.Ontology.IDs,
+         go_bp  = Gene.Ontology..biological.process.,
+         protein_names = Protein.names) %>%
+  distinct(gene_id, .keep_all = TRUE)
+
+# Universe = all genes tested for expression (used as enrichment background).
+universe <- readr::read_csv(file.path(in26, "deseq2-results-16v0.csv"),
+                            show_col_types = FALSE) %>% pull(gene_id) %>% unique()
+
+# Gene sets of interest.
+candidates <- readr::read_csv(file.path(in29, "deg-dmg-overlap.csv"),
+                              show_col_types = FALSE) %>%
+  filter(candidate) %>% pull(gene_id) %>% unique()
+degs <- readr::read_csv(file.path(in26, "deseq2-DEGs-sig.csv"),
+                        show_col_types = FALSE) %>% pull(gene_id) %>% unique()
+dmgs <- readr::read_csv(file.path(in27, "gene-methylation-diff.csv"),
+                        show_col_types = FALSE) %>%
+  filter(!is.na(fdr), fdr < 0.05) %>% pull(gene_id) %>% unique()
+
+gene_sets <- list(candidates = candidates, DEGs = degs, DMGs = dmgs)
+map_int(gene_sets, length)
+```
+
+# Annotate each gene set with GO terms
+
+```{r annotate}
+annotate_set <- function(genes, name) {
+  ann <- tibble(gene_id = genes) %>% left_join(idmap, by = "gene_id")
+  readr::write_tsv(ann, file.path(output_dir, glue("{name}-GO-annotated.tab")))
+  message(glue("[{name}] {length(genes)} genes; {sum(!is.na(ann$go_ids))} with GO terms"))
+  ann
+}
+annotated <- imap(gene_sets, ~ annotate_set(.x, .y))
+```
+
+# Route 1 — In-R GO enrichment (topGO)
+
+```{r topgo}
+has_topgo <- quietly_require("topGO"); stopifnot(has_topgo)
+
+# Build gene -> GO-ID mapping over the universe (BP enrichment uses topGO's GO DAG).
+gene2go <- idmap %>%
+  filter(gene_id %in% universe, !is.na(go_ids), go_ids != "") %>%
+  transmute(gene_id, go = str_split(go_ids, ";\\s*")) %>%
+  deframe()
+
+run_topgo <- function(genes, name, ontology = "BP") {
+  gene_list <- factor(as.integer(universe %in% genes), levels = c(0, 1))
+  names(gene_list) <- universe
+  if (sum(gene_list == 1) < 5) {
+    message(glue("[{name}] <5 annotated genes in set; skipping topGO.")); return(NULL)
+  }
+  god <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+             annot = topGO::annFUN.gene2GO, gene2GO = gene2go, nodeSize = 5)
+  res <- topGO::runTest(god, algorithm = "weight01", statistic = "fisher")
+  tab <- topGO::GenTable(god, weight01 = res, orderBy = "weight01",
+                         topNodes = 50) %>% as_tibble() %>%
+    mutate(weight01 = as.numeric(gsub("<", "", weight01)),
+           fdr = p.adjust(weight01, "BH"))
+  readr::write_tsv(tab, file.path(output_dir, glue("{name}-topGO-{ontology}.tab")))
+  tab
+}
+
+topgo_results <- imap(gene_sets, ~ run_topgo(.x, .y))
+topgo_results$candidates %>% filter(weight01 < go_fdr_alpha) %>% head(20)
+```
+
+```{r topgo-barplot}
+library(ggplot2)
+cand_tab <- topgo_results$candidates
+if (!is.null(cand_tab) && nrow(cand_tab) > 0) {
+  top_terms <- cand_tab %>% slice_min(weight01, n = 15) %>%
+    mutate(Term = fct_reorder(Term, -weight01))
+  p_go <- ggplot(top_terms, aes(-log10(weight01), Term, fill = Significant)) +
+    geom_col() +
+    scale_fill_gradient(low = "#67A9CF", high = "#B2182B", name = "DEG/DMG\ngenes") +
+    labs(title = "Enriched biological processes — DEG × DMG candidates",
+         x = expression(-log[10](italic(p))~"(weight01 Fisher)"), y = NULL) +
+    theme_bw()
+  ggsave(file.path(output_dir, "GO-enrichment-barplot-candidates.png"),
+         p_go, width = 8, height = 6, dpi = 300)
+  p_go
+}
+```
+
+# Route 2 — DAVID export (UniProt accessions)
+
+```{r david-export}
+# Target lists: UniProt accessions for each gene set (one per line), plus the background.
+write_accessions <- function(ann, name) {
+  acc <- ann %>% filter(!is.na(uniprot_accession), uniprot_accession != "") %>%
+    pull(uniprot_accession) %>% unique()
+  # Raw + comma-formatted (DAVID accepts newline- or comma-delimited lists).
+  writeLines(acc, file.path(output_dir, glue("{name}-uniprotAccessions.txt")))
+  writeLines(paste(acc, collapse = ", "),
+             file.path(output_dir, glue("{name}-uniprotAccessions_formatted.txt")))
+  length(acc)
+}
+imap_int(annotated, ~ write_accessions(.x, .y))
+
+# Background = all expressed genes mapped to UniProt accessions.
+bg_acc <- idmap %>% filter(gene_id %in% universe,
+                           !is.na(uniprot_accession), uniprot_accession != "") %>%
+  pull(uniprot_accession) %>% unique()
+writeLines(bg_acc, file.path(output_dir, "background_uniprotAccessions.txt"))
+writeLines(paste(bg_acc, collapse = ", "),
+           file.path(output_dir, "background_formatted.txt"))
+glue("Background accessions: {length(bg_acc)}")
+```
+
+> **DAVID web step (manual).** Upload each `<set>-uniprotAccessions_formatted.txt` as the
+> gene list (identifier: `UNIPROT_ACCESSION`, list type: *Gene List*) and
+> `background_formatted.txt` as the *Background*, then download the Functional Annotation
+> Chart/Table and save as `<set>-DAVID-FAchart.tab` / `<set>-DAVID-FAtable.tab` in this
+> output directory (mirrors `08.2.1`).
+
+# Notes, assumptions, and TODOs
+
+- **Annotation DB reuse.** `G_macrocephalus_genes_IDmapping_2024_05_22.tab` is keyed by
+  `LOC…` gene IDs from `GCF_031168955.1`; it joins directly to the `gene_id`s here. If
+  `26`/`27` emit gene *symbols* rather than `LOC…` IDs (depends on the `featureCounts -g`
+  attribute), add a symbol→LOC mapping step before the join.
+- **Background choice.** Enrichment uses all expression-tested genes as the universe. For
+  the DMG set specifically, a methylation-tested universe (genes with sufficient CpG
+  coverage) is more appropriate — swap `universe` accordingly if desired.
+- **Interpretation focus.** The candidate (DEG ∩ DMG) enrichment is the headline; DEG-only
+  and DMG-only results provide context for what is captured uniquely by each assay.
+- **Power.** With small candidate sets, prefer the topGO `weight01` results and report both
+  raw p and BH FDR; treat single-term hits cautiously.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

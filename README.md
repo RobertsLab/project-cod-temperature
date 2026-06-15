@@ -75,6 +75,18 @@ Whole-genome bisulfite sequencing (WGBS) data are processed to characterize the 
 2. Run the [nf-core/methylseq](https://nf-co.re/methylseq) pipeline via Nextflow on UW Hyak (`klone`), using `17.nextflow`, `17.config`, `17.samplesheet.csv` (see setup notes in `17.notes`).
 3. Characterize the genome-wide methylation landscape (`18-methylation-landscape`) and perform PCA on methylation profiles across samples (`20-methylation-pca`).
 
+### Integrated RNA-seq + DNA methylation analysis (blood)
+
+A dedicated track integrates **blood** RNA-seq and WGBS from the same individuals held at two temperatures (samples 1–36 @ 16 °C, 44–74 @ 0 °C) against `GCF_031168955.1`, to investigate epigenetic control of gene expression under thermal stress. The plan and notebook index are in [`21-RNAseq-methylation.md`](code/21-RNAseq-methylation.md). Workflow:
+
+1. Build sample sheets and the paired-sample set from the Owl listings (`25-blood-sample-sheet`).
+2. RNA-seq to gene-level DEGs (16 vs 0 °C) with HISAT2/featureCounts/DESeq2 (`26-blood-RNAseq-align-DESeq2`).
+3. WGBS to CpG coverage, DMCs/DMRs (methylKit), and per-gene methylation (`27-blood-WGBS-methylation-DMR`).
+4. Matched expression × methylation feature matrices (`28-blood-integration-feature-matrices`).
+5. Integration — genome-wide methylation↔expression, per-gene correlation, DEG×DMG overlap, joint PCA/DIABLO (`29-blood-integration-analysis`).
+6. Publication figures (`30-blood-integration-figures`).
+7. GO/functional enrichment of the DEG×DMG candidate genes (`31-blood-integration-GO-enrichment`).
+
 ### See also
 
 <https://github.com/laurahspencer/pcod-juveniles-2023>

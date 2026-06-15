@@ -1,0 +1,280 @@
+---
+title: "27-blood-WGBS-methylation-DMR"
+author: "Roberts Lab"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+always_allow_html: true
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    code_download: true
+  github_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    html_preview: true
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,        # Heavy compute (klone): run manually
+  warning = FALSE,
+  message = FALSE,
+  comment = ""
+)
+```
+
+# Overview
+
+Third notebook in the blood integration series (`25`–`30`). It takes the **blood WGBS**
+reads (`AN00025267`) through the nf-core/methylseq (Bismark) pipeline to per-CpG coverage,
+then calls **differentially methylated CpGs (DMCs) and regions (DMRs)** between
+**16 °C and 0 °C** and summarizes methylation to **gene-level features** for integration.
+
+The methylseq pipeline is already configured for this genome in the repo (`16.2-genome-prep`,
+`17.nextflow`, `17.config`, `17.samplesheet.csv`). This notebook reuses that setup with the
+blood sample sheet from `25`, then adds DMR calling (methylKit) and per-gene summaries.
+
+## Inputs
+
+- `output/25-blood-sample-sheet/samplesheet-wgbs.csv`, `blood-sample-metadata.csv`.
+- Reference `GCF_031168955.1` FASTA + GFF/GTF (same as `26`).
+- methylseq `coverage2cytosine` `*.cov.gz` outputs (off-repo on klone/Owl).
+
+## Outputs (written to `output/27-blood-WGBS-methylation-DMR/`)
+
+- `methylation-landscape-summary.csv` — global %mCpG per sample.
+- `DMCs-16v0.csv` — per-CpG differential methylation (methylKit).
+- `DMRs-16v0.csv` — differentially methylated regions (tiled or methylKit regions).
+- `genebody-methylation.csv`, `promoter-methylation.csv` — gene × `{NN}B` matrices.
+- `gene-methylation-diff.csv` — per-gene mean Δmethylation (16 − 0) + significance.
+
+# Run methylseq (klone)
+
+```{bash methylseq, eval=FALSE}
+# Reuse the repo's nf-core/methylseq config with the BLOOD sample sheet from 25.
+# (cf. code/17.nextflow). coverage2cytosine output is required for CpG-resolution.
+nextflow run nf-core/methylseq \
+  -c code/17.config \
+  --input output/25-blood-sample-sheet/samplesheet-wgbs.csv \
+  --outdir output/27-blood-WGBS-methylation-DMR/methylseq \
+  --fasta /gscratch/coenv/sr320/cod-ref/GCF_031168955.1_ASM3116895v1_genomic.fna \
+  --cytosine_report \
+  -resume -with-trace -with-report nf_report.html -with-timeline nf_timeline.html
+```
+
+# Load packages
+
+```{r load-packages, eval=TRUE}
+library(tidyverse)
+library(glue)
+library(vroom)
+quietly_require <- function(pkg) {
+  if (suppressWarnings(requireNamespace(pkg, quietly = TRUE))) {
+    library(pkg, character.only = TRUE); return(TRUE)
+  }
+  FALSE
+}
+```
+
+# Paths and configuration
+
+```{r paths, eval=TRUE}
+project_root <- Sys.getenv(
+  "PROJECT_COD_TEMP_ROOT",
+  unset = normalizePath(file.path(getwd(), ".."), mustWork = FALSE)
+)
+
+# Set to wherever the coverage2cytosine *.cov.gz files live in your environment.
+cov_dir  <- file.path(project_root,
+  "output/27-blood-WGBS-methylation-DMR/methylseq/coverage2cytosine/coverage")
+meta_path <- file.path(project_root, "output/25-blood-sample-sheet/blood-sample-metadata.csv")
+gtf_path  <- file.path(project_root, "data/genomic.gtf")   # GCF_031168955.1 (off-repo)
+
+output_dir <- file.path(project_root, "output/27-blood-WGBS-methylation-DMR")
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+min_cov           <- 5L       # min per-sample CpG depth
+min_per_group     <- 3L       # min samples per group covering a CpG for DMC test
+qvalue_cutoff     <- 0.01     # methylKit DMC q-value
+meth_diff_cutoff  <- 25       # methylKit DMC % difference
+tile_window       <- 1000L    # DMR tile width (bp)
+promoter_upstream <- 1000L
+promoter_downstream <- 200L
+min_cpgs_per_gene <- 3L
+```
+
+```{r load-meta, eval=TRUE}
+meta <- readr::read_csv(meta_path, show_col_types = FALSE) %>%
+  filter(has_wgbs)
+# Map sample -> group treatment (0 = cold, 1 = warm) for methylKit.
+meta_meth <- meta %>% transmute(sample, temp_treatment,
+                                treatment = if_else(temp_treatment == 16, 1L, 0L))
+meta_meth
+```
+
+# 1. Methylation landscape summary
+
+```{r landscape}
+cov_files <- list.files(cov_dir, pattern = "\\.cov(\\.gz)?$", full.names = TRUE)
+stopifnot(length(cov_files) > 0)
+cov_label <- function(p) sub("\\..*$", "", basename(p))   # "13B.*.cov.gz" -> "13B"
+
+read_cov <- function(path, min_coverage = min_cov) {
+  vroom::vroom(path, delim = "\t",
+    col_names = c("chr", "start", "end", "perc_meth", "count_meth", "count_unmeth"),
+    col_types = list(chr = "c", start = "i", end = "i",
+                     perc_meth = "d", count_meth = "i", count_unmeth = "i"),
+    progress = FALSE) %>%
+    mutate(depth = count_meth + count_unmeth) %>%
+    filter(depth >= min_coverage)
+}
+
+landscape <- map_dfr(cov_files, function(p) {
+  d <- read_cov(p)
+  tibble(sample = cov_label(p),
+         n_cpg = nrow(d),
+         global_pct_meth = 100 * sum(d$count_meth) / sum(d$count_meth + d$count_unmeth))
+}) %>% left_join(meta_meth, by = "sample")
+readr::write_csv(landscape, file.path(output_dir, "methylation-landscape-summary.csv"))
+landscape
+```
+
+# 2. Differential methylation — CpGs and regions (methylKit)
+
+```{r methylkit}
+has_mk <- quietly_require("methylKit"); stopifnot(has_mk)
+
+# Restrict to WGBS samples present in cov_dir, ordered with treatment vector.
+cov_index <- tibble(path = cov_files, sample = map_chr(cov_files, cov_label)) %>%
+  inner_join(meta_meth, by = "sample") %>%
+  arrange(treatment, sample)
+
+obj <- methylKit::methRead(
+  location   = as.list(cov_index$path),
+  sample.id  = as.list(cov_index$sample),
+  assembly   = "GCF_031168955.1",
+  treatment  = cov_index$treatment,
+  context    = "CpG",
+  pipeline   = "bismarkCoverage",
+  mincov     = min_cov
+)
+
+# Per-CpG DMCs: require coverage in most samples of each group.
+filt   <- methylKit::filterByCoverage(obj, lo.count = min_cov, hi.perc = 99.9)
+united <- methylKit::unite(filt, destrand = FALSE,
+                           min.per.group = as.integer(min_per_group))
+diff   <- methylKit::calculateDiffMeth(united)
+
+dmc <- methylKit::getMethylDiff(diff, difference = meth_diff_cutoff,
+                                qvalue = qvalue_cutoff)
+dmc_df <- methylKit::getData(dmc) %>% as_tibble()
+readr::write_csv(dmc_df, file.path(output_dir, "DMCs-16v0.csv"))
+message(glue("DMCs (q<{qvalue_cutoff}, |diff|>{meth_diff_cutoff}%): {nrow(dmc_df)}"))
+
+# DMRs via tiling.
+tiles  <- methylKit::tileMethylCounts(obj, win.size = tile_window,
+                                      step.size = tile_window, cov.bases = min_cpgs_per_gene)
+t_unite <- methylKit::unite(tiles, destrand = FALSE,
+                            min.per.group = as.integer(min_per_group))
+t_diff  <- methylKit::calculateDiffMeth(t_unite)
+dmr     <- methylKit::getMethylDiff(t_diff, difference = meth_diff_cutoff,
+                                    qvalue = qvalue_cutoff)
+dmr_df  <- methylKit::getData(dmr) %>% as_tibble()
+readr::write_csv(dmr_df, file.path(output_dir, "DMRs-16v0.csv"))
+message(glue("DMRs ({tile_window}bp tiles): {nrow(dmr_df)}"))
+```
+
+# 3. Gene-level methylation summaries
+
+```{r gene-features}
+has_gr <- quietly_require("GenomicRanges"); has_gf <- quietly_require("GenomicFeatures")
+stopifnot(has_gr, has_gf)
+
+make_txdb <- function(gtf) {
+  if (quietly_require("txdbmaker")) txdbmaker::makeTxDbFromGFF(gtf, format = "gtf")
+  else GenomicFeatures::makeTxDbFromGFF(gtf, format = "gtf")
+}
+txdb <- make_txdb(gtf_path)
+gene_bodies   <- GenomicFeatures::genes(txdb)
+gene_promoters <- GenomicRanges::promoters(gene_bodies,
+  upstream = promoter_upstream, downstream = promoter_downstream)
+
+# Coverage-weighted methylation fraction per gene, per sample.
+summarize_sample <- function(cov_df, feature_gr, min_cpgs = min_cpgs_per_gene) {
+  cpg_gr <- GenomicRanges::GRanges(cov_df$chr,
+    IRanges::IRanges(cov_df$start, cov_df$start),
+    count_meth = cov_df$count_meth, count_unmeth = cov_df$count_unmeth)
+  hits <- GenomicRanges::findOverlaps(cpg_gr, feature_gr, ignore.strand = TRUE)
+  if (length(hits) == 0) return(tibble(gene_id = character(), meth = numeric()))
+  tibble(
+    gene_id      = names(feature_gr)[S4Vectors::subjectHits(hits)],
+    count_meth   = cov_df$count_meth[S4Vectors::queryHits(hits)],
+    count_unmeth = cov_df$count_unmeth[S4Vectors::queryHits(hits)]
+  ) %>%
+    group_by(gene_id) %>%
+    summarise(n_cpg = n(),
+              meth = sum(count_meth) / sum(count_meth + count_unmeth), .groups = "drop") %>%
+    filter(n_cpg >= min_cpgs) %>% select(gene_id, meth)
+}
+
+build_matrix <- function(feature_gr) {
+  cov_index %>%
+    mutate(data = map(path, ~ summarize_sample(read_cov(.x), feature_gr))) %>%
+    select(sample, data) %>% unnest(data) %>%
+    pivot_wider(names_from = sample, values_from = meth)
+}
+
+meth_genebody <- build_matrix(gene_bodies)
+meth_promoter <- build_matrix(gene_promoters)
+readr::write_csv(meth_genebody, file.path(output_dir, "genebody-methylation.csv"))
+readr::write_csv(meth_promoter, file.path(output_dir, "promoter-methylation.csv"))
+dim(meth_genebody); dim(meth_promoter)
+```
+
+```{r gene-diff}
+# Per-gene mean methylation by group + Δ(16 − 0) and a simple t-test (gene-body).
+warm_ids <- meta_meth$sample[meta_meth$treatment == 1]
+cold_ids <- meta_meth$sample[meta_meth$treatment == 0]
+
+gene_diff <- meth_genebody %>%
+  rowwise() %>%
+  mutate(
+    mean_warm = mean(c_across(any_of(warm_ids)), na.rm = TRUE),
+    mean_cold = mean(c_across(any_of(cold_ids)), na.rm = TRUE),
+    delta     = mean_warm - mean_cold,
+    p_value   = tryCatch(
+      t.test(c_across(any_of(warm_ids)), c_across(any_of(cold_ids)))$p.value,
+      error = function(e) NA_real_)
+  ) %>%
+  ungroup() %>%
+  select(gene_id, mean_warm, mean_cold, delta, p_value) %>%
+  mutate(fdr = p.adjust(p_value, "BH")) %>%
+  arrange(fdr)
+readr::write_csv(gene_diff, file.path(output_dir, "gene-methylation-diff.csv"))
+message(glue("Differentially methylated genes (FDR<0.05): ",
+             "{sum(gene_diff$fdr < 0.05, na.rm = TRUE)}"))
+```
+
+# Notes, assumptions, and TODOs
+
+- **Seqlevels must match.** GTF and `.cov` chromosome names are both RefSeq `NC_0823..`
+  accessions from `GCF_031168955.1`; if they ever diverge, harmonize with
+  `GenomeInfoDb::seqlevelsStyle()` before `findOverlaps`.
+- **DMR method.** Tiling (1 kb) via methylKit is the default here; `dmrseq` or `DSS` are
+  reasonable alternatives if you want smoothing / region detection rather than fixed tiles.
+- **Power.** Group sizes are modest; report effect size (% difference) alongside q-values
+  and avoid over-interpreting individual DMCs.
+- **Feature definition.** Gene-body and promoter (±1 kb/+200 bp) are defaults; CpG-island
+  or first-exon summaries can reuse `summarize_sample()` with a different `GRanges`.
+
+# Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```
